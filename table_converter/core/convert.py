@@ -106,9 +106,6 @@ def remap_df(
                 if column == '__file__':
                     set_field_value(new_row, '__debug__.__file__', row['__file__'])
                 rest[column] = row[column]
-        #if not rest:
-        #    rest = None
-        #new_row['__debug__.__rest__'] = rest
         set_field_value(new_row, '__debug__.__rest__', rest)
         new_rows.append(new_row)
     new_df = pd.DataFrame(new_rows)
