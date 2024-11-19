@@ -73,10 +73,6 @@ def convert(
             raise FileNotFoundError(f'File not found: {input_file}')
         ext = os.path.splitext(input_file)[1]
         ic(ext)
-        #if ext == '.xlsx':
-        #    df = load_excel(input_file)
-        #else:
-        #    raise ValueError(f'Unsupported file type: {ext}')
         if ext not in map_loaders:
             raise ValueError(f'Unsupported file type: {ext}')
         df = map_loaders[ext](input_file)
