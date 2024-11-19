@@ -86,50 +86,36 @@ def get_field_value(
         raise KeyError(f'Field not found: {field}, existing fields: {data.keys()}')
     return default
 
-def remap_df(
-    df: pd.DataFrame,
+def remap(
+    row: OrderedDict,
     column_map: OrderedDict,
 ):
-    #ic()
-    ic(df.columns)
-    ic(column_map)
-    new_rows = []
-    for index, row in df.iterrows():
-        new_row = OrderedDict()
-        mapped_set = set()
-        for column in column_map.keys():
-            set_field_value(new_row, column, row[column_map[column]])
-            mapped_set.add(column_map[column])
-        rest = OrderedDict()
-        for column in df.columns:
-            if column not in mapped_set:
-                if column == '__file__':
-                    set_field_value(new_row, '__debug__.__file__', row['__file__'])
-                rest[column] = row[column]
-        set_field_value(new_row, '__debug__.__rest__', rest)
-        new_rows.append(new_row)
-    new_df = pd.DataFrame(new_rows)
-    ic(new_df.columns)
-    ic(new_df.iloc[0])
-    #ic(df)
-    #ic(new_df)
-    return new_df
+    new_row = OrderedDict()
+    mapped_set = set()
+    for column in column_map.keys():
+        set_field_value(new_row, column, row[column_map[column]])
+        mapped_set.add(column_map[column])
+    rest = OrderedDict()
+    for column in row.keys():
+        if column.startswith('__') and column.endswith('__'):
+            # NOTE: Ignore debug fields
+            set_field_value(new_row, column, row[column])
+        elif column not in mapped_set:
+            rest[column] = row[column]
+    set_field_value(new_row, '__debug__.__rest__', rest)
+    return new_row
 
 def apply_fields_split_by_newline(
-    df: pd.DataFrame,
+    row: OrderedDict,
     fields: list[str],
 ):
-    new_rows = []
-    for index, row in df.iterrows():
-        new_row = OrderedDict(row)
-        for field in fields:
-            value = get_field_value(row, field)
-            if isinstance(value, str):
-                new_value = value.split('\n')
-                set_field_value(new_row, field, new_value)
-        new_rows.append(new_row)
-    new_df = pd.DataFrame(new_rows)
-    return new_df
+    new_row = OrderedDict(row)
+    for field in fields:
+        value = get_field_value(row, field)
+        if isinstance(value, str):
+            new_value = value.split('\n')
+            set_field_value(new_row, field, new_value)
+    return new_row
 
 def convert(
     input_files: list[str],
@@ -171,13 +157,17 @@ def convert(
         ic(len(df))
         ic(df.columns)
         ic(df.iloc[0])
-        if '__file__' not in df.columns:
-            df['__file__'] = input_file
-        if column_map:
-            df = remap_df(df, column_map)
-        if list_fields_split_by_newline:
-            df = apply_fields_split_by_newline(df, list_fields_split_by_newline)
-        df_list.append(df)
+        new_rows = []
+        for index, row in df.iterrows():
+            new_row = OrderedDict(row)
+            set_field_value(new_row, '__debug__.__file__', input_file)
+            if column_map:
+                new_row = remap(new_row, column_map)
+            if list_fields_split_by_newline:
+                new_row = apply_fields_split_by_newline(new_row, list_fields_split_by_newline)
+            new_rows.append(new_row)
+        new_df = pd.DataFrame(new_rows)
+        df_list.append(new_df)
     all_df = pd.concat(df_list)
     #ic(all_df)
     ic(len(all_df))
