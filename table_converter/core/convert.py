@@ -70,6 +70,22 @@ def set_field_value(
     else:
         data[field] = value
 
+def get_field_value(
+    data: OrderedDict,
+    field: str,
+    default: any = None,
+    raise_error: bool = True,
+):
+    if field in data:
+        return data[field]
+    if '.' in field:
+        field, rest = field.split('.', 1)
+        if field in data:
+            return get_field_value(data[field], rest)
+    if raise_error:
+        raise KeyError(f'Field not found: {field}, existing fields: {data.keys()}')
+    return default
+
 def remap_df(
     df: pd.DataFrame,
     column_map: OrderedDict,
@@ -99,27 +115,44 @@ def remap_df(
     #ic(new_df)
     return new_df
 
+def apply_fields_split_by_newline(
+    df: pd.DataFrame,
+    fields: list[str],
+):
+    new_rows = []
+    for index, row in df.iterrows():
+        new_row = OrderedDict(row)
+        for field in fields:
+            value = get_field_value(row, field)
+            if isinstance(value, str):
+                new_value = value.split('\n')
+                set_field_value(new_row, field, new_value)
+        new_rows.append(new_row)
+    new_df = pd.DataFrame(new_rows)
+    return new_df
+
 def convert(
     input_files: list[str],
     output_file: str | None = None,
     pickup_columns: str | None = None,
+    fields_split_by_newline: str | None = None,
 ):
     ic()
     ic(input_files)
     df_list = []
     column_map: OrderedDict | None = None
+    list_fields_split_by_newline = None
     if pickup_columns:
         column_map = OrderedDict()
         fields = pickup_columns.split(',')
         for field in fields:
-            #src, dst = field.split(':')
-            #column_map[src] = dst
             if '=' in field:
-                #src, dst = field.split('=')
                 dst, src = field.split('=')
                 column_map[dst] = src
             else:
                 column_map[field] = field
+    if fields_split_by_newline:
+        list_fields_split_by_newline = fields_split_by_newline.split(',')
     if output_file:
         ext = os.path.splitext(output_file)[1]
         if ext not in map_savers:
@@ -142,6 +175,8 @@ def convert(
             df['__file__'] = input_file
         if column_map:
             df = remap_df(df, column_map)
+        if list_fields_split_by_newline:
+            df = apply_fields_split_by_newline(df, list_fields_split_by_newline)
         df_list.append(df)
     all_df = pd.concat(df_list)
     #ic(all_df)

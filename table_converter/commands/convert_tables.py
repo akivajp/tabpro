@@ -13,6 +13,7 @@ def run(
         input_files = args.input_files,
         output_file = args.output_file,
         pickup_columns= args.pickup_columns,
+        fields_split_by_newline = args.split_by_newline,
     )
 
 def setup_parser(
@@ -34,5 +35,10 @@ def setup_parser(
         '--pickup-columns',
         type=str,
         help='Pickup column map',
+    )
+    parser.add_argument(
+        '--split-by-newline',
+        type=str,
+        help='Fields to split by newline',
     )
     parser.set_defaults(handler=run)
