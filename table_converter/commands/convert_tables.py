@@ -13,7 +13,8 @@ def run(
         input_files = args.input_files,
         output_file = args.output_file,
         pickup_columns= args.pickup_columns,
-        fields_split_by_newline = args.split_by_newline,
+        fields_to_split_by_newline = args.split_by_newline,
+        fields_to_assign_id = args.assign_id,
     )
 
 def setup_parser(
@@ -40,5 +41,10 @@ def setup_parser(
         '--split-by-newline',
         type=str,
         help='Fields to split by newline',
+    )
+    parser.add_argument(
+        '--assign-id',
+        type=str,
+        help='Field to assign id',
     )
     parser.set_defaults(handler=run)

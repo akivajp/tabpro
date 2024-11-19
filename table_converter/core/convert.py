@@ -109,7 +109,8 @@ def apply_fields_split_by_newline(
     row: OrderedDict,
     fields: list[str],
 ):
-    new_row = OrderedDict(row)
+    #new_row = OrderedDict(row)
+    new_row = row
     for field in fields:
         value = get_field_value(row, field)
         if isinstance(value, str):
@@ -117,17 +118,57 @@ def apply_fields_split_by_newline(
             set_field_value(new_row, field, new_value)
     return new_row
 
+def create_id_stat_node():
+    return {
+        'max_id': 0,
+        'map_value_to_id': {},
+        'map_id_to_node': {},
+    }
+
+def assign_id_in_node(
+    row: OrderedDict,
+    field: str,
+    id_stat_node: dict,
+):
+    new_row = row
+    value = get_field_value(row, field)
+    if value not in id_stat_node['map_value_to_id']:
+        field_id = id_stat_node['max_id'] + 1
+        id_stat_node['max_id'] = field_id
+        id_stat_node['map_value_to_id'][value] = field_id
+        node = create_id_stat_node()
+        id_stat_node['map_id_to_node'][field_id] = node
+    else:
+        field_id = id_stat_node['map_value_to_id'][value]
+        node = id_stat_node['map_id_to_node'][field_id]
+    set_field_value(new_row, f'__debug__.__ids__.{field}', field_id)
+    return node, new_row
+
+def assign_id(
+    row: OrderedDict,
+    fields: list[str],
+    root_id_stat_node: dict,
+):
+    new_row = row
+    node = root_id_stat_node
+    for field in fields:
+        node, new_row = assign_id_in_node(new_row, field, node)
+    return new_row
+
 def convert(
     input_files: list[str],
     output_file: str | None = None,
     pickup_columns: str | None = None,
-    fields_split_by_newline: str | None = None,
+    fields_to_split_by_newline: str | None = None,
+    fields_to_assign_id: str | None = None,
 ):
     ic()
     ic(input_files)
     df_list = []
     column_map: OrderedDict | None = None
-    list_fields_split_by_newline = None
+    list_fields_to_split_by_newline = None
+    list_fields_to_assign_id = None
+    root_id_stat = create_id_stat_node()
     if pickup_columns:
         column_map = OrderedDict()
         fields = pickup_columns.split(',')
@@ -137,8 +178,10 @@ def convert(
                 column_map[dst] = src
             else:
                 column_map[field] = field
-    if fields_split_by_newline:
-        list_fields_split_by_newline = fields_split_by_newline.split(',')
+    if fields_to_split_by_newline:
+        list_fields_to_split_by_newline = fields_to_split_by_newline.split(',')
+    if fields_to_assign_id:
+        list_fields_to_assign_id = fields_to_assign_id.split(',')
     if output_file:
         ext = os.path.splitext(output_file)[1]
         if ext not in map_savers:
@@ -163,8 +206,10 @@ def convert(
             set_field_value(new_row, '__debug__.__file__', input_file)
             if column_map:
                 new_row = remap(new_row, column_map)
-            if list_fields_split_by_newline:
-                new_row = apply_fields_split_by_newline(new_row, list_fields_split_by_newline)
+            if list_fields_to_split_by_newline:
+                new_row = apply_fields_split_by_newline(new_row, list_fields_to_split_by_newline)
+            if list_fields_to_assign_id:
+                new_row = assign_id(new_row, list_fields_to_assign_id, root_id_stat)
             new_rows.append(new_row)
         new_df = pd.DataFrame(new_rows)
         df_list.append(new_df)
