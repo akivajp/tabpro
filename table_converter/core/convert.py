@@ -57,6 +57,19 @@ def save_jsonl(
         force_ascii=False,
     )
 
+def set_field_value(
+    data: OrderedDict,
+    field: str,
+    value: any,
+):
+    if '.' in field:
+        field, rest = field.split('.', 1)
+        if field not in data:
+            data[field] = OrderedDict()
+        set_field_value(data[field], rest, value)
+    else:
+        data[field] = value
+
 def remap_df(
     df: pd.DataFrame,
     column_map: OrderedDict,
@@ -69,7 +82,7 @@ def remap_df(
         new_row = OrderedDict()
         mapped_set = set()
         for column in column_map.keys():
-            new_row[column] = row[column_map[column]]
+            set_field_value(new_row, column, row[column_map[column]])
             mapped_set.add(column_map[column])
         rest = OrderedDict()
         for column in df.columns:
