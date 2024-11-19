@@ -12,6 +12,7 @@ def run(
     convert(
         input_files = args.input_files,
         output_file = args.output_file,
+        pickup_columns= args.pickup_columns,
     )
 
 def setup_parser(
@@ -28,5 +29,10 @@ def setup_parser(
         metavar='OUTPUT_FILE',
         required=True,
         help='Path to the output file.'
+    )
+    parser.add_argument(
+        '--pickup-columns',
+        type=str,
+        help='Pickup column map',
     )
     parser.set_defaults(handler=run)
