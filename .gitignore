@@ -1,2 +1,5 @@
-/tmp
+# intermediate files
+__pycache__
 
+# temp files
+/tmp
