@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import os
 import sys
 
 from icecream import ic
@@ -9,7 +10,10 @@ from icecream import ic
 def parse_and_run(
     parser: argparse.ArgumentParser,
 ):
-    ic.disable()
+    if os.environ.get('DEBUG', '').lower() in ['1', 'true', 'yes', 'on']:
+        pass
+    else:
+        ic.disable()
     ic()
     args = parser.parse_args()
     ic(args)

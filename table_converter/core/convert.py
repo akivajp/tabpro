@@ -234,6 +234,7 @@ def convert(
     fields_to_assign_ids: str | None = None,
     output_debug: bool = False,
 ):
+    ic.enable()
     ic()
     ic(input_files)
     df_list = []
