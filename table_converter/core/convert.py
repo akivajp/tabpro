@@ -73,23 +73,13 @@ def set_field_value(
 def get_field_value(
     data: OrderedDict,
     field: str,
-    #default: any = None,
-    #raise_error: bool = True,
 ):
-    #debug_data = data.get('__debug__', {})
-    #if field in debug_data:
-    #    return debug_data[field]
     if field in data:
         return data[field], True
     if '.' in field:
         field, rest = field.split('.', 1)
-        #if field in debug_data:
-        #    return get_field_value(debug_data[field], rest)
         if field in data:
             return get_field_value(data[field], rest)
-    #if raise_error:
-    #    raise KeyError(f'Field not found: {field}, existing fields: {data.keys()}')
-    #return default
     return None, False
 
 def map_constants(
@@ -106,40 +96,19 @@ def remap_columns(
     dict_remap: OrderedDict,
 ):
     new_row = OrderedDict()
-    #mapped_set = set()
     for column in dict_remap.keys():
-        #value = get_field_value(row, dict_remap[column], raise_error=False)
-        #value, found = get_field_value(row, dict_remap[column], raise_error=False)
         value, found = get_field_value(row, dict_remap[column])
-        #set_field_value(new_row, column, row[dict_remap[column]])
-        #ic(column, value, found)
         if found:
             set_field_value(new_row, column, value)
-            #mapped_set.add(dict_remap[column])
         else:
             if '__debug__' in row:
                 value, found = get_field_value(row['__debug__'], dict_remap[column])
-                #ic(column, value, found)
-                #ic(
-                #    column,
-                #    dict_remap[column],
-                #    row['__debug__'],
-                #    value,
-                #    found
-                #)
                 if found:
-                    #ic(column, value, found)
                     set_field_value(new_row, column, value)
-                    #mapped_set.add(dict_remap[column])
-    #rest = OrderedDict()
     for column in row.keys():
-        #if column.startswith('__') and column.endswith('__'):
         if column == '__debug__':
             # NOTE: Ignore debug fields
             set_field_value(new_row, column, row[column])
-        #elif column not in mapped_set:
-        #    rest[column] = row[column]
-    #set_field_value(new_row, '__debug__.__rest__', rest)
     return new_row
 
 def apply_fields_split_by_newline(
@@ -148,7 +117,6 @@ def apply_fields_split_by_newline(
 ):
     new_row = OrderedDict(row)
     for field in fields:
-        #value = get_field_value(row, field)
         value, found = get_field_value(row, field)
         if isinstance(value, str):
             new_value = value.split('\n')
@@ -167,7 +135,6 @@ def assign_id_in_node(
     field: str,
     id_stat_node: dict,
 ):
-    #value = get_field_value(row, field)
     value, found = get_field_value(row, field)
     if not found:
         raise KeyError(f'Field not found: {field}, existing fields: {row.keys()}')
@@ -254,8 +221,6 @@ def convert(
         for index, row in df.iterrows():
             orig = OrderedDict(row)
             new_row = OrderedDict(row)
-            #set_field_value(new_row, '__debug__.__orig__', row)
-            #set_field_value(new_row, '__debug__.__orig__', orig)
             set_field_value(new_row, '__debug__.__original__', orig)
             set_field_value(new_row, '__debug__.__file__', input_file)
             if dict_constants:
