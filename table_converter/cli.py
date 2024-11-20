@@ -32,10 +32,10 @@ def command_convert_tables(
         )
     else:
         command_parser = parser
-    from . commands.convert_tables import setup_parser
+    from table_converter.commands.convert_tables import setup_parser
     setup_parser(command_parser)
     if parser is None:
-        parse_and_run(parser)
+        parse_and_run(command_parser)
 
 def main():
     parser = argparse.ArgumentParser(description='Table Data Converter')
