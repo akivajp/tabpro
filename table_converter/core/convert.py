@@ -76,10 +76,34 @@ def get_field_value(
 ):
     if field in data:
         return data[field], True
+    #if f'__{field}__' in data:
+    #    return data[f'__{field}__'], True
     if '.' in field:
         field, rest = field.split('.', 1)
         if field in data:
             return get_field_value(data[field], rest)
+        #if f'__{field}__' in data:
+        #    return get_field_value(data[f'__{field}__'], rest)
+    return None, False
+
+def search_column_value(
+    row: OrderedDict,
+    column: str,
+):
+    if '__debug__' in row:
+        value, found = get_field_value(row['__debug__'], column)
+        if found:
+            return value, True
+    value, found = get_field_value(row['__debug__'], column)
+    original, found = get_field_value(row, '__debug__.__original__')
+    if found:
+        value, found = get_field_value(original, column)
+        if found:
+            return value, True
+    value, found = get_field_value(row, column)
+    if found:
+        set_field_value(row, column, value)
+        return value, True
     return None, False
 
 def map_constants(
@@ -88,7 +112,27 @@ def map_constants(
 ):
     new_row = OrderedDict(row)
     for column in dict_constants.keys():
-        set_field_value(new_row, column, dict_constants[column])
+        #set_field_value(new_row, column, dict_constants[column])
+        set_field_value(new_row, f'__debug__.{column}', dict_constants[column])
+    return new_row
+
+def map_formats(
+    row: OrderedDict,
+    dict_formats: OrderedDict,
+):
+    new_row = OrderedDict(row)
+    for column in dict_formats.keys():
+        template = dict_formats[column]
+        try:
+            formatted = template.format(
+                **row['__debug__'],
+                **row,
+            )
+        except KeyError as e:
+            ic(e)
+            formatted = template
+            raise e
+        set_field_value(new_row, f'__debug__.{column}', formatted)
     return new_row
 
 def remap_columns(
@@ -97,21 +141,9 @@ def remap_columns(
 ):
     new_row = OrderedDict()
     for column in dict_remap.keys():
-        if '__debug__' in row:
-            value, found = get_field_value(row['__debug__'], dict_remap[column])
-            if found:
-                set_field_value(new_row, column, value)
-        value, found = get_field_value(row['__debug__'], dict_remap[column])
-        original, found = get_field_value(row, '__debug__.__original__')
-        if found:
-            value, found = get_field_value(original, dict_remap[column])
-            if found:
-                set_field_value(new_row, column, value)
-                continue
-        value, found = get_field_value(row, column)
+        value, found = search_column_value(row, dict_remap[column])
         if found:
             set_field_value(new_row, column, value)
-            continue
     for column in row.keys():
         if column == '__debug__':
             # NOTE: Ignore debug fields
@@ -139,13 +171,13 @@ def create_id_stat_node():
 
 def assign_id_in_node(
     row: OrderedDict,
-    field: str,
+    column: str,
+    dict_assignment: OrderedDict,
     id_stat_node: dict,
 ):
-    value, found = get_field_value(row, field)
+    value, found = search_column_value(row, dict_assignment[column])
     if not found:
-        return
-        #raise KeyError(f'Field not found: {field}, existing fields: {row.keys()}')
+        raise KeyError(f'Column not found: {column}, existing columns: {row.keys()}')
     if value not in id_stat_node['dict_value_to_id']:
         field_id = id_stat_node['max_id'] + 1
         id_stat_node['max_id'] = field_id
@@ -155,24 +187,26 @@ def assign_id_in_node(
     else:
         field_id = id_stat_node['dict_value_to_id'][value]
         node = id_stat_node['dict_id_to_node'][field_id]
-    set_field_value(row, f'__debug__.__ids__.{field}', field_id)
+    set_field_value(row, f'__debug__.{column}', field_id)
+    set_field_value(row, f'__debug__.__ids__.{column}', field_id)
     return node
 
 def assign_id(
     row: OrderedDict,
-    fields: list[str],
+    dict_assignment: OrderedDict,
     root_id_stat_node: dict,
 ):
     new_row = OrderedDict(row)
     node = root_id_stat_node
-    for field in fields:
-        node = assign_id_in_node(new_row, field, node)
+    for column in dict_assignment:
+        node = assign_id_in_node(new_row, column, dict_assignment, node)
     return new_row
 
 def convert(
     input_files: list[str],
     output_file: str | None = None,
     assign_constants: str | None = None,
+    assign_formats: str | None = None,
     pickup_columns: str | None = None,
     fields_to_split_by_newline: str | None = None,
     fields_to_assign_ids: str | None = None,
@@ -182,8 +216,9 @@ def convert(
     df_list = []
     dict_constants: OrderedDict | None = None
     dict_columns: OrderedDict | None = None
+    dict_formats: OrderedDict | None = None
     list_fields_to_split_by_newline = None
-    list_fields_to_assign_id = None
+    dict_assign_ids= None
     root_id_stat = create_id_stat_node()
     if assign_constants:
         dict_constants = OrderedDict()
@@ -194,6 +229,15 @@ def convert(
                 dict_constants[dst] = src
             else:
                 raise ValueError(f'Invalid constant assignment: {field}')
+    if assign_formats:
+        dict_formats = OrderedDict()
+        fields = assign_formats.split(',')
+        for field in fields:
+            if '=' in field:
+                dst, src = field.split('=')
+                dict_formats[dst] = src
+            else:
+                raise ValueError(f'Invalid template assignment: {field}')
     if pickup_columns:
         dict_columns = OrderedDict()
         fields = pickup_columns.split(',')
@@ -206,7 +250,14 @@ def convert(
     if fields_to_split_by_newline:
         list_fields_to_split_by_newline = fields_to_split_by_newline.split(',')
     if fields_to_assign_ids:
-        list_fields_to_assign_id = fields_to_assign_ids.split(',')
+        dict_assign_ids = OrderedDict()
+        fields = fields_to_assign_ids.split(',')
+        for field in fields:
+            if '=' in field:
+                dst, src = field.split('=')
+                dict_assign_ids[dst] = src
+            else:
+                raise ValueError(f'Invalid id assignment: {field}')
     if output_file:
         ext = os.path.splitext(output_file)[1]
         if ext not in dict_savers:
@@ -237,8 +288,10 @@ def convert(
                 new_row = remap_columns(new_row, dict_columns)
             if list_fields_to_split_by_newline:
                 new_row = apply_fields_split_by_newline(new_row, list_fields_to_split_by_newline)
-            if list_fields_to_assign_id:
-                new_row = assign_id(new_row, list_fields_to_assign_id, root_id_stat)
+            if dict_assign_ids:
+                new_row = assign_id(new_row, dict_assign_ids, root_id_stat)
+            if dict_formats:
+                new_row = map_formats(new_row, dict_formats)
             if dict_columns:
                 new_row = remap_columns(new_row, dict_columns)
             new_rows.append(new_row)

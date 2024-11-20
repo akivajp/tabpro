@@ -13,6 +13,7 @@ def run(
         input_files = args.input_files,
         output_file = args.output_file,
         assign_constants = args.assign_constants,
+        assign_formats = args.assign_formats,
         pickup_columns= args.pickup_columns,
         fields_to_split_by_newline = args.split_by_newline,
         fields_to_assign_ids = args.assign_ids,
@@ -52,5 +53,10 @@ def setup_parser(
         '--assign-constants',
         type=str,
         help='Field to assign constants',
+    )
+    parser.add_argument(
+        '--assign-formats',
+        type=str,
+        help='Field to assign formats',
     )
     parser.set_defaults(handler=run)
