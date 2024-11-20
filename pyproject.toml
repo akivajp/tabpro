@@ -6,6 +6,10 @@ authors = ["Akiva Miura <akiva.miura@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
+[tool.poetry-dynamic-versioning]
+enable = true
+style = "pep440"
+
 [tool.poetry.scripts]
 table-converter = "table_converter.cli:main"
 conver-tables = "table_converter.cli:command_convert_tables"
