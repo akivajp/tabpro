@@ -4,7 +4,7 @@ import argparse
 
 from icecream import ic
 
-from core.convert import convert
+from .. core.convert import convert
 
 def run(
     args: argparse.Namespace,
