@@ -1,10 +1,13 @@
 [tool.poetry]
-name = "table-converter"
+name = "python-table-converter"
 version = "0.0.0"
 description = "A table data converter"
 authors = ["Akiva Miura <akiva.miura@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [
+    { include = "table_converter" },
+]
 
 [tool.poetry-dynamic-versioning]
 enable = true
