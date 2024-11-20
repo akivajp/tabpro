@@ -17,6 +17,7 @@ def run(
         pickup_columns= args.pickup_columns,
         fields_to_split_by_newline = args.split_by_newline,
         fields_to_assign_ids = args.assign_ids,
+        output_debug = args.output_debug,
     )
 
 def setup_parser(
@@ -58,5 +59,10 @@ def setup_parser(
         '--assign-formats',
         type=str,
         help='Field to assign formats',
+    )
+    parser.add_argument(
+        '--output-debug',
+        action='store_true',
+        help='Output debug information',
     )
     parser.set_defaults(handler=run)

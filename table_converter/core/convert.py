@@ -124,10 +124,10 @@ def map_formats(
     for column in dict_formats.keys():
         template = dict_formats[column]
         try:
-            formatted = template.format(
-                **row['__debug__'],
-                **row,
-            )
+            params = {}
+            params.update(row['__debug__'])
+            params.update(row)
+            formatted = template.format(**params)
         except KeyError as e:
             ic(e)
             formatted = template
@@ -152,14 +152,18 @@ def remap_columns(
 
 def apply_fields_split_by_newline(
     row: OrderedDict,
-    fields: list[str],
+    dict_fields: OrderedDict,
 ):
     new_row = OrderedDict(row)
-    for field in fields:
-        value, found = get_field_value(row, field)
-        if isinstance(value, str):
-            new_value = value.split('\n')
-            set_field_value(new_row, field, new_value)
+    for column in dict_fields:
+        value, found = search_column_value(row, dict_fields[column])
+        #ic(value, found)
+        if found:
+            if isinstance(value, str):
+                new_value = value.split('\n')
+                set_field_value(new_row, f'__debug__.{column}', new_value)
+            else:
+                set_field_value(new_row, f'__debug__.{column}', value)
     return new_row
 
 def create_id_stat_node():
@@ -210,6 +214,7 @@ def convert(
     pickup_columns: str | None = None,
     fields_to_split_by_newline: str | None = None,
     fields_to_assign_ids: str | None = None,
+    output_debug: bool = False,
 ):
     ic()
     ic(input_files)
@@ -217,7 +222,8 @@ def convert(
     dict_constants: OrderedDict | None = None
     dict_columns: OrderedDict | None = None
     dict_formats: OrderedDict | None = None
-    list_fields_to_split_by_newline = None
+    #list_fields_to_split_by_newline = None
+    dict_split_by_newline: OrderedDict | None = None
     dict_assign_ids= None
     root_id_stat = create_id_stat_node()
     if assign_constants:
@@ -248,7 +254,15 @@ def convert(
             else:
                 dict_columns[field] = field
     if fields_to_split_by_newline:
-        list_fields_to_split_by_newline = fields_to_split_by_newline.split(',')
+        #list_fields_to_split_by_newline = fields_to_split_by_newline.split(',')
+        dict_split_by_newline = OrderedDict()
+        fields = fields_to_split_by_newline.split(',')
+        for field in fields:
+            if '=' in field:
+                dst, src = field.split('=')
+                dict_split_by_newline[dst] = src
+            else:
+                raise ValueError(f'Invalid split by newline: {field}')
     if fields_to_assign_ids:
         dict_assign_ids = OrderedDict()
         fields = fields_to_assign_ids.split(',')
@@ -286,14 +300,18 @@ def convert(
                 new_row = map_constants(new_row, dict_constants)
             if dict_columns:
                 new_row = remap_columns(new_row, dict_columns)
-            if list_fields_to_split_by_newline:
-                new_row = apply_fields_split_by_newline(new_row, list_fields_to_split_by_newline)
+            #if list_fields_to_split_by_newline:
+            #    new_row = apply_fields_split_by_newline(new_row, list_fields_to_split_by_newline)
+            if dict_split_by_newline:
+                new_row = apply_fields_split_by_newline(new_row, dict_split_by_newline)
             if dict_assign_ids:
                 new_row = assign_id(new_row, dict_assign_ids, root_id_stat)
             if dict_formats:
                 new_row = map_formats(new_row, dict_formats)
             if dict_columns:
                 new_row = remap_columns(new_row, dict_columns)
+            if not output_debug:
+                new_row.pop('__debug__', None)
             new_rows.append(new_row)
         new_df = pd.DataFrame(new_rows)
         df_list.append(new_df)
