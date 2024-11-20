@@ -97,14 +97,21 @@ def remap_columns(
 ):
     new_row = OrderedDict()
     for column in dict_remap.keys():
-        value, found = get_field_value(row, dict_remap[column])
+        if '__debug__' in row:
+            value, found = get_field_value(row['__debug__'], dict_remap[column])
+            if found:
+                set_field_value(new_row, column, value)
+        value, found = get_field_value(row['__debug__'], dict_remap[column])
+        original, found = get_field_value(row, '__debug__.__original__')
+        if found:
+            value, found = get_field_value(original, dict_remap[column])
+            if found:
+                set_field_value(new_row, column, value)
+                continue
+        value, found = get_field_value(row, column)
         if found:
             set_field_value(new_row, column, value)
-        else:
-            if '__debug__' in row:
-                value, found = get_field_value(row['__debug__'], dict_remap[column])
-                if found:
-                    set_field_value(new_row, column, value)
+            continue
     for column in row.keys():
         if column == '__debug__':
             # NOTE: Ignore debug fields
@@ -137,7 +144,8 @@ def assign_id_in_node(
 ):
     value, found = get_field_value(row, field)
     if not found:
-        raise KeyError(f'Field not found: {field}, existing fields: {row.keys()}')
+        return
+        #raise KeyError(f'Field not found: {field}, existing fields: {row.keys()}')
     if value not in id_stat_node['dict_value_to_id']:
         field_id = id_stat_node['max_id'] + 1
         id_stat_node['max_id'] = field_id
