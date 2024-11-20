@@ -5,6 +5,7 @@ description = "A table data converter"
 authors = ["Akiva Miura <akiva.miura@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/akivajp/python-table-converter"
 packages = [
     { include = "table_converter" },
 ]
