@@ -8,21 +8,21 @@ from collections import OrderedDict
 import pandas as pd
 from icecream import ic
 
-map_loaders: dict[str, callable] = {}
+dict_loaders: dict[str, callable] = {}
 def register_loader(
     ext: str,
 ):
     def decorator(loader):
-        map_loaders[ext] = loader
+        dict_loaders[ext] = loader
         return loader
     return decorator
 
-map_savers: dict[str, callable] = {}
+dict_savers: dict[str, callable] = {}
 def register_saver(
     ext: str,
 ):
     def decorator(saver):
-        map_savers[ext] = saver
+        dict_savers[ext] = saver
         return saver
     return decorator
 
@@ -73,46 +73,83 @@ def set_field_value(
 def get_field_value(
     data: OrderedDict,
     field: str,
-    default: any = None,
-    raise_error: bool = True,
+    #default: any = None,
+    #raise_error: bool = True,
 ):
+    #debug_data = data.get('__debug__', {})
+    #if field in debug_data:
+    #    return debug_data[field]
     if field in data:
-        return data[field]
+        return data[field], True
     if '.' in field:
         field, rest = field.split('.', 1)
+        #if field in debug_data:
+        #    return get_field_value(debug_data[field], rest)
         if field in data:
             return get_field_value(data[field], rest)
-    if raise_error:
-        raise KeyError(f'Field not found: {field}, existing fields: {data.keys()}')
-    return default
+    #if raise_error:
+    #    raise KeyError(f'Field not found: {field}, existing fields: {data.keys()}')
+    #return default
+    return None, False
 
-def remap(
+def map_constants(
     row: OrderedDict,
-    column_map: OrderedDict,
+    dict_constants: OrderedDict,
+):
+    new_row = OrderedDict(row)
+    for column in dict_constants.keys():
+        set_field_value(new_row, column, dict_constants[column])
+    return new_row
+
+def remap_columns(
+    row: OrderedDict,
+    dict_remap: OrderedDict,
 ):
     new_row = OrderedDict()
-    mapped_set = set()
-    for column in column_map.keys():
-        set_field_value(new_row, column, row[column_map[column]])
-        mapped_set.add(column_map[column])
-    rest = OrderedDict()
+    #mapped_set = set()
+    for column in dict_remap.keys():
+        #value = get_field_value(row, dict_remap[column], raise_error=False)
+        #value, found = get_field_value(row, dict_remap[column], raise_error=False)
+        value, found = get_field_value(row, dict_remap[column])
+        #set_field_value(new_row, column, row[dict_remap[column]])
+        #ic(column, value, found)
+        if found:
+            set_field_value(new_row, column, value)
+            #mapped_set.add(dict_remap[column])
+        else:
+            if '__debug__' in row:
+                value, found = get_field_value(row['__debug__'], dict_remap[column])
+                #ic(column, value, found)
+                #ic(
+                #    column,
+                #    dict_remap[column],
+                #    row['__debug__'],
+                #    value,
+                #    found
+                #)
+                if found:
+                    #ic(column, value, found)
+                    set_field_value(new_row, column, value)
+                    #mapped_set.add(dict_remap[column])
+    #rest = OrderedDict()
     for column in row.keys():
-        if column.startswith('__') and column.endswith('__'):
+        #if column.startswith('__') and column.endswith('__'):
+        if column == '__debug__':
             # NOTE: Ignore debug fields
             set_field_value(new_row, column, row[column])
-        elif column not in mapped_set:
-            rest[column] = row[column]
-    set_field_value(new_row, '__debug__.__rest__', rest)
+        #elif column not in mapped_set:
+        #    rest[column] = row[column]
+    #set_field_value(new_row, '__debug__.__rest__', rest)
     return new_row
 
 def apply_fields_split_by_newline(
     row: OrderedDict,
     fields: list[str],
 ):
-    #new_row = OrderedDict(row)
-    new_row = row
+    new_row = OrderedDict(row)
     for field in fields:
-        value = get_field_value(row, field)
+        #value = get_field_value(row, field)
+        value, found = get_field_value(row, field)
         if isinstance(value, str):
             new_value = value.split('\n')
             set_field_value(new_row, field, new_value)
@@ -121,8 +158,8 @@ def apply_fields_split_by_newline(
 def create_id_stat_node():
     return {
         'max_id': 0,
-        'map_value_to_id': {},
-        'map_id_to_node': {},
+        'dict_value_to_id': {},
+        'dict_id_to_node': {},
     }
 
 def assign_id_in_node(
@@ -130,86 +167,107 @@ def assign_id_in_node(
     field: str,
     id_stat_node: dict,
 ):
-    new_row = row
-    value = get_field_value(row, field)
-    if value not in id_stat_node['map_value_to_id']:
+    #value = get_field_value(row, field)
+    value, found = get_field_value(row, field)
+    if not found:
+        raise KeyError(f'Field not found: {field}, existing fields: {row.keys()}')
+    if value not in id_stat_node['dict_value_to_id']:
         field_id = id_stat_node['max_id'] + 1
         id_stat_node['max_id'] = field_id
-        id_stat_node['map_value_to_id'][value] = field_id
+        id_stat_node['dict_value_to_id'][value] = field_id
         node = create_id_stat_node()
-        id_stat_node['map_id_to_node'][field_id] = node
+        id_stat_node['dict_id_to_node'][field_id] = node
     else:
-        field_id = id_stat_node['map_value_to_id'][value]
-        node = id_stat_node['map_id_to_node'][field_id]
-    set_field_value(new_row, f'__debug__.__ids__.{field}', field_id)
-    return node, new_row
+        field_id = id_stat_node['dict_value_to_id'][value]
+        node = id_stat_node['dict_id_to_node'][field_id]
+    set_field_value(row, f'__debug__.__ids__.{field}', field_id)
+    return node
 
 def assign_id(
     row: OrderedDict,
     fields: list[str],
     root_id_stat_node: dict,
 ):
-    new_row = row
+    new_row = OrderedDict(row)
     node = root_id_stat_node
     for field in fields:
-        node, new_row = assign_id_in_node(new_row, field, node)
+        node = assign_id_in_node(new_row, field, node)
     return new_row
 
 def convert(
     input_files: list[str],
     output_file: str | None = None,
+    assign_constants: str | None = None,
     pickup_columns: str | None = None,
     fields_to_split_by_newline: str | None = None,
-    fields_to_assign_id: str | None = None,
+    fields_to_assign_ids: str | None = None,
 ):
     ic()
     ic(input_files)
     df_list = []
-    column_map: OrderedDict | None = None
+    dict_constants: OrderedDict | None = None
+    dict_columns: OrderedDict | None = None
     list_fields_to_split_by_newline = None
     list_fields_to_assign_id = None
     root_id_stat = create_id_stat_node()
-    if pickup_columns:
-        column_map = OrderedDict()
-        fields = pickup_columns.split(',')
+    if assign_constants:
+        dict_constants = OrderedDict()
+        fields = assign_constants.split(',')
         for field in fields:
             if '=' in field:
                 dst, src = field.split('=')
-                column_map[dst] = src
+                dict_constants[dst] = src
             else:
-                column_map[field] = field
+                raise ValueError(f'Invalid constant assignment: {field}')
+    if pickup_columns:
+        dict_columns = OrderedDict()
+        fields = pickup_columns.split(',')
+        for field in fields:
+            if '=' in field:
+                dst, value = field.split('=')
+                dict_columns[dst] = value
+            else:
+                dict_columns[field] = field
     if fields_to_split_by_newline:
         list_fields_to_split_by_newline = fields_to_split_by_newline.split(',')
-    if fields_to_assign_id:
-        list_fields_to_assign_id = fields_to_assign_id.split(',')
+    if fields_to_assign_ids:
+        list_fields_to_assign_id = fields_to_assign_ids.split(',')
     if output_file:
         ext = os.path.splitext(output_file)[1]
-        if ext not in map_savers:
+        if ext not in dict_savers:
             raise ValueError(f'Unsupported file type: {ext}')
-        saver = map_savers[ext]
+        saver = dict_savers[ext]
     for input_file in input_files:
         ic(input_file)
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
         ext = os.path.splitext(input_file)[1]
         ic(ext)
-        if ext not in map_loaders:
+        if ext not in dict_loaders:
             raise ValueError(f'Unsupported file type: {ext}')
-        df = map_loaders[ext](input_file)
+        df = dict_loaders[ext](input_file)
         #ic(df)
         ic(len(df))
         ic(df.columns)
         ic(df.iloc[0])
         new_rows = []
         for index, row in df.iterrows():
+            orig = OrderedDict(row)
             new_row = OrderedDict(row)
+            #set_field_value(new_row, '__debug__.__orig__', row)
+            #set_field_value(new_row, '__debug__.__orig__', orig)
+            set_field_value(new_row, '__debug__.__original__', orig)
             set_field_value(new_row, '__debug__.__file__', input_file)
-            if column_map:
-                new_row = remap(new_row, column_map)
+            if dict_constants:
+                new_row = map_constants(new_row, dict_constants)
+            if dict_columns:
+                new_row = remap_columns(new_row, dict_columns)
             if list_fields_to_split_by_newline:
                 new_row = apply_fields_split_by_newline(new_row, list_fields_to_split_by_newline)
             if list_fields_to_assign_id:
                 new_row = assign_id(new_row, list_fields_to_assign_id, root_id_stat)
+            if dict_columns:
+                new_row = remap_columns(new_row, dict_columns)
             new_rows.append(new_row)
         new_df = pd.DataFrame(new_rows)
         df_list.append(new_df)

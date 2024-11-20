@@ -12,9 +12,10 @@ def run(
     convert(
         input_files = args.input_files,
         output_file = args.output_file,
+        assign_constants = args.assign_constants,
         pickup_columns= args.pickup_columns,
         fields_to_split_by_newline = args.split_by_newline,
-        fields_to_assign_id = args.assign_id,
+        fields_to_assign_ids = args.assign_ids,
     )
 
 def setup_parser(
@@ -43,8 +44,13 @@ def setup_parser(
         help='Fields to split by newline',
     )
     parser.add_argument(
-        '--assign-id',
+        '--assign-ids',
         type=str,
-        help='Field to assign id',
+        help='Field to assign ids',
+    )
+    parser.add_argument(
+        '--assign-constants',
+        type=str,
+        help='Field to assign constants',
     )
     parser.set_defaults(handler=run)
