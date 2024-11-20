@@ -3,3 +3,6 @@ __pycache__
 
 # temp files
 /tmp
+
+# build files
+/dist
