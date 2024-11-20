@@ -1,10 +1,14 @@
 [tool.poetry]
 name = "table-converter"
-version = "0.1.0"
+version = "0.0.0"
 description = "A table data converter"
 authors = ["Akiva Miura <akiva.miura@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+
+[tool.poetry.scripts]
+table-converter = "table_converter.cli:main"
+conver-tables = "table_converter.cli:command_convert_tables"
 
 [tool.poetry.dependencies]
 python = "^3.10"
