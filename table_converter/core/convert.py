@@ -5,6 +5,7 @@ import os
 
 from collections import OrderedDict
 
+import numpy as np
 import pandas as pd
 from icecream import ic
 
@@ -38,24 +39,45 @@ def save_json(
     df: pd.DataFrame,
     output_file: str,
 ):
-    df.to_json(
-        output_file,
-        orient='records',
-        force_ascii=False,
-        indent=2,
-    )
+    # NOTE: この方法だとスラッシュがすべてエスケープされてしまった
+    #df.to_json(
+    #    output_file,
+    #    orient='records',
+    #    force_ascii=False,
+    #    indent=2,
+    #    escape_forward_slashes=False,
+    #)
+    #ic(df.iloc[0])
+    data = df.to_dict(orient='records')
+    with open(output_file, 'w') as f:
+        json.dump(
+            data,
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
 
 @register_saver('.jsonl')
 def save_jsonl(
     df: pd.DataFrame,
     output_file: str,
 ):
-    df.to_json(
-        output_file,
-        orient='records',
-        lines=True,
-        force_ascii=False,
-    )
+    # NOTE: この方法だとスラッシュがすべてエスケープされてしまった
+    #df.to_json(
+    #    output_file,
+    #    orient='records',
+    #    lines=True,
+    #    force_ascii=False,
+    #)
+    with open(output_file, 'w') as f:
+        for index, row in df.iterrows():
+            data = row.to_dict()
+            json.dump(
+                data,
+                f,
+                ensure_ascii=False,
+            )
+            f.write('\n')
 
 def set_field_value(
     data: OrderedDict,
@@ -76,14 +98,10 @@ def get_field_value(
 ):
     if field in data:
         return data[field], True
-    #if f'__{field}__' in data:
-    #    return data[f'__{field}__'], True
     if '.' in field:
         field, rest = field.split('.', 1)
         if field in data:
             return get_field_value(data[field], rest)
-        #if f'__{field}__' in data:
-        #    return get_field_value(data[f'__{field}__'], rest)
     return None, False
 
 def search_column_value(
@@ -286,6 +304,8 @@ def convert(
         if ext not in dict_loaders:
             raise ValueError(f'Unsupported file type: {ext}')
         df = dict_loaders[ext](input_file)
+        # NOTE: NaN を None に変換しておかないと厄介
+        df = df.replace([np.nan], [None])
         #ic(df)
         ic(len(df))
         ic(df.columns)
