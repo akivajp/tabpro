@@ -16,7 +16,11 @@ import pandas as pd
 
 # local
 
-from ..config import (
+from .. constants import (
+    STAGING_FIELD,
+)
+
+from .. config import (
     AssignIdConfig,
     Config,
 )
@@ -87,7 +91,7 @@ def assign_id(
             id_map.dict_id_to_value[field_id] = primary_value
         else:
             field_id = id_map.dict_value_to_id[primary_value]
-        set_field_value(new_row, f'__debug__.{column}', field_id)
+        set_field_value(new_row, f'{STAGING_FIELD}.{column}', field_id)
     return new_row
 
 def setup_assign_ids(
