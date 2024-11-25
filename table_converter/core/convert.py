@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import dataclasses
 import json
 import os
 
 from collections import OrderedDict
-from collections import defaultdict
-from typing import Mapping
 
 # 3-rd party modules
 
@@ -17,7 +14,13 @@ import pandas as pd
 # local
 
 from . config import setup_config
-from . config import AssignIdConfig
+from . functions.assign_id import (
+    assign_id,
+    create_id_context_map,
+    setup_assign_ids,
+)
+from . functions.get_field_value import get_field_value
+from . functions.set_field_value import set_field_value
 
 dict_loaders: dict[str, callable] = {}
 def register_loader(
@@ -88,31 +91,6 @@ def save_jsonl(
                 ensure_ascii=False,
             )
             f.write('\n')
-
-def set_field_value(
-    data: OrderedDict,
-    field: str,
-    value: any,
-):
-    if '.' in field:
-        field, rest = field.split('.', 1)
-        if field not in data:
-            data[field] = OrderedDict()
-        set_field_value(data[field], rest, value)
-    else:
-        data[field] = value
-
-def get_field_value(
-    data: OrderedDict,
-    field: str,
-):
-    if field in data:
-        return data[field], True
-    if '.' in field:
-        field, rest = field.split('.', 1)
-        if field in data:
-            return get_field_value(data[field], rest)
-    return None, False
 
 def search_column_value(
     row: OrderedDict,
@@ -200,73 +178,6 @@ def apply_fields_split_by_newline(
                 set_field_value(new_row, f'__debug__.{column}', value)
     return new_row
 
-type ContextColumnTuple = tuple[str]
-type ContextValueTuple = tuple 
-type PrimaryColumnTuple = tuple[str]
-type PrimaryValueTuple = tuple
-
-@dataclasses.dataclass
-class IdMap:
-    max_id: int = 0
-    dict_value_to_id: Mapping[PrimaryValueTuple, int] = \
-        dataclasses.field(default_factory=defaultdict)
-    dict_id_to_value: Mapping[int, PrimaryValueTuple] = \
-        dataclasses.field(default_factory=defaultdict)
-
-type IdContextMap = Mapping[
-    (
-        ContextColumnTuple,
-        ContextValueTuple,
-        PrimaryColumnTuple,
-    ),
-    IdMap
-]
-
-def create_id_context_map() -> IdContextMap:
-    return defaultdict(IdMap)
-
-def assign_id(
-    row: OrderedDict,
-    dict_assignment: Mapping[str, AssignIdConfig],
-    id_context_map: IdContextMap,
-):
-    new_row = OrderedDict(row)
-    for column, config in dict_assignment.items():
-        context_columns = []
-        context_values = []
-        if config.context:
-            for context_column in config.context:
-                value, found = search_column_value(new_row, context_column)
-                if not found:
-                    raise KeyError(f'Column not found: {context_column}, existing columns: {new_row.keys()}')
-                context_columns.append(context_column)
-                context_values.append(value)
-        primary_columns = []
-        primary_values = []
-        for primary_column in config.primary:
-            value, found = search_column_value(new_row, primary_column)
-            if not found:
-                raise KeyError(f'Column not found: {primary_column}, existing columns: {new_row.keys()}')
-            primary_columns.append(primary_column)
-            primary_values.append(value)
-        context_key = (
-            tuple(context_columns),
-            tuple(context_values),
-            tuple(primary_columns),
-        )
-        primary_value = tuple(primary_values)
-        id_map = id_context_map[context_key]
-        if primary_value not in id_map.dict_value_to_id:
-            field_id = id_map.max_id + 1
-            id_map.max_id = field_id
-            id_map.dict_value_to_id[primary_value] = field_id
-            id_map.dict_id_to_value[field_id] = primary_value
-        else:
-            field_id = id_map.dict_value_to_id[primary_value]
-        set_field_value(new_row, f'__debug__.{column}', field_id)
-    return new_row
-
-
 def convert(
     input_files: list[str],
     output_file: str | None = None,
@@ -318,18 +229,7 @@ def convert(
             else:
                 raise ValueError(f'Invalid split by newline: {field}')
     if fields_to_assign_ids:
-        #dict_assign_ids = OrderedDict()
-        fields = fields_to_assign_ids.split(',')
-        context = []
-        for field in fields:
-            if '=' in field:
-                dst, src = field.split('=')
-                config.process.assign_ids[dst] = AssignIdConfig(
-                    primary = [src],
-                    context = context,
-                )
-            else:
-                raise ValueError(f'Invalid id assignment: {field}')
+        setup_assign_ids(config, fields_to_assign_ids)
     if output_file:
         ext = os.path.splitext(output_file)[1]
         if ext not in dict_savers:
