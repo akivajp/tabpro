@@ -15,6 +15,7 @@ def run(
         config_path = args.config,
         assign_constants = args.assign_constants,
         assign_formats = args.assign_formats,
+        str_filters = args.filters,
         pickup_columns= args.pickup_columns,
         fields_to_split_by_newline = args.split_by_newline,
         fields_to_assign_ids = args.assign_ids,
@@ -65,6 +66,11 @@ def setup_parser(
         '--assign-formats',
         type=str,
         help='Field to assign formats',
+    )
+    parser.add_argument(
+        '--filters', '--filter', '-f',
+        type=str,
+        help='Expression list to filter records',
     )
     parser.add_argument(
         '--output-debug',

@@ -22,8 +22,8 @@ class AssignIdConfig:
 class ProcessConfig:
     assign_constants: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
-    #assign_ids: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
+    filter_eq: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
 
     def __setitem__(self, key, value):
@@ -65,6 +65,7 @@ def setup_process_config(
         for process_key in [
             'assign_constants',
             'assign_formats',
+            'filter_eq',
             'split_by_newline',
         ]:
             dict_subprocess = dict_process.get(process_key)

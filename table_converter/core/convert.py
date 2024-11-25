@@ -65,7 +65,7 @@ def load_json(
         data = json.load(f)
     if not isinstance(data, list):
         raise ValueError(f'Invalid JSON array data: {input_file}')
-    ic(data[0])
+    #ic(data[0])
     rows = []
     for row in data:
         new_row = flatten(row)
@@ -103,9 +103,9 @@ def save_json(
     #)
     #ic(df.iloc[0])
     data = df.to_dict(orient='records')
-    ic(data[0])
+    #ic(data[0])
     data = [nest(row) for row in data]
-    ic(data[0])
+    #ic(data[0])
     with open(output_file, 'w') as f:
         json.dump(
             data,
@@ -205,12 +205,24 @@ def apply_fields_split_by_newline(
                 new_row[f'{STAGING_FIELD}.{column}'] = value
     return new_row
 
+def filter_eq(
+    row: OrderedDict,
+    dict_filters: OrderedDict,
+):
+    for column in dict_filters:
+        value, found = search_column_value(row, column)
+        #ic(column, value, found, dict_filters[column])
+        if str(value) != str(dict_filters[column]):
+            return False
+    return True
+
 def convert(
     input_files: list[str],
     output_file: str | None = None,
     config_path: str | None = None,
     assign_constants: str | None = None,
     assign_formats: str | None = None,
+    str_filters: str | None = None,
     pickup_columns: str | None = None,
     fields_to_split_by_newline: str | None = None,
     fields_to_assign_ids: str | None = None,
@@ -255,6 +267,14 @@ def convert(
                 config.process.split_by_newline[dst] = src
             else:
                 raise ValueError(f'Invalid split by newline: {field}')
+    if str_filters:
+        fields = str_filters.split(',')
+        for field in fields:
+            if '=' in field:
+                dst, src = field.split('=')
+                config.process.filter_eq[dst] = src
+            else:
+                raise ValueError(f'Invalid filter eq: {field}')
     if fields_to_assign_ids:
         setup_assign_ids(config, fields_to_assign_ids)
     if output_file:
@@ -301,16 +321,22 @@ def convert(
                 new_flat_row = map_formats(new_flat_row, config.process.assign_formats)
             if config.map:
                 new_flat_row = remap_columns(new_flat_row, config.map)
+            if config.process.filter_eq:
+                if not filter_eq(new_flat_row, config.process.filter_eq):
+                    continue
             if not output_debug:
-                new_flat_row.pop(STAGING_FIELD, None)
+                #new_flat_row.pop(STAGING_FIELD, None)
+                for key in list(new_flat_row.keys()):
+                    if key.startswith(STAGING_FIELD):
+                        new_flat_row.pop(key)
             new_flat_rows.append(new_flat_row)
         new_df = pd.DataFrame(new_flat_rows)
         df_list.append(new_df)
     all_df = pd.concat(df_list)
     #ic(all_df)
     ic(len(all_df))
-    ic(all_df.columns)
-    ic(all_df.iloc[0])
+    #ic(all_df.columns)
+    #ic(all_df.iloc[0])
     if output_file:
         ic('Saing to: ', output_file)
         saver(all_df, output_file)
