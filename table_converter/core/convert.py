@@ -251,19 +251,17 @@ def convert(
     ic()
     ic(input_files)
     df_list = []
-    dict_constants: OrderedDict | None = None
     dict_formats: OrderedDict | None = None
     dict_assign_ids= None
     root_id_stat = create_id_stat_node()
     config = setup_config(config_path)
     ic(config)
     if assign_constants:
-        dict_constants = OrderedDict()
         fields = assign_constants.split(',')
         for field in fields:
             if '=' in field:
                 dst, src = field.split('=')
-                dict_constants[dst] = src
+                config.process.assign_constants[dst] = src
             else:
                 raise ValueError(f'Invalid constant assignment: {field}')
     if assign_formats:
@@ -327,8 +325,8 @@ def convert(
             new_row = OrderedDict(row)
             set_field_value(new_row, '__debug__.__original__', orig)
             set_field_value(new_row, '__debug__.__file__', input_file)
-            if dict_constants:
-                new_row = map_constants(new_row, dict_constants)
+            if config.process.assign_constants:
+                new_row = map_constants(new_row, config.process.assign_constants)
             if config.map:
                 new_row = remap_columns(new_row, config.map)
             if config.process.split_by_newline:

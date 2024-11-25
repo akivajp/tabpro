@@ -12,7 +12,11 @@ type FieldMap = Mapping[str, str|FieldMap]
 
 @dataclasses.dataclass
 class ProcessConfig:
+    assign_constants: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
+
+    def __setitem__(self, key, value):
+        setattr(self, key, value)
 
 @dataclasses.dataclass
 class Config:
@@ -53,7 +57,14 @@ def setup_config(
         ic(loaded)
         if 'map' in loaded:
             config.map = flatten(loaded['map'])
-        if 'process' in loaded:
-            if 'split_by_newline' in loaded['process']:
-                config.process.split_by_newline = flatten(loaded['process']['split_by_newline'])
+        #if 'process' in loaded:
+        dict_process = loaded.get('process')
+        if isinstance(dict_process, Mapping):
+            for process_key in [
+                'assign_constants',
+                'split_by_newline',
+            ]:
+                dict_subprocess = dict_process.get(process_key)
+                if isinstance(dict_subprocess, Mapping):
+                    config.process[process_key] = flatten(loaded['process'][process_key])
     return config
