@@ -5,9 +5,15 @@ import os
 
 from collections import OrderedDict
 
+# 3-rd party modules
+
+from icecream import ic
 import numpy as np
 import pandas as pd
-from icecream import ic
+
+# local
+
+from . config import setup_config
 
 dict_loaders: dict[str, callable] = {}
 def register_loader(
@@ -227,6 +233,7 @@ def assign_id(
 def convert(
     input_files: list[str],
     output_file: str | None = None,
+    config_path: str | None = None,
     assign_constants: str | None = None,
     assign_formats: str | None = None,
     pickup_columns: str | None = None,
@@ -239,12 +246,12 @@ def convert(
     ic(input_files)
     df_list = []
     dict_constants: OrderedDict | None = None
-    dict_columns: OrderedDict | None = None
     dict_formats: OrderedDict | None = None
-    #list_fields_to_split_by_newline = None
     dict_split_by_newline: OrderedDict | None = None
     dict_assign_ids= None
     root_id_stat = create_id_stat_node()
+    config = setup_config(config_path)
+    ic(config)
     if assign_constants:
         dict_constants = OrderedDict()
         fields = assign_constants.split(',')
@@ -264,14 +271,15 @@ def convert(
             else:
                 raise ValueError(f'Invalid template assignment: {field}')
     if pickup_columns:
-        dict_columns = OrderedDict()
+        if config.map is None:
+            config.map = OrderedDict()
         fields = pickup_columns.split(',')
         for field in fields:
             if '=' in field:
                 dst, value = field.split('=')
-                dict_columns[dst] = value
+                set_field_value(config.map, dst, value)
             else:
-                dict_columns[field] = field
+                set_field_value(config.map, field, field)
     if fields_to_split_by_newline:
         #list_fields_to_split_by_newline = fields_to_split_by_newline.split(',')
         dict_split_by_newline = OrderedDict()
@@ -296,6 +304,7 @@ def convert(
         if ext not in dict_savers:
             raise ValueError(f'Unsupported file type: {ext}')
         saver = dict_savers[ext]
+    ic(config)
     for input_file in input_files:
         ic(input_file)
         if not os.path.exists(input_file):
@@ -319,18 +328,16 @@ def convert(
             set_field_value(new_row, '__debug__.__file__', input_file)
             if dict_constants:
                 new_row = map_constants(new_row, dict_constants)
-            if dict_columns:
-                new_row = remap_columns(new_row, dict_columns)
-            #if list_fields_to_split_by_newline:
-            #    new_row = apply_fields_split_by_newline(new_row, list_fields_to_split_by_newline)
+            if config.map:
+                new_row = remap_columns(new_row, config.map)
             if dict_split_by_newline:
                 new_row = apply_fields_split_by_newline(new_row, dict_split_by_newline)
             if dict_assign_ids:
                 new_row = assign_id(new_row, dict_assign_ids, root_id_stat)
             if dict_formats:
                 new_row = map_formats(new_row, dict_formats)
-            if dict_columns:
-                new_row = remap_columns(new_row, dict_columns)
+            if config.map:
+                new_row = remap_columns(new_row, config.map)
             if not output_debug:
                 new_row.pop('__debug__', None)
             new_rows.append(new_row)

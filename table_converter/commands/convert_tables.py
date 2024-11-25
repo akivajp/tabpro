@@ -12,6 +12,7 @@ def run(
     convert(
         input_files = args.input_files,
         output_file = args.output_file,
+        config_path = args.config,
         assign_constants = args.assign_constants,
         assign_formats = args.assign_formats,
         pickup_columns= args.pickup_columns,
@@ -24,16 +25,25 @@ def setup_parser(
     parser: argparse.ArgumentParser,
 ):
     parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+    )
+    parser.add_argument(
         'input_files',
         metavar='INPUT_FILE',
         nargs='+',
         help='Path to the input file.'
     )
     parser.add_argument(
-        '-o', '--output-file',
+        '--output-file', '-o',
         metavar='OUTPUT_FILE',
         required=True,
         help='Path to the output file.'
+    )
+    parser.add_argument(
+        '--config', '-c',
+        type=str,
+        help='Path to the configuration file.',
     )
     parser.add_argument(
         '--pickup-columns',

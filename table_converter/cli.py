@@ -16,6 +16,8 @@ def parse_and_run(
         ic.disable()
     ic()
     args = parser.parse_args()
+    if args.verbose:
+        ic.enable()
     ic(args)
     if args.handler:
         args.handler(args)
