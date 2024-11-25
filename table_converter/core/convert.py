@@ -251,7 +251,6 @@ def convert(
     ic()
     ic(input_files)
     df_list = []
-    dict_formats: OrderedDict | None = None
     dict_assign_ids= None
     root_id_stat = create_id_stat_node()
     config = setup_config(config_path)
@@ -265,12 +264,11 @@ def convert(
             else:
                 raise ValueError(f'Invalid constant assignment: {field}')
     if assign_formats:
-        dict_formats = OrderedDict()
         fields = assign_formats.split(',')
         for field in fields:
             if '=' in field:
                 dst, src = field.split('=')
-                dict_formats[dst] = src
+                config.process.assign_formats[dst] = src
             else:
                 raise ValueError(f'Invalid template assignment: {field}')
     if pickup_columns:
@@ -304,6 +302,7 @@ def convert(
             raise ValueError(f'Unsupported file type: {ext}')
         saver = dict_savers[ext]
     ic(config)
+    #return # debug return
     for input_file in input_files:
         ic(input_file)
         if not os.path.exists(input_file):
@@ -333,8 +332,8 @@ def convert(
                 new_row = apply_fields_split_by_newline(new_row, config.process.split_by_newline)
             if dict_assign_ids:
                 new_row = assign_id(new_row, dict_assign_ids, root_id_stat)
-            if dict_formats:
-                new_row = map_formats(new_row, dict_formats)
+            if config.process.assign_formats:
+                new_row = map_formats(new_row, config.process.assign_formats)
             if config.map:
                 new_row = remap_columns(new_row, config.map)
             if not output_debug:
