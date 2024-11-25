@@ -14,6 +14,9 @@ import pandas as pd
 # local
 
 from . config import setup_config
+from . constants import (
+    STAGING_FIELD,
+)
 from . functions.assign_id import (
     assign_id,
     create_id_context_map,
@@ -96,12 +99,12 @@ def search_column_value(
     row: OrderedDict,
     column: str,
 ):
-    if '__debug__' in row:
-        value, found = get_field_value(row['__debug__'], column)
+    if STAGING_FIELD in row:
+        value, found = get_field_value(row[STAGING_FIELD], column)
         if found:
             return value, True
-    value, found = get_field_value(row['__debug__'], column)
-    original, found = get_field_value(row, '__debug__.__original__')
+    value, found = get_field_value(row[STAGING_FIELD], column)
+    original, found = get_field_value(row, f'{STAGING_FIELD}.__original__')
     if found:
         value, found = get_field_value(original, column)
         if found:
@@ -119,7 +122,7 @@ def map_constants(
     new_row = OrderedDict(row)
     for column in dict_constants.keys():
         #set_field_value(new_row, column, dict_constants[column])
-        set_field_value(new_row, f'__debug__.{column}', dict_constants[column])
+        set_field_value(new_row, f'{STAGING_FIELD}.{column}', dict_constants[column])
     return new_row
 
 def map_formats(
@@ -130,7 +133,7 @@ def map_formats(
     for column in dict_formats.keys():
         template = dict_formats[column]
         params = {}
-        params.update(row['__debug__'])
+        params.update(row[STAGING_FIELD])
         params.update(row)
         formatted = None
         while formatted is None:
@@ -144,7 +147,7 @@ def map_formats(
                 params[key] = f'__{key}__undefined__'
             except:
                 raise
-        set_field_value(new_row, f'__debug__.{column}', formatted)
+        set_field_value(new_row, f'{STAGING_FIELD}.{column}', formatted)
     return new_row
 
 def remap_columns(
@@ -157,7 +160,7 @@ def remap_columns(
         if found:
             set_field_value(new_row, column, value)
     for column in row.keys():
-        if column == '__debug__':
+        if column == STAGING_FIELD:
             # NOTE: Ignore debug fields
             set_field_value(new_row, column, row[column])
     return new_row
@@ -173,9 +176,9 @@ def apply_fields_split_by_newline(
         if found:
             if isinstance(value, str):
                 new_value = value.split('\n')
-                set_field_value(new_row, f'__debug__.{column}', new_value)
+                set_field_value(new_row, f'{STAGING_FIELD}.{column}', new_value)
             else:
-                set_field_value(new_row, f'__debug__.{column}', value)
+                set_field_value(new_row, f'{STAGING_FIELD}.{column}', value)
     return new_row
 
 def convert(
@@ -256,8 +259,8 @@ def convert(
         for index, row in df.iterrows():
             orig = OrderedDict(row)
             new_row = OrderedDict(row)
-            set_field_value(new_row, '__debug__.__original__', orig)
-            set_field_value(new_row, '__debug__.__file__', input_file)
+            set_field_value(new_row, f'{STAGING_FIELD}.__original__', orig)
+            set_field_value(new_row, f'{STAGING_FIELD}.__file__', input_file)
             if config.process.assign_constants:
                 new_row = map_constants(new_row, config.process.assign_constants)
             if config.map:
@@ -271,7 +274,7 @@ def convert(
             if config.map:
                 new_row = remap_columns(new_row, config.map)
             if not output_debug:
-                new_row.pop('__debug__', None)
+                new_row.pop(STAGING_FIELD, None)
             new_rows.append(new_row)
         new_df = pd.DataFrame(new_rows)
         df_list.append(new_df)
