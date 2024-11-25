@@ -15,6 +15,8 @@ import pandas as pd
 
 from . config import setup_config
 from . constants import (
+    FILE_FIELD,
+    INPUT_FIELD,
     STAGING_FIELD,
 )
 from . functions.assign_id import (
@@ -104,7 +106,7 @@ def search_column_value(
         if found:
             return value, True
     value, found = get_field_value(row[STAGING_FIELD], column)
-    original, found = get_field_value(row, f'{STAGING_FIELD}.__original__')
+    original, found = get_field_value(row, f'{STAGING_FIELD}.{INPUT_FIELD}')
     if found:
         value, found = get_field_value(original, column)
         if found:
@@ -259,8 +261,8 @@ def convert(
         for index, row in df.iterrows():
             orig = OrderedDict(row)
             new_row = OrderedDict(row)
-            set_field_value(new_row, f'{STAGING_FIELD}.__original__', orig)
-            set_field_value(new_row, f'{STAGING_FIELD}.__file__', input_file)
+            set_field_value(new_row, f'{STAGING_FIELD}.{INPUT_FIELD}', orig)
+            set_field_value(new_row, f'{STAGING_FIELD}.{FILE_FIELD}', input_file)
             if config.process.assign_constants:
                 new_row = map_constants(new_row, config.process.assign_constants)
             if config.map:
