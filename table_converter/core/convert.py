@@ -223,6 +223,7 @@ def convert(
     assign_constants: str | None = None,
     assign_formats: str | None = None,
     str_filters: str | None = None,
+    str_omit_fields: str | None = None,
     pickup_columns: str | None = None,
     fields_to_split_by_newline: str | None = None,
     fields_to_assign_ids: str | None = None,
@@ -275,6 +276,10 @@ def convert(
                 config.process.filter_eq[dst] = src
             else:
                 raise ValueError(f'Invalid filter eq: {field}')
+    if str_omit_fields:
+        fields = str_omit_fields.split(',')
+        for field in fields:
+            config.process.omit_fields.append(field)
     if fields_to_assign_ids:
         setup_assign_ids(config, fields_to_assign_ids)
     if output_file:
@@ -324,6 +329,9 @@ def convert(
             if config.process.filter_eq:
                 if not filter_eq(new_flat_row, config.process.filter_eq):
                     continue
+            if config.process.omit_fields:
+                for field in config.process.omit_fields:
+                    new_flat_row.pop(field, None)
             if not output_debug:
                 #new_flat_row.pop(STAGING_FIELD, None)
                 for key in list(new_flat_row.keys()):

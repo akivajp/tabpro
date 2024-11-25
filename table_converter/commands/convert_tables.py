@@ -19,6 +19,7 @@ def run(
         pickup_columns= args.pickup_columns,
         fields_to_split_by_newline = args.split_by_newline,
         fields_to_assign_ids = args.assign_ids,
+        str_omit_fields= args.omit_fields,
         output_debug = args.output_debug,
     )
 
@@ -71,6 +72,11 @@ def setup_parser(
         '--filters', '--filter', '-f',
         type=str,
         help='Expression list to filter records',
+    )
+    parser.add_argument(
+        '--omit-fields', '--omit',
+        type=str,
+        help='Field to omit',
     )
     parser.add_argument(
         '--output-debug',

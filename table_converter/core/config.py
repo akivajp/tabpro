@@ -24,6 +24,7 @@ class ProcessConfig:
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
     filter_eq: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
+    omit_fields: list[str] = dataclasses.field(default_factory=list)
     split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
 
     def __setitem__(self, key, value):
