@@ -39,12 +39,17 @@ def command_convert_tables(
     if parser is None:
         parse_and_run(command_parser)
 
-def main():
-    parser = argparse.ArgumentParser(description='Table Data Converter')
+def setup_common_args(
+    parser: argparse.ArgumentParser,
+):
     parser.add_argument(
         '--verbose', '-v',
         action='store_true',
     )
+
+def main():
+    parser = argparse.ArgumentParser(description='Table Data Converter')
+    setup_common_args(parser)
     parser.set_defaults(handler=None)
     subparsers = parser.add_subparsers(dest='command')
 
@@ -52,6 +57,7 @@ def main():
         'convert',
         help='Convert a table to a different format.'
     )
+    setup_common_args(parser_convert_tables)
     command_convert_tables(parser_convert_tables)
 
     parse_and_run(parser)

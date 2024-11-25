@@ -52,6 +52,15 @@ def load_excel(
     df = pd.read_excel(input_file)
     return df
 
+@register_loader('.json')
+def load_json(
+    input_file: str,
+):
+    with open(input_file, 'r') as f:
+        data = json.load(f)
+    df = pd.DataFrame(data)
+    return df
+
 @register_saver('.json')
 def save_json(
     df: pd.DataFrame,
@@ -261,8 +270,9 @@ def convert(
         for index, row in df.iterrows():
             orig = OrderedDict(row)
             new_row = OrderedDict(row)
-            set_field_value(new_row, f'{STAGING_FIELD}.{INPUT_FIELD}', orig)
-            set_field_value(new_row, f'{STAGING_FIELD}.{FILE_FIELD}', input_file)
+            if STAGING_FIELD not in new_row:
+                set_field_value(new_row, f'{STAGING_FIELD}.{INPUT_FIELD}', orig)
+                set_field_value(new_row, f'{STAGING_FIELD}.{FILE_FIELD}', input_file)
             if config.process.assign_constants:
                 new_row = map_constants(new_row, config.process.assign_constants)
             if config.map:
