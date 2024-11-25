@@ -11,9 +11,13 @@ type FlatFieldMap = Mapping[str, str]
 type FieldMap = Mapping[str, str|FieldMap]
 
 @dataclasses.dataclass
+class ProcessConfig:
+    split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
+
+@dataclasses.dataclass
 class Config:
-    #map: OrderedDict|None = dataclasses.field(default_factory=lambda: None)
-    map: FieldMap|None = dataclasses.field(default_factory=lambda: None)
+    map: FieldMap = dataclasses.field(default_factory=OrderedDict)
+    process: ProcessConfig = dataclasses.field(default_factory=ProcessConfig)
 
 def flatten(
     mapping: FieldMap,
@@ -33,6 +37,7 @@ def flatten(
 def setup_config(
     config_path: str | None = None,
 ):
+    config = Config()
     if config_path:
         if config_path.endswith('.yaml'):
             yaml.add_constructor(
@@ -40,17 +45,15 @@ def setup_config(
                 lambda loader, node: OrderedDict(loader.construct_pairs(node)),
             )
             with open(config_path, 'r') as f:
-                data = yaml.load(f, yaml.Loader)
-                #ic(data)
-                config = Config(
-                    #**data,
-                    map = flatten(data.get('map', {})),
-                )
+                loaded = yaml.load(f, yaml.Loader)
         else:
             raise ValueError(
                 'Only YAML configuration files are supported.'
             )
-    else:
-        config = Config(
-        )
+        ic(loaded)
+        if 'map' in loaded:
+            config.map = flatten(loaded['map'])
+        if 'process' in loaded:
+            if 'split_by_newline' in loaded['process']:
+                config.process.split_by_newline = flatten(loaded['process']['split_by_newline'])
     return config

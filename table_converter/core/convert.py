@@ -247,7 +247,6 @@ def convert(
     df_list = []
     dict_constants: OrderedDict | None = None
     dict_formats: OrderedDict | None = None
-    dict_split_by_newline: OrderedDict | None = None
     dict_assign_ids= None
     root_id_stat = create_id_stat_node()
     config = setup_config(config_path)
@@ -271,23 +270,19 @@ def convert(
             else:
                 raise ValueError(f'Invalid template assignment: {field}')
     if pickup_columns:
-        if config.map is None:
-            config.map = OrderedDict()
         fields = pickup_columns.split(',')
         for field in fields:
             if '=' in field:
                 dst, value = field.split('=')
-                set_field_value(config.map, dst, value)
+                config.map[dst] = value
             else:
-                set_field_value(config.map, field, field)
+                config.map[field] = field
     if fields_to_split_by_newline:
-        #list_fields_to_split_by_newline = fields_to_split_by_newline.split(',')
-        dict_split_by_newline = OrderedDict()
         fields = fields_to_split_by_newline.split(',')
         for field in fields:
             if '=' in field:
                 dst, src = field.split('=')
-                dict_split_by_newline[dst] = src
+                config.process.split_by_newline[dst] = src
             else:
                 raise ValueError(f'Invalid split by newline: {field}')
     if fields_to_assign_ids:
@@ -330,8 +325,8 @@ def convert(
                 new_row = map_constants(new_row, dict_constants)
             if config.map:
                 new_row = remap_columns(new_row, config.map)
-            if dict_split_by_newline:
-                new_row = apply_fields_split_by_newline(new_row, dict_split_by_newline)
+            if config.process.split_by_newline:
+                new_row = apply_fields_split_by_newline(new_row, config.process.split_by_newline)
             if dict_assign_ids:
                 new_row = assign_id(new_row, dict_assign_ids, root_id_stat)
             if dict_formats:
