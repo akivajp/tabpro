@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import dataclasses
 import json
 import os
 
 from collections import OrderedDict
+from collections import defaultdict
+from typing import Mapping
 
 # 3-rd party modules
 
@@ -14,6 +17,7 @@ import pandas as pd
 # local
 
 from . config import setup_config
+from . config import AssignIdConfig
 
 dict_loaders: dict[str, callable] = {}
 def register_loader(
@@ -196,45 +200,72 @@ def apply_fields_split_by_newline(
                 set_field_value(new_row, f'__debug__.{column}', value)
     return new_row
 
-def create_id_stat_node():
-    return {
-        'max_id': 0,
-        'dict_value_to_id': {},
-        'dict_id_to_node': {},
-    }
+type ContextColumnTuple = tuple[str]
+type ContextValueTuple = tuple 
+type PrimaryColumnTuple = tuple[str]
+type PrimaryValueTuple = tuple
 
-def assign_id_in_node(
-    row: OrderedDict,
-    column: str,
-    dict_assignment: OrderedDict,
-    id_stat_node: dict,
-):
-    value, found = search_column_value(row, dict_assignment[column])
-    if not found:
-        raise KeyError(f'Column not found: {column}, existing columns: {row.keys()}')
-    if value not in id_stat_node['dict_value_to_id']:
-        field_id = id_stat_node['max_id'] + 1
-        id_stat_node['max_id'] = field_id
-        id_stat_node['dict_value_to_id'][value] = field_id
-        node = create_id_stat_node()
-        id_stat_node['dict_id_to_node'][field_id] = node
-    else:
-        field_id = id_stat_node['dict_value_to_id'][value]
-        node = id_stat_node['dict_id_to_node'][field_id]
-    set_field_value(row, f'__debug__.{column}', field_id)
-    set_field_value(row, f'__debug__.__ids__.{column}', field_id)
-    return node
+@dataclasses.dataclass
+class IdMap:
+    max_id: int = 0
+    dict_value_to_id: Mapping[PrimaryValueTuple, int] = \
+        dataclasses.field(default_factory=defaultdict)
+    dict_id_to_value: Mapping[int, PrimaryValueTuple] = \
+        dataclasses.field(default_factory=defaultdict)
+
+type IdContextMap = Mapping[
+    (
+        ContextColumnTuple,
+        ContextValueTuple,
+        PrimaryColumnTuple,
+    ),
+    IdMap
+]
+
+def create_id_context_map() -> IdContextMap:
+    return defaultdict(IdMap)
 
 def assign_id(
     row: OrderedDict,
-    dict_assignment: OrderedDict,
-    root_id_stat_node: dict,
+    dict_assignment: Mapping[str, AssignIdConfig],
+    id_context_map: IdContextMap,
 ):
     new_row = OrderedDict(row)
-    node = root_id_stat_node
-    for column in dict_assignment:
-        node = assign_id_in_node(new_row, column, dict_assignment, node)
+    for column, config in dict_assignment.items():
+        context_columns = []
+        context_values = []
+        if config.context:
+            for context_column in config.context:
+                value, found = search_column_value(new_row, context_column)
+                if not found:
+                    raise KeyError(f'Column not found: {context_column}, existing columns: {new_row.keys()}')
+                context_columns.append(context_column)
+                context_values.append(value)
+        primary_columns = []
+        primary_values = []
+        for primary_column in config.primary:
+            value, found = search_column_value(new_row, primary_column)
+            if not found:
+                raise KeyError(f'Column not found: {primary_column}, existing columns: {new_row.keys()}')
+            primary_columns.append(primary_column)
+            primary_values.append(value)
+        context_key = (
+            tuple(context_columns),
+            tuple(context_values),
+            tuple(primary_columns),
+        )
+        primary_value = tuple(primary_values)
+        id_map = id_context_map[context_key]
+        if primary_value not in id_map.dict_value_to_id:
+            field_id = id_map.max_id + 1
+            id_map.max_id = field_id
+            id_map.dict_value_to_id[primary_value] = field_id
+            id_map.dict_id_to_value[field_id] = primary_value
+        else:
+            field_id = id_map.dict_value_to_id[primary_value]
+        set_field_value(new_row, f'__debug__.{column}', field_id)
     return new_row
+
 
 def convert(
     input_files: list[str],
@@ -251,8 +282,7 @@ def convert(
     ic()
     ic(input_files)
     df_list = []
-    dict_assign_ids= None
-    root_id_stat = create_id_stat_node()
+    id_context_map = create_id_context_map()
     config = setup_config(config_path)
     ic(config)
     if assign_constants:
@@ -288,12 +318,16 @@ def convert(
             else:
                 raise ValueError(f'Invalid split by newline: {field}')
     if fields_to_assign_ids:
-        dict_assign_ids = OrderedDict()
+        #dict_assign_ids = OrderedDict()
         fields = fields_to_assign_ids.split(',')
+        context = []
         for field in fields:
             if '=' in field:
                 dst, src = field.split('=')
-                dict_assign_ids[dst] = src
+                config.process.assign_ids[dst] = AssignIdConfig(
+                    primary = [src],
+                    context = context,
+                )
             else:
                 raise ValueError(f'Invalid id assignment: {field}')
     if output_file:
@@ -330,8 +364,8 @@ def convert(
                 new_row = remap_columns(new_row, config.map)
             if config.process.split_by_newline:
                 new_row = apply_fields_split_by_newline(new_row, config.process.split_by_newline)
-            if dict_assign_ids:
-                new_row = assign_id(new_row, dict_assign_ids, root_id_stat)
+            if config.process.assign_ids:
+                new_row = assign_id(new_row, config.process.assign_ids, id_context_map)
             if config.process.assign_formats:
                 new_row = map_formats(new_row, config.process.assign_formats)
             if config.map:
