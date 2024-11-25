@@ -159,7 +159,7 @@ def map_formats(
                 #ic(e.args)
                 #ic(e.args[0])
                 key = e.args[0]
-                params[key] = '__undefined__'
+                params[key] = f'__{key}__undefined__'
             except:
                 raise
         set_field_value(new_row, f'__debug__.{column}', formatted)
