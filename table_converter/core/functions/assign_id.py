@@ -91,7 +91,7 @@ def assign_id(
             id_map.dict_id_to_value[field_id] = primary_value
         else:
             field_id = id_map.dict_value_to_id[primary_value]
-        set_field_value(new_row, f'{STAGING_FIELD}.{column}', field_id)
+        new_row[f'{STAGING_FIELD}.{column}'] = field_id
     return new_row
 
 def setup_assign_ids(

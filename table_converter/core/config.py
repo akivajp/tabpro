@@ -7,13 +7,15 @@ from typing import Mapping
 from icecream import ic
 import yaml
 
-type FlatFieldMap = Mapping[str, str]
-type FieldMap = Mapping[str, str|FieldMap]
+from . functions.flatten import (
+    FieldMap,
+    FlatFieldMap,
+    flatten,
+)
 
 @dataclasses.dataclass
 class AssignIdConfig:
     primary: list[str]
-    #given: list[str] | None = None
     context: list[str] | None = None
 
 @dataclasses.dataclass
@@ -31,21 +33,6 @@ class ProcessConfig:
 class Config:
     map: FieldMap = dataclasses.field(default_factory=OrderedDict)
     process: ProcessConfig = dataclasses.field(default_factory=ProcessConfig)
-
-def flatten(
-    mapping: FieldMap,
-    parent_key: str = '',
-    new_mapping: FlatFieldMap | None = None,
-) -> FlatFieldMap:
-    if new_mapping is None:
-        new_mapping = OrderedDict()
-    for key, mapped in mapping.items():
-        new_key = f'{parent_key}.{key}' if parent_key else key
-        if isinstance(mapped, Mapping):
-            flatten(mapped, new_key, new_mapping)
-        else:
-            new_mapping[new_key] = mapped
-    return new_mapping
 
 def setup_config(
     config_path: str | None = None,

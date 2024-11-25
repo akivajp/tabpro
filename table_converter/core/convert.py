@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import math
 import os
 
 from collections import OrderedDict
@@ -24,7 +25,11 @@ from . functions.assign_id import (
     create_id_context_map,
     setup_assign_ids,
 )
+from . functions.flatten import (
+    flatten,
+)
 from . functions.get_field_value import get_field_value
+from . functions.search_column_value import search_column_value
 from . functions.set_field_value import set_field_value
 
 dict_loaders: dict[str, callable] = {}
@@ -58,8 +63,30 @@ def load_json(
 ):
     with open(input_file, 'r') as f:
         data = json.load(f)
-    df = pd.DataFrame(data)
+    if not isinstance(data, list):
+        raise ValueError(f'Invalid JSON array data: {input_file}')
+    ic(data[0])
+    rows = []
+    for row in data:
+        new_row = flatten(row)
+        rows.append(new_row)
+    df = pd.DataFrame(rows)
     return df
+
+def nest(
+    row: OrderedDict,
+    remove_nan: bool = True,
+):
+    new_row = OrderedDict()
+    for key, value in row.items():
+        if isinstance(value, OrderedDict):
+            value = nest(value)
+        if isinstance(value, float):
+            if math.isnan(value):
+                if remove_nan:
+                    continue
+        set_field_value(new_row, key, value)
+    return new_row
 
 @register_saver('.json')
 def save_json(
@@ -76,6 +103,9 @@ def save_json(
     #)
     #ic(df.iloc[0])
     data = df.to_dict(orient='records')
+    ic(data[0])
+    data = [nest(row) for row in data]
+    ic(data[0])
     with open(output_file, 'w') as f:
         json.dump(
             data,
@@ -106,34 +136,13 @@ def save_jsonl(
             )
             f.write('\n')
 
-def search_column_value(
-    row: OrderedDict,
-    column: str,
-):
-    if STAGING_FIELD in row:
-        value, found = get_field_value(row[STAGING_FIELD], column)
-        if found:
-            return value, True
-    value, found = get_field_value(row[STAGING_FIELD], column)
-    original, found = get_field_value(row, f'{STAGING_FIELD}.{INPUT_FIELD}')
-    if found:
-        value, found = get_field_value(original, column)
-        if found:
-            return value, True
-    value, found = get_field_value(row, column)
-    if found:
-        set_field_value(row, column, value)
-        return value, True
-    return None, False
-
 def map_constants(
     row: OrderedDict,
     dict_constants: OrderedDict,
 ):
     new_row = OrderedDict(row)
     for column in dict_constants.keys():
-        #set_field_value(new_row, column, dict_constants[column])
-        set_field_value(new_row, f'{STAGING_FIELD}.{column}', dict_constants[column])
+        new_row[f'{STAGING_FIELD}.{column}'] = dict_constants[column]
     return new_row
 
 def map_formats(
@@ -144,7 +153,11 @@ def map_formats(
     for column in dict_formats.keys():
         template = dict_formats[column]
         params = {}
-        params.update(row[STAGING_FIELD])
+        for key, value in row.items():
+            prefix = f'{STAGING_FIELD}.'
+            if key.startswith(prefix):
+                rest = key[len(prefix):]
+                params[rest] = value
         params.update(row)
         formatted = None
         while formatted is None:
@@ -158,7 +171,7 @@ def map_formats(
                 params[key] = f'__{key}__undefined__'
             except:
                 raise
-        set_field_value(new_row, f'{STAGING_FIELD}.{column}', formatted)
+        new_row[f'{STAGING_FIELD}.{column}'] = formatted
     return new_row
 
 def remap_columns(
@@ -169,11 +182,12 @@ def remap_columns(
     for column in dict_remap.keys():
         value, found = search_column_value(row, dict_remap[column])
         if found:
-            set_field_value(new_row, column, value)
+            new_row[column] = value
     for column in row.keys():
-        if column == STAGING_FIELD:
-            # NOTE: Ignore debug fields
-            set_field_value(new_row, column, row[column])
+        prefix = f'{STAGING_FIELD}.'
+        if column.startswith(prefix):
+            # NOTE: Leave staging fields as is
+            new_row[column] = row[column]
     return new_row
 
 def apply_fields_split_by_newline(
@@ -183,13 +197,12 @@ def apply_fields_split_by_newline(
     new_row = OrderedDict(row)
     for column in dict_fields:
         value, found = search_column_value(row, dict_fields[column])
-        #ic(value, found)
         if found:
             if isinstance(value, str):
                 new_value = value.split('\n')
-                set_field_value(new_row, f'{STAGING_FIELD}.{column}', new_value)
+                new_row[f'{STAGING_FIELD}.{column}'] = new_value
             else:
-                set_field_value(new_row, f'{STAGING_FIELD}.{column}', value)
+                new_row[f'{STAGING_FIELD}.{column}'] = value
     return new_row
 
 def convert(
@@ -266,29 +279,32 @@ def convert(
         #ic(len(df))
         #ic(df.columns)
         #ic(df.iloc[0])
-        new_rows = []
-        for index, row in df.iterrows():
-            orig = OrderedDict(row)
-            new_row = OrderedDict(row)
-            if STAGING_FIELD not in new_row:
-                set_field_value(new_row, f'{STAGING_FIELD}.{INPUT_FIELD}', orig)
-                set_field_value(new_row, f'{STAGING_FIELD}.{FILE_FIELD}', input_file)
+        #new_rows = []
+        new_flat_rows = []
+        for index, flat_row in df.iterrows():
+            orig = OrderedDict(flat_row)
+            new_flat_row = OrderedDict(flat_row)
+            new_nested_row = nest(new_flat_row)
+            if STAGING_FIELD not in new_nested_row:
+                new_flat_row[f'{STAGING_FIELD}.{FILE_FIELD}'] = input_file
+                for key, value in orig.items():
+                    new_flat_row[f'{STAGING_FIELD}.{INPUT_FIELD}.{key}'] = value
             if config.process.assign_constants:
-                new_row = map_constants(new_row, config.process.assign_constants)
+                new_flat_row = map_constants(new_flat_row, config.process.assign_constants)
             if config.map:
-                new_row = remap_columns(new_row, config.map)
+                new_flat_row = remap_columns(new_flat_row, config.map)
             if config.process.split_by_newline:
-                new_row = apply_fields_split_by_newline(new_row, config.process.split_by_newline)
+                new_flat_row = apply_fields_split_by_newline(new_flat_row, config.process.split_by_newline)
             if config.process.assign_ids:
-                new_row = assign_id(new_row, config.process.assign_ids, id_context_map)
+                new_flat_row = assign_id(new_flat_row, config.process.assign_ids, id_context_map)
             if config.process.assign_formats:
-                new_row = map_formats(new_row, config.process.assign_formats)
+                new_flat_row = map_formats(new_flat_row, config.process.assign_formats)
             if config.map:
-                new_row = remap_columns(new_row, config.map)
+                new_flat_row = remap_columns(new_flat_row, config.map)
             if not output_debug:
-                new_row.pop(STAGING_FIELD, None)
-            new_rows.append(new_row)
-        new_df = pd.DataFrame(new_rows)
+                new_flat_row.pop(STAGING_FIELD, None)
+            new_flat_rows.append(new_flat_row)
+        new_df = pd.DataFrame(new_flat_rows)
         df_list.append(new_df)
     all_df = pd.concat(df_list)
     #ic(all_df)

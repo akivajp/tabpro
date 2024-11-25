@@ -3,6 +3,7 @@ Set the value of a field in a nested dictionary.
 '''
 
 from collections import OrderedDict
+from icecream import ic
 
 def set_field_value(
     data: OrderedDict,
