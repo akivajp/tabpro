@@ -25,10 +25,6 @@ def setup_parser(
     parser: argparse.ArgumentParser,
 ):
     parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-    )
-    parser.add_argument(
         'input_files',
         metavar='INPUT_FILE',
         nargs='+',

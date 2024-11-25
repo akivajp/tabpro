@@ -41,6 +41,10 @@ def command_convert_tables(
 
 def main():
     parser = argparse.ArgumentParser(description='Table Data Converter')
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+    )
     parser.set_defaults(handler=None)
     subparsers = parser.add_subparsers(dest='command')
 
