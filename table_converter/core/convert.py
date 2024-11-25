@@ -147,15 +147,21 @@ def map_formats(
     new_row = OrderedDict(row)
     for column in dict_formats.keys():
         template = dict_formats[column]
-        try:
-            params = {}
-            params.update(row['__debug__'])
-            params.update(row)
-            formatted = template.format(**params)
-        except KeyError as e:
-            ic(e)
-            formatted = template
-            raise e
+        params = {}
+        params.update(row['__debug__'])
+        params.update(row)
+        formatted = None
+        while formatted is None:
+            try:
+                formatted = template.format(**params)
+            except KeyError as e:
+                #ic(e)
+                #ic(e.args)
+                #ic(e.args[0])
+                key = e.args[0]
+                params[key] = '__undefined__'
+            except:
+                raise
         set_field_value(new_row, f'__debug__.{column}', formatted)
     return new_row
 
