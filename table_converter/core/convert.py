@@ -14,7 +14,10 @@ import pandas as pd
 
 # local
 
-from . config import setup_config
+from . config import (
+    FilterConfig,
+    setup_config,
+)
 from . constants import (
     FILE_FIELD,
     INPUT_FIELD,
@@ -205,15 +208,22 @@ def apply_fields_split_by_newline(
                 new_row[f'{STAGING_FIELD}.{column}'] = value
     return new_row
 
-def filter_eq(
+def filter_row(
     row: OrderedDict,
-    dict_filters: OrderedDict,
+    list_filters: list[FilterConfig],
 ):
-    for column in dict_filters:
-        value, found = search_column_value(row, column)
-        #ic(column, value, found, dict_filters[column])
-        if str(value) != str(dict_filters[column]):
-            return False
+    for config in list_filters:
+        value, found = search_column_value(row, config.field)
+        if config.operator == '==':
+            if not found:
+                return False
+            if str(value) != str(config.value):
+                return False
+        elif config.operator == '!=':
+            if str(value) == str(config.value):
+                return False
+        else:
+            raise ValueError(f'Unsupported operator: {config.operator}')
     return True
 
 def convert(
@@ -271,9 +281,20 @@ def convert(
     if str_filters:
         fields = str_filters.split(',')
         for field in fields:
-            if '=' in field:
-                dst, src = field.split('=')
-                config.process.filter_eq[dst] = src
+            if '==' in field:
+                column, value = field.split('==')
+                config.process.filter.append(FilterConfig(
+                    field = column,
+                    operator = '==',
+                    value = value,
+                ))
+            elif '!=' in field:
+                column, value = field.split('!=')
+                config.process.filter.append(FilterConfig(
+                    field = column,
+                    operator = '!=',
+                    value = value,
+                ))
             else:
                 raise ValueError(f'Invalid filter eq: {field}')
     if str_omit_fields:
@@ -326,14 +347,13 @@ def convert(
                 new_flat_row = map_formats(new_flat_row, config.process.assign_formats)
             if config.map:
                 new_flat_row = remap_columns(new_flat_row, config.map)
-            if config.process.filter_eq:
-                if not filter_eq(new_flat_row, config.process.filter_eq):
+            if config.process.filter:
+                if not filter_row(new_flat_row, config.process.filter):
                     continue
             if config.process.omit_fields:
                 for field in config.process.omit_fields:
                     new_flat_row.pop(field, None)
             if not output_debug:
-                #new_flat_row.pop(STAGING_FIELD, None)
                 for key in list(new_flat_row.keys()):
                     if key.startswith(STAGING_FIELD):
                         new_flat_row.pop(key)

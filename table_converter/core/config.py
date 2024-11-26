@@ -2,7 +2,10 @@
 
 from collections import OrderedDict
 import dataclasses
-from typing import Mapping
+from typing import (
+    Literal,
+    Mapping,
+)
 
 from icecream import ic
 import yaml
@@ -19,11 +22,18 @@ class AssignIdConfig:
     context: list[str] | None = None
 
 @dataclasses.dataclass
+class FilterConfig:
+    field: str
+    operator: Literal['==', '!=', '>', '>=', '<', '<=']
+    value: str
+
+@dataclasses.dataclass
 class ProcessConfig:
     assign_constants: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
-    filter_eq: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
+    #filter_eq: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
+    filter: list[FilterConfig] = dataclasses.field(default_factory=list)
     omit_fields: list[str] = dataclasses.field(default_factory=list)
     split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
 
