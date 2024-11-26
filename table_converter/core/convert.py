@@ -16,6 +16,7 @@ import pandas as pd
 
 from . config import (
     FilterConfig,
+    SplitConfig,
     setup_config,
 )
 from . constants import (
@@ -193,19 +194,22 @@ def remap_columns(
             new_row[column] = row[column]
     return new_row
 
-def apply_fields_split_by_newline(
+def split_fields(
     row: OrderedDict,
-    dict_fields: OrderedDict,
+    dict_config: list[SplitConfig],
 ):
     new_row = OrderedDict(row)
-    for column in dict_fields:
-        value, found = search_column_value(row, dict_fields[column])
+    for dst, config in dict_config.items():
+        value, found = search_column_value(row, config.field)
         if found:
             if isinstance(value, str):
-                new_value = value.split('\n')
-                new_row[f'{STAGING_FIELD}.{column}'] = new_value
+                new_value = value.split(config.delimiter)
+                new_value = list(filter(None, new_value))
+                if not new_value:
+                    ic(dst, config, value)
+                new_row[f'{STAGING_FIELD}.{dst}'] = new_value
             else:
-                new_row[f'{STAGING_FIELD}.{column}'] = value
+                new_row[f'{STAGING_FIELD}.{dst}'] = value
     return new_row
 
 def filter_row(
@@ -275,7 +279,11 @@ def convert(
         for field in fields:
             if '=' in field:
                 dst, src = field.split('=')
-                config.process.split_by_newline[dst] = src
+                #config.process.split_by_newline[dst] = src
+                config.process.split[dst] = SplitConfig(
+                    field = src,
+                    delimiter = '\n',
+                )
             else:
                 raise ValueError(f'Invalid split by newline: {field}')
     if str_filters:
@@ -339,8 +347,8 @@ def convert(
                 new_flat_row = map_constants(new_flat_row, config.process.assign_constants)
             if config.map:
                 new_flat_row = remap_columns(new_flat_row, config.map)
-            if config.process.split_by_newline:
-                new_flat_row = apply_fields_split_by_newline(new_flat_row, config.process.split_by_newline)
+            if config.process.split:
+                new_flat_row = split_fields(new_flat_row, config.process.split)
             if config.process.assign_ids:
                 new_flat_row = assign_id(new_flat_row, config.process.assign_ids, id_context_map)
             if config.process.assign_formats:

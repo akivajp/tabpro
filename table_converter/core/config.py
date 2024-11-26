@@ -28,6 +28,11 @@ class FilterConfig:
     value: str
 
 @dataclasses.dataclass
+class SplitConfig:
+    field: str
+    delimiter: str
+
+@dataclasses.dataclass
 class ProcessConfig:
     assign_constants: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
@@ -35,7 +40,8 @@ class ProcessConfig:
     #filter_eq: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     filter: list[FilterConfig] = dataclasses.field(default_factory=list)
     omit_fields: list[str] = dataclasses.field(default_factory=list)
-    split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
+    #split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
+    split: Mapping[str, SplitConfig] = dataclasses.field(default_factory=OrderedDict)
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
@@ -76,13 +82,12 @@ def setup_process_config(
         for process_key in [
             'assign_constants',
             'assign_formats',
-            'filter_eq',
-            'split_by_newline',
         ]:
             dict_subprocess = dict_process.get(process_key)
             if isinstance(dict_subprocess, Mapping):
                 config.process[process_key] = flatten(loaded['process'][process_key])
         setup_process_assign_ids_config(config, dict_process)
+        setup_process_split_config(config, dict_process)
 
 def setup_process_assign_ids_config(
     config: Config,
@@ -112,6 +117,42 @@ def setup_process_assign_ids_config(
             elif isinstance(value, str):
                 config.process.assign_ids[key] = AssignIdConfig(
                     primary = [value],
+                )
+            else:
+                ic.enable()
+                ic(value)
+                ic(type(value))
+                raise ValueError(
+                    f'Unsupported assign_ids value type: {type(value)}'
+                )
+
+def setup_process_split_config(
+    config: Config,
+    dict_process: Mapping,
+):
+    dict_subprocess = dict_process.get('split')
+    if isinstance(dict_subprocess, Mapping):
+        for key, value in dict_subprocess.items():
+            if isinstance(value, Mapping):
+                field = value.get('field')
+                if not field:
+                    ic.enable()
+                    ic(value)
+                    ic(value.get('field'))
+                    raise ValueError(
+                        'Field is required for split.'
+                    )
+                delimiter = value.get('delimiter')
+                if not delimiter:
+                    ic.enable()
+                    ic(value)
+                    ic(value.get('delimiter'))
+                    raise ValueError(
+                        'Delimiter is required for split.'
+                    )
+                config.process.split[key] = SplitConfig(
+                    field = field,
+                    delimiter = delimiter,
                 )
             else:
                 ic.enable()
