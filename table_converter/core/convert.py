@@ -20,8 +20,8 @@ import pandas as pd
 
 from . config import (
     AssignArrayConfig,
-    Config,
     FilterConfig,
+    PushConfig,
     SplitConfig,
     setup_config,
 )
@@ -164,10 +164,17 @@ def map_formats(
         template = dict_formats[column]
         params = {}
         for key, value in row.items():
-            prefix = f'{STAGING_FIELD}.'
-            if key.startswith(prefix):
-                rest = key[len(prefix):]
-                params[rest] = value
+            for prefix in [
+                f'{STAGING_FIELD}.{INPUT_FIELD}.',
+                f'{STAGING_FIELD}.',
+            ]:
+                if key.startswith(prefix):
+                    rest = key[len(prefix):]
+                    params[rest] = value
+            #prefix = f'{STAGING_FIELD}.'
+            #if key.startswith(prefix):
+            #    rest = key[len(prefix):]
+            #    params[rest] = value
         params.update(row)
         formatted = None
         while formatted is None:
@@ -180,6 +187,8 @@ def map_formats(
                 key = e.args[0]
                 params[key] = f'__{key}__undefined__'
             except:
+                #ic(params)
+                ic(params.keys())
                 raise
         new_row[f'{STAGING_FIELD}.{column}'] = formatted
     return new_row
@@ -199,6 +208,59 @@ def assign_array(
             elif not item.optional:
                 array.append(None)
         new_row[f'{STAGING_FIELD}.{key}'] = array
+    return new_row
+
+def search_column_value_from_nested(
+    nested_row: OrderedDict,
+    column: str,
+):
+    if STAGING_FIELD in nested_row:
+        value, found = get_field_value(nested_row[STAGING_FIELD], column)
+        if found:
+            return value, True
+    value, found = get_field_value(nested_row[STAGING_FIELD], column)
+    original, found = get_field_value(nested_row, f'{STAGING_FIELD}.{INPUT_FIELD}')
+    if found:
+        value, found = get_field_value(original, column)
+        if found:
+            return value, True
+    value, found = get_field_value(nested_row, column)
+    if found:
+        #set_field_value(nested_row, column, value)
+        return value, True
+    return None, False
+
+
+def push_fields(
+    row: OrderedDict,
+    list_config: list[PushConfig],
+):
+    nested_row = nest(row)
+    for config in list_config:
+        target_value, found = search_column_value_from_nested(nested_row, config.target)
+        if found:
+            array = target_value
+        else:
+            array = []
+            set_field_value(nested_row, f'{STAGING_FIELD}.{config.target}', array)
+        source_value, found = search_column_value_from_nested(nested_row, config.source)
+        if config.condition is None:
+            array.append(source_value)
+            continue
+        condition_value, found = search_column_value_from_nested(nested_row, config.condition)
+        if condition_value:
+            array.append(source_value)
+    return flatten(nested_row)
+
+def assign_length(
+    row: OrderedDict,
+    dict_fields: OrderedDict,
+):
+    new_row = OrderedDict(row)
+    for key, field in dict_fields.items():
+        value, found = search_column_value(row, field)
+        if found:
+            new_row[f'{STAGING_FIELD}.{key}'] = len(value)
     return new_row
 
 def remap_columns(
@@ -386,6 +448,10 @@ def convert(
                 new_flat_row = map_formats(new_flat_row, config.process.assign_formats)
             if config.process.assign_array:
                 new_flat_row = assign_array(new_flat_row, config.process.assign_array)
+            if config.process.push:
+                new_flat_row = push_fields(new_flat_row, config.process.push)
+            if config.process.assign_length:
+                new_flat_row = assign_length(new_flat_row, config.process.assign_length)
             if config.map:
                 new_flat_row = remap_columns(new_flat_row, config.map)
             if config.process.filter:

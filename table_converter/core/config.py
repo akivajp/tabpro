@@ -40,14 +40,22 @@ class SplitConfig:
     delimiter: str
 
 @dataclasses.dataclass
+class PushConfig:
+    target: str
+    source: str
+    condition: str | None = None
+
+@dataclasses.dataclass
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
     assign_constants: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
+    assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     #filter_eq: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     filter: list[FilterConfig] = dataclasses.field(default_factory=list)
     omit_fields: list[str] = dataclasses.field(default_factory=list)
+    push: list[PushConfig] = dataclasses.field(default_factory=list)
     #split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     split: Mapping[str, SplitConfig] = dataclasses.field(default_factory=OrderedDict)
 
@@ -90,6 +98,7 @@ def setup_process_config(
         for process_key in [
             'assign_constants',
             'assign_formats',
+            'assign_length',
         ]:
             dict_subprocess = dict_process.get(process_key)
             if isinstance(dict_subprocess, Mapping):
@@ -97,6 +106,7 @@ def setup_process_config(
         setup_process_assign_ids_config(config, dict_process)
         setup_process_assign_array_config(config, dict_process)
         setup_process_filter_config(config, dict_process)
+        setup_process_push_config(config, dict_process)
         setup_process_split_config(config, dict_process)
 
 def raise_error_for_unsupported_type(
@@ -115,6 +125,17 @@ def raise_error_for_unsupported_type(
         raise ValueError(
             f'Unsupported value type: {type(value)}'
         )
+
+def require_item(
+    mapping: Mapping,
+    key: str,
+    str_for: str
+):
+    if key not in mapping:
+        raise ValueError(
+            f'{key} is required for {str_for}.'
+        )
+    return mapping[key]
 
 def setup_process_assign_ids_config(
     config: Config,
@@ -237,6 +258,31 @@ def setup_process_filter_config(
             raise ValueError(
                 f'Unsupported filter item type: {type(item)}'
             )
+        
+def setup_process_push_config(
+    config: Config,
+    dict_process: Mapping,
+):
+    list_subprocess = dict_process.get('push')
+    if list_subprocess is None:
+        return
+    if not isinstance(list_subprocess, list):
+        raise ValueError(
+            'push must be a list.'
+        )
+    str_for = 'push'
+    for item in list_subprocess:
+        if isinstance(item, Mapping):
+            target = require_item(item, 'target', str_for)
+            source = require_item(item, 'source', str_for)
+            condition = item.get('condition')
+            config.process.push.append(PushConfig(
+                target = target,
+                source = source,
+                condition = condition,
+            ))
+        else:
+            raise_error_for_unsupported_type(item, 'dict')
 
 def setup_process_split_config(
     config: Config,
