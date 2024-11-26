@@ -24,8 +24,9 @@ class AssignIdConfig:
 @dataclasses.dataclass
 class FilterConfig:
     field: str
-    operator: Literal['==', '!=', '>', '>=', '<', '<=']
-    value: str
+    operator: Literal['==', '!=', '>', '>=', '<', '<=', 'not-in']
+    #value: str
+    value: str | list[str]
 
 @dataclasses.dataclass
 class SplitConfig:
@@ -87,6 +88,7 @@ def setup_process_config(
             if isinstance(dict_subprocess, Mapping):
                 config.process[process_key] = flatten(loaded['process'][process_key])
         setup_process_assign_ids_config(config, dict_process)
+        setup_process_filter_config(config, dict_process)
         setup_process_split_config(config, dict_process)
 
 def setup_process_assign_ids_config(
@@ -125,6 +127,54 @@ def setup_process_assign_ids_config(
                 raise ValueError(
                     f'Unsupported assign_ids value type: {type(value)}'
                 )
+
+def setup_process_filter_config(
+    config: Config,
+    dict_process: Mapping,
+):
+    list_subprocess = dict_process.get('filter')
+    if not isinstance(list_subprocess, list):
+        raise ValueError(
+            'Filter must be a list.'
+        )
+    for item in list_subprocess:
+        if isinstance(item, Mapping):
+            field = item.get('field')
+            if not field:
+                ic.enable()
+                ic(item)
+                ic(item.get('field'))
+                raise ValueError(
+                    'Field is required for filter.'
+                )
+            operator = item.get('operator')
+            if not operator:
+                ic.enable()
+                ic(item)
+                ic(item.get('operator'))
+                raise ValueError(
+                    'Operator is required for filter.'
+                )
+            value = item.get('value')
+            if not value:
+                ic.enable()
+                ic(item)
+                ic(item.get('value'))
+                raise ValueError(
+                    'Value is required for filter.'
+                )
+            config.process.filter.append(FilterConfig(
+                field = field,
+                operator = operator,
+                value = value,
+            ))
+        else:
+            ic.enable()
+            ic(item)
+            ic(type(item))
+            raise ValueError(
+                f'Unsupported filter item type: {type(item)}'
+            )
 
 def setup_process_split_config(
     config: Config,

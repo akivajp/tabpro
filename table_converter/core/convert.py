@@ -221,11 +221,19 @@ def filter_row(
         if config.operator == '==':
             if not found:
                 return False
-            if str(value) != str(config.value):
+            if value != config.value and str(value) != str(config.value):
                 return False
         elif config.operator == '!=':
-            if str(value) == str(config.value):
+            if str(value) == str(config.value) or value == config.value:
                 return False
+        elif config.operator == 'not-in':
+            if isinstance(config.value, list):
+                if value in config.value:
+                    return False
+                if str(value) in config.value:
+                    return False
+            else:
+                raise ValueError(f'Unsupported filter value type: type{config.value}')
         else:
             raise ValueError(f'Unsupported operator: {config.operator}')
     return True
