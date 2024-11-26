@@ -6,6 +6,10 @@ import os
 
 from collections import OrderedDict
 
+from typing import (
+    Mapping,
+)
+
 # 3-rd party modules
 
 from icecream import ic
@@ -15,6 +19,8 @@ import pandas as pd
 # local
 
 from . config import (
+    AssignArrayConfig,
+    Config,
     FilterConfig,
     SplitConfig,
     setup_config,
@@ -176,6 +182,23 @@ def map_formats(
             except:
                 raise
         new_row[f'{STAGING_FIELD}.{column}'] = formatted
+    return new_row
+
+def assign_array(
+    row: OrderedDict,
+    dict_config: Mapping[str, list[AssignArrayConfig]],
+):
+    new_row = OrderedDict(row)
+    #ic(dict_config)
+    for key, config in dict_config.items():
+        array = []
+        for item in config:
+            value, found = search_column_value(row, item.field)
+            if found and value is not None:
+                array.append(value)
+            elif not item.optional:
+                array.append(None)
+        new_row[f'{STAGING_FIELD}.{key}'] = array
     return new_row
 
 def remap_columns(
@@ -361,6 +384,8 @@ def convert(
                 new_flat_row = assign_id(new_flat_row, config.process.assign_ids, id_context_map)
             if config.process.assign_formats:
                 new_flat_row = map_formats(new_flat_row, config.process.assign_formats)
+            if config.process.assign_array:
+                new_flat_row = assign_array(new_flat_row, config.process.assign_array)
             if config.map:
                 new_flat_row = remap_columns(new_flat_row, config.map)
             if config.process.filter:

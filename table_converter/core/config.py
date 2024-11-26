@@ -3,6 +3,7 @@
 from collections import OrderedDict
 import dataclasses
 from typing import (
+    Any,
     Literal,
     Mapping,
 )
@@ -22,6 +23,11 @@ class AssignIdConfig:
     context: list[str] | None = None
 
 @dataclasses.dataclass
+class AssignArrayConfig:
+    field: str
+    optional: bool = True
+
+@dataclasses.dataclass
 class FilterConfig:
     field: str
     operator: Literal['==', '!=', '>', '>=', '<', '<=', 'not-in']
@@ -35,6 +41,7 @@ class SplitConfig:
 
 @dataclasses.dataclass
 class ProcessConfig:
+    assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
     assign_constants: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
@@ -88,8 +95,26 @@ def setup_process_config(
             if isinstance(dict_subprocess, Mapping):
                 config.process[process_key] = flatten(loaded['process'][process_key])
         setup_process_assign_ids_config(config, dict_process)
+        setup_process_assign_array_config(config, dict_process)
         setup_process_filter_config(config, dict_process)
         setup_process_split_config(config, dict_process)
+
+def raise_error_for_unsupported_type(
+    value: Any,
+    should_be: str | None = None,
+):
+    ic.enable()
+    ic()
+    ic(value)
+    ic(type(value))
+    if should_be:
+        raise ValueError(
+            f'Unsupported value type: {type(value)}. Should be {should_be}.'
+        )
+    else:
+        raise ValueError(
+            f'Unsupported value type: {type(value)}'
+        )
 
 def setup_process_assign_ids_config(
     config: Config,
@@ -121,12 +146,47 @@ def setup_process_assign_ids_config(
                     primary = [value],
                 )
             else:
-                ic.enable()
-                ic(value)
-                ic(type(value))
-                raise ValueError(
-                    f'Unsupported assign_ids value type: {type(value)}'
-                )
+                raise_error_for_unsupported_type(value, 'dict, list, or str')
+
+def setup_process_assign_array_config(
+    config: Config,
+    dict_process: Mapping,
+):
+    dict_subprocess = dict_process.get('assign_array')
+    if dict_subprocess is None:
+        return
+    if not isinstance(dict_subprocess, Mapping):
+        raise ValueError(
+            'Assign array must be a dictionary.'
+        )
+    for key, value in dict_subprocess.items():
+        if isinstance(value, list):
+            config.process.assign_array[key] = []
+            array = value
+            for item in array:
+                if isinstance(item, Mapping):
+                    field = item.get('field')
+                    optional = item.get('optional', False)
+                    if field is None:
+                        ic.enable()
+                        ic(item)
+                        ic(item.get('field'))
+                        raise ValueError(
+                            'Field is required for assign_array.'
+                        )
+                    config.process.assign_array[key].append(AssignArrayConfig(
+                        field = field,
+                        optional = optional,
+                    ))
+                elif isinstance(item, str):
+                    config.process.assign_array[key].append(AssignArrayConfig(
+                        field = item,
+                        optional = True,
+                    ))
+                else:
+                    raise_error_for_unsupported_type(item, 'dict or str')
+        else:
+            raise_error_for_unsupported_type(value, 'list')
 
 def setup_process_filter_config(
     config: Config,
