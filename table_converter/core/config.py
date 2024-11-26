@@ -133,6 +133,8 @@ def setup_process_filter_config(
     dict_process: Mapping,
 ):
     list_subprocess = dict_process.get('filter')
+    if list_subprocess is None:
+        return
     if not isinstance(list_subprocess, list):
         raise ValueError(
             'Filter must be a list.'
