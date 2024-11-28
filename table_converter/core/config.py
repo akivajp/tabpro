@@ -11,10 +11,10 @@ from typing import (
 from icecream import ic
 import yaml
 
-from . functions.flatten import (
+from .functions.flatten_row import (
     FieldMap,
     FlatFieldMap,
-    flatten,
+    flatten_row,
 )
 
 @dataclasses.dataclass
@@ -40,6 +40,11 @@ class PushConfig:
     source: str
     condition: str | None = None
 
+@dataclasses.dataclass
+class PickConfig:
+    target: str
+    source: str
+
 # --- action configs
 
 @dataclasses.dataclass
@@ -52,6 +57,8 @@ class SplitConfig:
     target: str
     source: str
     delimiter: str | None = None
+
+ActionConfig = AssignConstantConfig | SplitConfig
 
 @dataclasses.dataclass
 class ProcessConfig:
@@ -69,9 +76,9 @@ class ProcessConfig:
 
 @dataclasses.dataclass
 class Config:
-    actions: list[str] = dataclasses.field(default_factory=list)
+    actions: list[ActionConfig] = dataclasses.field(default_factory=list)
 
-    map: FieldMap = dataclasses.field(default_factory=OrderedDict)
+    pick: list[PickConfig] = dataclasses.field(default_factory=list)
     process: ProcessConfig = dataclasses.field(default_factory=ProcessConfig)
 
 def setup_config(
@@ -91,8 +98,27 @@ def setup_config(
                 'Only YAML configuration files are supported.'
             )
         ic(loaded)
-        if 'map' in loaded:
-            config.map = flatten(loaded['map'])
+        if 'pick' in loaded:
+            if not isinstance(loaded['pick'], Mapping | list):
+                raise ValueError(
+                    f'pick must be a dict or list, not {type(loaded["pick"])}'
+                )
+            if isinstance(loaded['pick'], Mapping):
+                for key, value in flatten_row(loaded['pick']).items():
+                    config.pick.append(PickConfig(
+                        target = key,
+                        source = value,
+                    ))
+            if isinstance(loaded['pick'], list):
+                for item in loaded['pick']:
+                    if not isinstance(item, str):
+                        raise ValueError(
+                            'Pickup list must contain strings.'
+                        )
+                    config.pick.append(PickConfig(
+                        target = item,
+                        source = item,
+                    ))
         setup_process_config(config, loaded)
     return config
 
@@ -109,7 +135,7 @@ def setup_process_config(
         ]:
             dict_subprocess = dict_process.get(process_key)
             if isinstance(dict_subprocess, Mapping):
-                config.process[process_key] = flatten(loaded['process'][process_key])
+                config.process[process_key] = flatten_row(loaded['process'][process_key])
         for process_key in [
             'assign_constants',
         ]:
@@ -339,3 +365,21 @@ def setup_process_split_config(
                 raise ValueError(
                     f'Unsupported assign_ids value type: {type(value)}'
                 )
+
+def setup_pick_with_args(
+    config: Config,
+    list_fields: list[str],
+):
+    ic(list_fields)
+    for field in list_fields:
+        if '=' in field:
+            target, source = field.split('=')
+            config.pick.append(PickConfig(
+                target = target.strip(),
+                source = source.strip(),
+            ))
+        else:
+            config.pick.append(PickConfig(
+                target = field.strip(),
+                source = field.strip(),
+            ))

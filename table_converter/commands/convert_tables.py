@@ -15,10 +15,10 @@ def run(
         config_path = args.config,
         assign_formats = args.assign_formats,
         str_filters = args.filters,
-        pickup_columns= args.pickup_columns,
         fields_to_assign_ids = args.assign_ids,
         str_omit_fields= args.omit_fields,
         list_actions = args.do_actions,
+        list_pick_columns = args.pick_columns,
         output_debug = args.output_debug,
     )
 
@@ -43,9 +43,10 @@ def setup_parser(
         help='Path to the configuration file.',
     )
     parser.add_argument(
-        '--pickup-columns',
+        '--pick-columns', '--pick',
         type=str,
-        help='Pickup column map',
+        nargs='+',
+        help='Pick column map',
     )
     parser.add_argument(
         '--assign-ids',

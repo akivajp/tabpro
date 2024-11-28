@@ -23,6 +23,7 @@ from . config import (
     FilterConfig,
     PushConfig,
     setup_config,
+    setup_pick_with_args,
 )
 from . constants import (
     FILE_FIELD,
@@ -34,10 +35,8 @@ from . functions.assign_id import (
     create_id_context_map,
     setup_assign_ids,
 )
-from . functions.flatten import (
-    flatten,
-)
-from . functions.get_field_value import get_field_value
+from .functions.flatten_row import flatten_row
+from .functions.get_nested_field_value import get_nested_field_value
 from . functions.search_column_value import search_column_value
 from . functions.set_nested_field_value import set_nested_field_value
 from . functions.nest_row import nest_row as nest
@@ -46,6 +45,7 @@ from . actions import (
     do_actions,
     pop_row_staging,
     prepare_row,
+    remap_columns,
     set_row_value,
     set_row_staging_value,
     setup_actions_with_args,
@@ -87,7 +87,7 @@ def load_json(
     #ic(data[0])
     rows = []
     for row in data:
-        new_row = flatten(row)
+        new_row = flatten_row(row)
         rows.append(new_row)
     df = pd.DataFrame(rows)
     return df
@@ -236,7 +236,7 @@ def push_fields(
         condition_value, found = search_column_value_from_nested(nested_row, config.condition)
         if condition_value:
             array.append(source_value)
-    return flatten(nested_row)
+    return flatten_row(nested_row)
 
 def assign_length(
     row: OrderedDict,
@@ -249,22 +249,22 @@ def assign_length(
             new_row[f'{STAGING_FIELD}.{key}'] = len(value)
     return new_row
 
-def remap_columns(
-    row: OrderedDict,
-    dict_remap: OrderedDict,
-):
-    new_row = OrderedDict()
-    for column in dict_remap.keys():
-        value, found = search_column_value(row, dict_remap[column])
-        #ic(column, dict_remap[column], value, found)
-        if found:
-            new_row[column] = value
-    for column in row.keys():
-        prefix = f'{STAGING_FIELD}.'
-        if column.startswith(prefix):
-            # NOTE: Leave staging fields as is
-            new_row[column] = row[column]
-    return new_row
+#def remap_columns(
+#    row: OrderedDict,
+#    dict_remap: OrderedDict,
+#):
+#    new_row = OrderedDict()
+#    for column in dict_remap.keys():
+#        value, found = search_column_value(row, dict_remap[column])
+#        #ic(column, dict_remap[column], value, found)
+#        if found:
+#            new_row[column] = value
+#    for column in row.keys():
+#        prefix = f'{STAGING_FIELD}.'
+#        if column.startswith(prefix):
+#            # NOTE: Leave staging fields as is
+#            new_row[column] = row[column]
+#    return new_row
 
 def filter_row(
     row: OrderedDict,
@@ -299,10 +299,11 @@ def convert(
     assign_formats: str | None = None,
     str_filters: str | None = None,
     str_omit_fields: str | None = None,
-    pickup_columns: str | None = None,
+    #pickup_columns: str | None = None,
     fields_to_assign_ids: str | None = None,
     output_debug: bool = False,
     list_actions: list[str] | None = None,
+    list_pick_columns: list[str] | None = None,
 ):
     ic.enable()
     ic()
@@ -319,14 +320,8 @@ def convert(
                 config.process.assign_formats[dst] = src
             else:
                 raise ValueError(f'Invalid template assignment: {field}')
-    if pickup_columns:
-        fields = pickup_columns.split(',')
-        for field in fields:
-            if '=' in field:
-                dst, value = field.split('=')
-                config.map[dst] = value
-            else:
-                config.map[field] = field
+    if list_pick_columns:
+        setup_pick_with_args(config, list_pick_columns)
     if str_filters:
         fields = str_filters.split(',')
         for field in fields:
@@ -380,12 +375,10 @@ def convert(
         new_flat_rows = []
         for index, flat_row in df.iterrows():
             flat_orig = OrderedDict(flat_row)
-            row = prepare_row(flat_orig)
+            row = prepare_row()
             if STAGING_FIELD not in row.nested:
                 set_row_staging_value(row, FILE_FIELD, input_file)
                 set_row_staging_value(row, INPUT_FIELD, flat_orig)
-            if config.map:
-                row.flat = remap_columns(row.flat, config.map)
             if config.process.assign_ids:
                 row.flat = assign_id(row.flat, config.process.assign_ids, id_context_map)
             if config.process.assign_formats:
@@ -396,8 +389,6 @@ def convert(
                 row.flat = push_fields(row.flat, config.process.push)
             if config.process.assign_length:
                 row.flat = assign_length(row.flat, config.process.assign_length)
-            if config.map:
-                row.flat = remap_columns(row.flat, config.map)
             if config.process.filter:
                 if not filter_row(row.flat, config.process.filter):
                     continue
@@ -406,6 +397,10 @@ def convert(
                     row.flat.pop(field, None)
             if config.actions:
                 row = do_actions(row, config.actions)
+            if config.pick:
+                remap_columns(row, config.pick)
+            else:
+                remap_columns(row, [])
             if not output_debug:
                 pop_row_staging(row)
             new_flat_rows.append(row.flat)

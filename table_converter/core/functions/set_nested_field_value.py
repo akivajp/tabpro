@@ -10,7 +10,7 @@ def set_nested_field_value(
     field: str,
     value: any,
 ):
-    if '.' in field:
+    if isinstance(field, str) and  '.' in field:
         field, rest = field.split('.', 1)
         if field not in data:
             data[field] = OrderedDict()

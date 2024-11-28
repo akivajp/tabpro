@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 
-def get_field_value(
+def get_nested_field_value(
     data: OrderedDict,
     field: str,
 ):
@@ -11,5 +11,5 @@ def get_field_value(
     if '.' in field:
         field, rest = field.split('.', 1)
         if field in data:
-            return get_field_value(data[field], rest)
+            return get_nested_field_value(data[field], rest)
     return None, False

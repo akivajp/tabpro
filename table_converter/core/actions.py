@@ -13,16 +13,19 @@ from icecream import ic
 from . config import (
     Config,
     AssignConstantConfig,
+    PickConfig,
     SplitConfig,
 )
 
 from . constants import (
+    INPUT_FIELD,
     STAGING_FIELD,
 )
 
+from . functions.flatten_row import flatten_row
+from . functions.nest_row import nest_row
 from . functions.search_column_value import search_column_value
 from .functions.set_nested_field_value import set_nested_field_value
-from . functions.nest_row import nest_row
 
 @dataclass
 class Row:
@@ -116,8 +119,10 @@ def do_action(
     )
 
 def prepare_row(
-    flat_row: OrderedDict,
+    flat_row: OrderedDict | None = None,
 ):
+    if flat_row is None:
+        flat_row = OrderedDict()
     nested_row = nest_row(flat_row)
     return Row(
         flat = OrderedDict(flat_row),
@@ -211,4 +216,36 @@ def split_field(
             new_value = list(filter(None, new_value))
             value = new_value
         set_row_staging_value(row, config.target, value)
+    return row
+
+def remap_columns(
+    row: Row,
+    list_config: list[PickConfig],
+):
+    if not list_config:
+        list_config = []
+        for key in row.nested[STAGING_FIELD][INPUT_FIELD].keys():
+            list_config.append(PickConfig(
+                source = key,
+                target = key,
+            ))
+    new_flat_row = OrderedDict()
+    picked = []
+    for config in list_config:
+        value, key = search_column_value(row.nested, config.source)
+        if key:
+            set_flat_field_value(new_flat_row, config.target, value)
+            picked.append(key)
+    for key in row.flat.keys():
+        if key in picked:
+            if not key.startswith(f'{STAGING_FIELD}.{INPUT_FIELD}.'):
+                continue
+        if key in new_flat_row:
+            continue
+        if key.startswith(f'{STAGING_FIELD}.'):
+            new_flat_row[key] = row.flat[key]
+        else:
+            new_flat_row[f'{STAGING_FIELD}.{key}'] = row.flat[key]
+    row.flat = new_flat_row
+    row.nested = nest_row(new_flat_row)
     return row

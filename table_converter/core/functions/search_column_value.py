@@ -9,17 +9,18 @@ from .. constants import (
 
 from collections import OrderedDict
 
+from . get_nested_field_value import get_nested_field_value
+
 def search_column_value(
     row: OrderedDict,
     column: str,
 ):
-    if f'{STAGING_FIELD}.{column}' in row:
-        value = row[f'{STAGING_FIELD}.{column}']
-        return value, True
-    if f'{STAGING_FIELD}.{INPUT_FIELD}.{column}' in row:
-        value = row[f'{STAGING_FIELD}.{INPUT_FIELD}.{column}']
-        return value, True
-    if column in row:
-        value = row[column]
-        return value, True
-    return None, False
+    for key in [
+        f'{STAGING_FIELD}.{column}',
+        f'{STAGING_FIELD}.{INPUT_FIELD}.{column}',
+        column,
+    ]:
+        value, found = get_nested_field_value(row, key)
+        if found:
+            return value, key
+    return None, None
