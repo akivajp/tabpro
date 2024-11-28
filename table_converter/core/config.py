@@ -142,21 +142,19 @@ def setup_process_assign_ids_config(
     dict_process: Mapping,
 ):
     dict_subprocess = dict_process.get('assign_ids')
+    str_for = 'assign_ids'
     if isinstance(dict_subprocess, Mapping):
         for key, value in dict_subprocess.items():
             if isinstance(value, Mapping):
-                primary = value.get('primary')
-                if not primary:
-                    ic.enable()
-                    ic(value)
-                    ic(value.get('primary'))
-                    raise ValueError(
-                        'Primary field is required for assign_ids.'
-                    )
+                primary = require_item(value, 'primary', str_for)
+                context = value.get('context', None)
+                if isinstance(primary, str):
+                    primary = [primary]
+                if isinstance(context, str):
+                    context = [context]
                 config.process.assign_ids[key] = AssignIdConfig(
-                    primary = value.get('primary', []),
-                    #given = value.get('given', None),
-                    context = value.get('context', None),
+                    primary = primary,
+                    context = context,
                 )
             elif isinstance(value, list):
                 config.process.assign_ids[key] = AssignIdConfig(
