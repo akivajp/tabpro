@@ -13,13 +13,12 @@ def run(
         input_files = args.input_files,
         output_file = args.output_file,
         config_path = args.config,
-        assign_constants = args.assign_constants,
         assign_formats = args.assign_formats,
         str_filters = args.filters,
         pickup_columns= args.pickup_columns,
-        fields_to_split_by_newline = args.split_by_newline,
         fields_to_assign_ids = args.assign_ids,
         str_omit_fields= args.omit_fields,
+        list_actions = args.do_actions,
         output_debug = args.output_debug,
     )
 
@@ -49,19 +48,9 @@ def setup_parser(
         help='Pickup column map',
     )
     parser.add_argument(
-        '--split-by-newline',
-        type=str,
-        help='Fields to split by newline',
-    )
-    parser.add_argument(
         '--assign-ids',
         type=str,
         help='Field to assign ids',
-    )
-    parser.add_argument(
-        '--assign-constants',
-        type=str,
-        help='Field to assign constants',
     )
     parser.add_argument(
         '--assign-formats',
@@ -77,6 +66,12 @@ def setup_parser(
         '--omit-fields', '--omit',
         type=str,
         help='Field to omit',
+    )
+    parser.add_argument(
+        '--do-actions', '--actions', '--do',
+        nargs='+',
+        type=str,
+        help='Actions to do',
     )
     parser.add_argument(
         '--output-debug',

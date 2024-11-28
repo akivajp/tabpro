@@ -5,7 +5,7 @@ Set the value of a field in a nested dictionary.
 from collections import OrderedDict
 from icecream import ic
 
-def set_field_value(
+def set_nested_field_value(
     data: OrderedDict,
     field: str,
     value: any,
@@ -14,6 +14,6 @@ def set_field_value(
         field, rest = field.split('.', 1)
         if field not in data:
             data[field] = OrderedDict()
-        set_field_value(data[field], rest, value)
+        set_nested_field_value(data[field], rest, value)
     else:
         data[field] = value

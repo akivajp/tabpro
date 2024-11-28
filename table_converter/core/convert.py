@@ -22,7 +22,6 @@ from . config import (
     AssignArrayConfig,
     FilterConfig,
     PushConfig,
-    SplitConfig,
     setup_config,
 )
 from . constants import (
@@ -40,7 +39,17 @@ from . functions.flatten import (
 )
 from . functions.get_field_value import get_field_value
 from . functions.search_column_value import search_column_value
-from . functions.set_field_value import set_field_value
+from . functions.set_nested_field_value import set_nested_field_value
+from . functions.nest_row import nest_row as nest
+
+from . actions import (
+    do_actions,
+    pop_row_staging,
+    prepare_row,
+    set_row_value,
+    set_row_staging_value,
+    setup_actions_with_args,
+)
 
 dict_loaders: dict[str, callable] = {}
 def register_loader(
@@ -82,21 +91,6 @@ def load_json(
         rows.append(new_row)
     df = pd.DataFrame(rows)
     return df
-
-def nest(
-    row: OrderedDict,
-    remove_nan: bool = True,
-):
-    new_row = OrderedDict()
-    for key, value in row.items():
-        if isinstance(value, OrderedDict):
-            value = nest(value)
-        if isinstance(value, float):
-            if math.isnan(value):
-                if remove_nan:
-                    continue
-        set_field_value(new_row, key, value)
-    return new_row
 
 @register_saver('.json')
 def save_json(
@@ -145,15 +139,6 @@ def save_jsonl(
                 ensure_ascii=False,
             )
             f.write('\n')
-
-def map_constants(
-    row: OrderedDict,
-    dict_constants: OrderedDict,
-):
-    new_row = OrderedDict(row)
-    for column in dict_constants.keys():
-        new_row[f'{STAGING_FIELD}.{column}'] = dict_constants[column]
-    return new_row
 
 def map_formats(
     row: OrderedDict,
@@ -242,7 +227,8 @@ def push_fields(
             array = target_value
         else:
             array = []
-            set_field_value(nested_row, f'{STAGING_FIELD}.{config.target}', array)
+            #set_field_value(nested_row, f'{STAGING_FIELD}.{config.target}', array)
+            set_row_staging_value(nested_row, config.target, array)
         source_value, found = search_column_value_from_nested(nested_row, config.source)
         if config.condition is None:
             array.append(source_value)
@@ -270,6 +256,7 @@ def remap_columns(
     new_row = OrderedDict()
     for column in dict_remap.keys():
         value, found = search_column_value(row, dict_remap[column])
+        #ic(column, dict_remap[column], value, found)
         if found:
             new_row[column] = value
     for column in row.keys():
@@ -277,24 +264,6 @@ def remap_columns(
         if column.startswith(prefix):
             # NOTE: Leave staging fields as is
             new_row[column] = row[column]
-    return new_row
-
-def split_fields(
-    row: OrderedDict,
-    dict_config: list[SplitConfig],
-):
-    new_row = OrderedDict(row)
-    for dst, config in dict_config.items():
-        value, found = search_column_value(row, config.field)
-        if found:
-            if isinstance(value, str):
-                new_value = value.split(config.delimiter)
-                new_value = list(filter(None, new_value))
-                if not new_value:
-                    ic(dst, config, value)
-                new_row[f'{STAGING_FIELD}.{dst}'] = new_value
-            else:
-                new_row[f'{STAGING_FIELD}.{dst}'] = value
     return new_row
 
 def filter_row(
@@ -327,14 +296,13 @@ def convert(
     input_files: list[str],
     output_file: str | None = None,
     config_path: str | None = None,
-    assign_constants: str | None = None,
     assign_formats: str | None = None,
     str_filters: str | None = None,
     str_omit_fields: str | None = None,
     pickup_columns: str | None = None,
-    fields_to_split_by_newline: str | None = None,
     fields_to_assign_ids: str | None = None,
     output_debug: bool = False,
+    list_actions: list[str] | None = None,
 ):
     ic.enable()
     ic()
@@ -343,14 +311,6 @@ def convert(
     id_context_map = create_id_context_map()
     config = setup_config(config_path)
     ic(config)
-    if assign_constants:
-        fields = assign_constants.split(',')
-        for field in fields:
-            if '=' in field:
-                dst, src = field.split('=')
-                config.process.assign_constants[dst] = src
-            else:
-                raise ValueError(f'Invalid constant assignment: {field}')
     if assign_formats:
         fields = assign_formats.split(',')
         for field in fields:
@@ -367,18 +327,6 @@ def convert(
                 config.map[dst] = value
             else:
                 config.map[field] = field
-    if fields_to_split_by_newline:
-        fields = fields_to_split_by_newline.split(',')
-        for field in fields:
-            if '=' in field:
-                dst, src = field.split('=')
-                #config.process.split_by_newline[dst] = src
-                config.process.split[dst] = SplitConfig(
-                    field = src,
-                    delimiter = '\n',
-                )
-            else:
-                raise ValueError(f'Invalid split by newline: {field}')
     if str_filters:
         fields = str_filters.split(',')
         for field in fields:
@@ -404,6 +352,8 @@ def convert(
             config.process.omit_fields.append(field)
     if fields_to_assign_ids:
         setup_assign_ids(config, fields_to_assign_ids)
+    if list_actions:
+        setup_actions_with_args(config, list_actions)
     if output_file:
         ext = os.path.splitext(output_file)[1]
         if ext not in dict_savers:
@@ -429,42 +379,36 @@ def convert(
         #new_rows = []
         new_flat_rows = []
         for index, flat_row in df.iterrows():
-            orig = OrderedDict(flat_row)
-            new_flat_row = OrderedDict(flat_row)
-            new_nested_row = nest(new_flat_row)
-            if STAGING_FIELD not in new_nested_row:
-                new_flat_row[f'{STAGING_FIELD}.{FILE_FIELD}'] = input_file
-                for key, value in orig.items():
-                    new_flat_row[f'{STAGING_FIELD}.{INPUT_FIELD}.{key}'] = value
-            if config.process.assign_constants:
-                new_flat_row = map_constants(new_flat_row, config.process.assign_constants)
+            flat_orig = OrderedDict(flat_row)
+            row = prepare_row(flat_orig)
+            if STAGING_FIELD not in row.nested:
+                set_row_staging_value(row, FILE_FIELD, input_file)
+                set_row_staging_value(row, INPUT_FIELD, flat_orig)
             if config.map:
-                new_flat_row = remap_columns(new_flat_row, config.map)
-            if config.process.split:
-                new_flat_row = split_fields(new_flat_row, config.process.split)
+                row.flat = remap_columns(row.flat, config.map)
             if config.process.assign_ids:
-                new_flat_row = assign_id(new_flat_row, config.process.assign_ids, id_context_map)
+                row.flat = assign_id(row.flat, config.process.assign_ids, id_context_map)
             if config.process.assign_formats:
-                new_flat_row = map_formats(new_flat_row, config.process.assign_formats)
+                row.flat = map_formats(row.flat, config.process.assign_formats)
             if config.process.assign_array:
-                new_flat_row = assign_array(new_flat_row, config.process.assign_array)
+                row.flat= assign_array(row.flat, config.process.assign_array)
             if config.process.push:
-                new_flat_row = push_fields(new_flat_row, config.process.push)
+                row.flat = push_fields(row.flat, config.process.push)
             if config.process.assign_length:
-                new_flat_row = assign_length(new_flat_row, config.process.assign_length)
+                row.flat = assign_length(row.flat, config.process.assign_length)
             if config.map:
-                new_flat_row = remap_columns(new_flat_row, config.map)
+                row.flat = remap_columns(row.flat, config.map)
             if config.process.filter:
-                if not filter_row(new_flat_row, config.process.filter):
+                if not filter_row(row.flat, config.process.filter):
                     continue
             if config.process.omit_fields:
                 for field in config.process.omit_fields:
-                    new_flat_row.pop(field, None)
+                    row.flat.pop(field, None)
+            if config.actions:
+                row = do_actions(row, config.actions)
             if not output_debug:
-                for key in list(new_flat_row.keys()):
-                    if key.startswith(STAGING_FIELD):
-                        new_flat_row.pop(key)
-            new_flat_rows.append(new_flat_row)
+                pop_row_staging(row)
+            new_flat_rows.append(row.flat)
         new_df = pd.DataFrame(new_flat_rows)
         df_list.append(new_df)
     all_df = pd.concat(df_list)

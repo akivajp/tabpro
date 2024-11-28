@@ -35,28 +35,33 @@ class FilterConfig:
     value: str | list[str]
 
 @dataclasses.dataclass
-class SplitConfig:
-    field: str
-    delimiter: str
-
-@dataclasses.dataclass
 class PushConfig:
     target: str
     source: str
     condition: str | None = None
 
+# --- action configs
+
+@dataclasses.dataclass
+class AssignConstantConfig:
+    target: str
+    value: Any
+
+@dataclasses.dataclass
+class SplitConfig:
+    target: str
+    source: str
+    delimiter: str | None = None
+
 @dataclasses.dataclass
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
-    assign_constants: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
     assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
-    #filter_eq: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     filter: list[FilterConfig] = dataclasses.field(default_factory=list)
     omit_fields: list[str] = dataclasses.field(default_factory=list)
     push: list[PushConfig] = dataclasses.field(default_factory=list)
-    #split_by_newline: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     split: Mapping[str, SplitConfig] = dataclasses.field(default_factory=OrderedDict)
 
     def __setitem__(self, key, value):
@@ -64,6 +69,8 @@ class ProcessConfig:
 
 @dataclasses.dataclass
 class Config:
+    actions: list[str] = dataclasses.field(default_factory=list)
+
     map: FieldMap = dataclasses.field(default_factory=OrderedDict)
     process: ProcessConfig = dataclasses.field(default_factory=ProcessConfig)
 
@@ -96,13 +103,23 @@ def setup_process_config(
     dict_process = loaded.get('process')
     if isinstance(dict_process, Mapping):
         for process_key in [
-            'assign_constants',
+            #'assign_constants',
             'assign_formats',
             'assign_length',
         ]:
             dict_subprocess = dict_process.get(process_key)
             if isinstance(dict_subprocess, Mapping):
                 config.process[process_key] = flatten(loaded['process'][process_key])
+        for process_key in [
+            'assign_constants',
+        ]:
+            dict_subprocess = dict_process.get(process_key)
+            if isinstance(dict_subprocess, Mapping):
+                for key, value in dict_subprocess.items():
+                    config.actions.append(AssignConstantConfig(
+                        target = key,
+                        value = value,
+                    ))
         setup_process_assign_ids_config(config, dict_process)
         setup_process_assign_array_config(config, dict_process)
         setup_process_filter_config(config, dict_process)
@@ -306,10 +323,15 @@ def setup_process_split_config(
                     raise ValueError(
                         'Delimiter is required for split.'
                     )
-                config.process.split[key] = SplitConfig(
-                    field = field,
+                #config.process.split[key] = SplitConfig(
+                #    field = field,
+                #    delimiter = delimiter,
+                #)
+                config.actions.append(SplitConfig(
+                    target = key,
+                    source = field,
                     delimiter = delimiter,
-                )
+                ))
             else:
                 ic.enable()
                 ic(value)
