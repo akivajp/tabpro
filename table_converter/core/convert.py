@@ -30,25 +30,27 @@ from . constants import (
     INPUT_FIELD,
     STAGING_FIELD,
 )
-from . functions.assign_id import (
-    assign_id,
-    create_id_context_map,
-    setup_assign_ids,
-)
-from .functions.flatten_row import flatten_row
-from .functions.get_nested_field_value import get_nested_field_value
+from . functions.flatten_row import flatten_row
+from . functions.get_nested_field_value import get_nested_field_value
+from . functions.get_nested_field_value import get_nested_field_value
+from . functions.nest_row import nest_row as nest
 from . functions.search_column_value import search_column_value
 from . functions.set_nested_field_value import set_nested_field_value
-from . functions.nest_row import nest_row as nest
+from . functions.set_row_value import (
+    set_row_value,
+    set_row_staging_value,
+)
 
 from . actions import (
     do_actions,
     pop_row_staging,
     prepare_row,
     remap_columns,
-    set_row_value,
-    set_row_staging_value,
     setup_actions_with_args,
+)
+
+from . types import (
+    GlobalStatus,
 )
 
 dict_loaders: dict[str, callable] = {}
@@ -156,10 +158,6 @@ def map_formats(
                 if key.startswith(prefix):
                     rest = key[len(prefix):]
                     params[rest] = value
-            #prefix = f'{STAGING_FIELD}.'
-            #if key.startswith(prefix):
-            #    rest = key[len(prefix):]
-            #    params[rest] = value
         params.update(row)
         formatted = None
         while formatted is None:
@@ -200,18 +198,17 @@ def search_column_value_from_nested(
     column: str,
 ):
     if STAGING_FIELD in nested_row:
-        value, found = get_field_value(nested_row[STAGING_FIELD], column)
+        value, found = get_nested_field_value(nested_row[STAGING_FIELD], column)
         if found:
             return value, True
-    value, found = get_field_value(nested_row[STAGING_FIELD], column)
-    original, found = get_field_value(nested_row, f'{STAGING_FIELD}.{INPUT_FIELD}')
+    value, found = get_nested_field_value(nested_row[STAGING_FIELD], column)
+    original, found = get_nested_field_value(nested_row, f'{STAGING_FIELD}.{INPUT_FIELD}')
     if found:
-        value, found = get_field_value(original, column)
+        value, found = get_nested_field_value(original, column)
         if found:
             return value, True
-    value, found = get_field_value(nested_row, column)
+    value, found = get_nested_field_value(nested_row, column)
     if found:
-        #set_field_value(nested_row, column, value)
         return value, True
     return None, False
 
@@ -249,23 +246,6 @@ def assign_length(
             new_row[f'{STAGING_FIELD}.{key}'] = len(value)
     return new_row
 
-#def remap_columns(
-#    row: OrderedDict,
-#    dict_remap: OrderedDict,
-#):
-#    new_row = OrderedDict()
-#    for column in dict_remap.keys():
-#        value, found = search_column_value(row, dict_remap[column])
-#        #ic(column, dict_remap[column], value, found)
-#        if found:
-#            new_row[column] = value
-#    for column in row.keys():
-#        prefix = f'{STAGING_FIELD}.'
-#        if column.startswith(prefix):
-#            # NOTE: Leave staging fields as is
-#            new_row[column] = row[column]
-#    return new_row
-
 def filter_row(
     row: OrderedDict,
     list_filters: list[FilterConfig],
@@ -299,8 +279,6 @@ def convert(
     assign_formats: str | None = None,
     str_filters: str | None = None,
     str_omit_fields: str | None = None,
-    #pickup_columns: str | None = None,
-    fields_to_assign_ids: str | None = None,
     output_debug: bool = False,
     list_actions: list[str] | None = None,
     list_pick_columns: list[str] | None = None,
@@ -309,7 +287,7 @@ def convert(
     ic()
     ic(input_files)
     df_list = []
-    id_context_map = create_id_context_map()
+    global_status = GlobalStatus()
     config = setup_config(config_path)
     ic(config)
     if assign_formats:
@@ -345,8 +323,6 @@ def convert(
         fields = str_omit_fields.split(',')
         for field in fields:
             config.process.omit_fields.append(field)
-    if fields_to_assign_ids:
-        setup_assign_ids(config, fields_to_assign_ids)
     if list_actions:
         setup_actions_with_args(config, list_actions)
     if output_file:
@@ -374,13 +350,11 @@ def convert(
         #new_rows = []
         new_flat_rows = []
         for index, flat_row in df.iterrows():
-            flat_orig = OrderedDict(flat_row)
-            row = prepare_row()
-            if STAGING_FIELD not in row.nested:
+            orig_row = prepare_row(flat_row)
+            row = prepare_row(flat_row)
+            if STAGING_FIELD not in orig_row.nested:
                 set_row_staging_value(row, FILE_FIELD, input_file)
-                set_row_staging_value(row, INPUT_FIELD, flat_orig)
-            if config.process.assign_ids:
-                row.flat = assign_id(row.flat, config.process.assign_ids, id_context_map)
+                set_row_staging_value(row, INPUT_FIELD, orig_row.nested)
             if config.process.assign_formats:
                 row.flat = map_formats(row.flat, config.process.assign_formats)
             if config.process.assign_array:
@@ -396,11 +370,9 @@ def convert(
                 for field in config.process.omit_fields:
                     row.flat.pop(field, None)
             if config.actions:
-                row = do_actions(row, config.actions)
+                row = do_actions(global_status, row, config.actions)
             if config.pick:
                 remap_columns(row, config.pick)
-            else:
-                remap_columns(row, [])
             if not output_debug:
                 pop_row_staging(row)
             new_flat_rows.append(row.flat)

@@ -13,6 +13,7 @@ from icecream import ic
 from . config import (
     Config,
     AssignConstantConfig,
+    AssignIdConfig,
     PickConfig,
     SplitConfig,
 )
@@ -22,15 +23,20 @@ from . constants import (
     STAGING_FIELD,
 )
 
+from . types import (
+    GlobalStatus,
+    Row,
+)
+
+from . functions.assign_id import assign_id
 from . functions.flatten_row import flatten_row
 from . functions.nest_row import nest_row
 from . functions.search_column_value import search_column_value
-from .functions.set_nested_field_value import set_nested_field_value
-
-@dataclass
-class Row:
-    flat: OrderedDict
-    nested: OrderedDict
+from . functions.set_flat_field_value import set_flat_field_value
+from . functions.set_row_value import (
+    set_row_staging_value,
+)
+from . functions.set_nested_field_value import set_nested_field_value
 
 def setup_actions_with_args(
     config: Config,
@@ -85,6 +91,16 @@ def setup_actions_with_args(
                     value = value,
                 ))
                 continue
+            if action_name == 'assign-id':
+                context = options.get('context', None)
+                if context:
+                    context = context.split(',')
+                config.actions.append(AssignIdConfig(
+                    target = target,
+                    primary = [source],
+                    context = context,
+                ))
+                continue
             if action_name == 'split':
                 delimiter = options.get('delimiter', None)
                 config.actions.append(SplitConfig(
@@ -99,19 +115,23 @@ def setup_actions_with_args(
     return config
 
 def do_actions(
+    status: GlobalStatus,
     row: Row,
     actions: list[AssignConstantConfig],
 ):
     for action in actions:
-        row = do_action(row, action)
+        row = do_action(status, row, action)
     return row
 
 def do_action(
+    status: GlobalStatus,
     row: Row,
     action: AssignConstantConfig,
 ):
     if isinstance(action, AssignConstantConfig):
         return assign_constant(row, action)
+    if isinstance(action, AssignIdConfig):
+        return assign_id(status.id_context_map, row, action)
     if isinstance(action, SplitConfig):
         return split_field(row, action)
     raise ValueError(
@@ -128,40 +148,6 @@ def prepare_row(
         flat = OrderedDict(flat_row),
         nested = nested_row,
     )
-
-def set_flat_field_value(
-    flat_row: OrderedDict,
-    target: str,
-    value: Any,
-    depth: int = 0,
-):
-    if depth > 10:
-        raise ValueError(
-            'Depth too high'
-        )
-    if isinstance(value, dict):
-        for key in value.keys():
-            set_flat_field_value(flat_row, f'{target}.{key}', value[key], depth + 1)
-    else:
-        flat_row[target] = value
-    return flat_row
-
-def set_row_value(
-    row: Row,
-    target: str,
-    value: Any,
-):
-    set_flat_field_value(row.flat, target, value)
-    set_nested_field_value(row.nested, target, value)
-    return row
-
-def set_row_staging_value(
-    row: Row,
-    target: str,
-    value: Any,
-):
-    set_row_value(row, f'{STAGING_FIELD}.{target}', value)
-    return row
 
 def delete_flat_row_value(
     flat_row: OrderedDict,

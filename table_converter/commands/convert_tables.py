@@ -15,7 +15,6 @@ def run(
         config_path = args.config,
         assign_formats = args.assign_formats,
         str_filters = args.filters,
-        fields_to_assign_ids = args.assign_ids,
         str_omit_fields= args.omit_fields,
         list_actions = args.do_actions,
         list_pick_columns = args.pick_columns,
@@ -47,11 +46,6 @@ def setup_parser(
         type=str,
         nargs='+',
         help='Pick column map',
-    )
-    parser.add_argument(
-        '--assign-ids',
-        type=str,
-        help='Field to assign ids',
     )
     parser.add_argument(
         '--assign-formats',

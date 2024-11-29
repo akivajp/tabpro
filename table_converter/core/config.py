@@ -11,16 +11,24 @@ from typing import (
 from icecream import ic
 import yaml
 
-from .functions.flatten_row import (
+from . functions.flatten_row import (
     FieldMap,
     FlatFieldMap,
     flatten_row,
 )
 
-@dataclasses.dataclass
-class AssignIdConfig:
-    primary: list[str]
-    context: list[str] | None = None
+from . functions.set_row_value import (
+    set_row_value,
+    set_row_staging_value,
+)
+
+from . types import (
+    ActionConfig,
+    AssignIdConfig,
+    AssignConstantConfig,
+    SplitConfig,
+    PickConfig,
+)
 
 @dataclasses.dataclass
 class AssignArrayConfig:
@@ -41,35 +49,15 @@ class PushConfig:
     condition: str | None = None
 
 @dataclasses.dataclass
-class PickConfig:
-    target: str
-    source: str
-
-# --- action configs
-
-@dataclasses.dataclass
-class AssignConstantConfig:
-    target: str
-    value: Any
-
-@dataclasses.dataclass
-class SplitConfig:
-    target: str
-    source: str
-    delimiter: str | None = None
-
-ActionConfig = AssignConstantConfig | SplitConfig
-
-@dataclasses.dataclass
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
     assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
-    assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
+    #assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
     assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     filter: list[FilterConfig] = dataclasses.field(default_factory=list)
     omit_fields: list[str] = dataclasses.field(default_factory=list)
     push: list[PushConfig] = dataclasses.field(default_factory=list)
-    split: Mapping[str, SplitConfig] = dataclasses.field(default_factory=OrderedDict)
+    #split: Mapping[str, SplitConfig] = dataclasses.field(default_factory=OrderedDict)
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
@@ -195,18 +183,21 @@ def setup_process_assign_ids_config(
                     primary = [primary]
                 if isinstance(context, str):
                     context = [context]
-                config.process.assign_ids[key] = AssignIdConfig(
+                config.actions.append(AssignIdConfig(
+                    target = key,
                     primary = primary,
                     context = context,
-                )
+                ))
             elif isinstance(value, list):
-                config.process.assign_ids[key] = AssignIdConfig(
+                config.actions.append(AssignIdConfig(
+                    target = key,
                     primary = value,
-                )
+                ))
             elif isinstance(value, str):
-                config.process.assign_ids[key] = AssignIdConfig(
+                config.actions.append(AssignIdConfig(
+                    target = key,
                     primary = [value],
-                )
+                ))
             else:
                 raise_error_for_unsupported_type(value, 'dict, list, or str')
 
