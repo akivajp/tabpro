@@ -141,6 +141,20 @@ def save_jsonl(
             )
             f.write('\n')
 
+@register_saver('.csv')
+def save_csv(
+    df: pd.DataFrame,
+    output_file: str,
+):
+    df.to_csv(output_file, index=False)
+
+@register_saver('.xlsx')
+def save_excel(
+    df: pd.DataFrame,
+    output_file: str,
+):
+    df.to_excel(output_file, index=False)
+
 def assign_array(
     row: OrderedDict,
     dict_config: Mapping[str, list[AssignArrayConfig]],
