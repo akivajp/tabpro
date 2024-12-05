@@ -44,6 +44,10 @@ class FilterConfig:
     value: str | list[str]
 
 @dataclasses.dataclass
+class OmitConfig:
+    field: str
+
+@dataclasses.dataclass
 class PickConfig:
     target: str
     source: str

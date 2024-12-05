@@ -12,7 +12,6 @@ from icecream import ic
 import yaml
 
 from . functions.flatten_row import (
-    FieldMap,
     FlatFieldMap,
     flatten_row,
 )
@@ -42,7 +41,6 @@ class PushConfig:
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
     assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
-    omit_fields: list[str] = dataclasses.field(default_factory=list)
     push: list[PushConfig] = dataclasses.field(default_factory=list)
 
     def __setitem__(self, key, value):

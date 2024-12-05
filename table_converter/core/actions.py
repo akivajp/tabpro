@@ -25,6 +25,7 @@ from . types import (
     AssignIdConfig,
     FilterConfig,
     GlobalStatus,
+    OmitConfig,
     PickConfig,
     SplitConfig,
     Row,
@@ -108,6 +109,11 @@ def setup_actions_with_args(
                     target = target,
                     primary = [source],
                     context = context,
+                ))
+                continue
+            if action_name == 'omit':
+                config.actions.append(OmitConfig(
+                    field = target,
                 ))
                 continue
             if action_name == 'split':
@@ -205,6 +211,8 @@ def do_action(
         if filter_row(row, action):
             return row
         return None
+    if isinstance(action, OmitConfig):
+        return omit_field(row, action)
     if isinstance(action, SplitConfig):
         return split_field(row, action)
     raise ValueError(
@@ -239,9 +247,9 @@ def pop_nested_row_value(
     keys = key.split('.')
     for key in keys[:-1]:
         if key not in nested_row:
-            return default
+            return default, False
         nested_row = nested_row[key]
-    return nested_row.pop(keys[-1], default)
+    return nested_row.pop(keys[-1], default), True
 
 def pop_row_value(
     row: Row,
@@ -375,3 +383,14 @@ def filter_row(
     else:
         raise ValueError(f'Unsupported operator: {config.operator}')
     return True
+
+def omit_field(
+    row: Row,
+    config: OmitConfig,
+):
+    value, found = pop_row_value(row, config.field)
+    if not found:
+        return row
+    if f'{STAGING_FIELD}.{config.field}' not in row.flat:
+        set_row_staging_value(row, config.field, value)
+    return row

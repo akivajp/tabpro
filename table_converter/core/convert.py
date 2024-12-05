@@ -215,7 +215,6 @@ def convert(
     input_files: list[str],
     output_file: str | None = None,
     config_path: str | None = None,
-    str_omit_fields: str | None = None,
     output_debug: bool = False,
     list_actions: list[str] | None = None,
     list_pick_columns: list[str] | None = None,
@@ -230,10 +229,6 @@ def convert(
     ic(config)
     if list_pick_columns:
         setup_pick_with_args(config, list_pick_columns)
-    if str_omit_fields:
-        fields = str_omit_fields.split(',')
-        for field in fields:
-            config.process.omit_fields.append(field)
     if list_actions:
         setup_actions_with_args(config, list_actions)
     if output_file:
@@ -272,9 +267,6 @@ def convert(
                 row.flat = push_fields(row.flat, config.process.push)
             if config.process.assign_length:
                 row.flat = assign_length(row.flat, config.process.assign_length)
-            if config.process.omit_fields:
-                for field in config.process.omit_fields:
-                    row.flat.pop(field, None)
             if config.actions:
                 new_row = do_actions(global_status, row, config.actions)
                 if new_row is None:
