@@ -13,7 +13,6 @@ def run(
         input_files = args.input_files,
         output_file = args.output_file,
         config_path = args.config,
-        assign_formats = args.assign_formats,
         str_filters = args.filters,
         str_omit_fields= args.omit_fields,
         list_actions = args.do_actions,
@@ -46,11 +45,6 @@ def setup_parser(
         type=str,
         nargs='+',
         help='Pick column map',
-    )
-    parser.add_argument(
-        '--assign-formats',
-        type=str,
-        help='Field to assign formats',
     )
     parser.add_argument(
         '--filters', '--filter', '-f',

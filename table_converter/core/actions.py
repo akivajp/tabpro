@@ -12,10 +12,6 @@ from icecream import ic
 
 from . config import (
     Config,
-    AssignConstantConfig,
-    AssignIdConfig,
-    PickConfig,
-    SplitConfig,
 )
 
 from . constants import (
@@ -24,7 +20,12 @@ from . constants import (
 )
 
 from . types import (
+    AssignConstantConfig,
+    AssignFormatConfig,
+    AssignIdConfig,
     GlobalStatus,
+    PickConfig,
+    SplitConfig,
     Row,
 )
 
@@ -45,11 +46,15 @@ def setup_actions_with_args(
     ic(list_actions)
     for str_action in list_actions:
         fields = str_action.split(':')
+        if len(fields) >= 1:
+            action_name = fields[0].strip()
+        if action_name == 'assign-format':
+            setup_assign_format_action(config, str_action)
+            continue
         if len(fields) not in [2,3]:
             raise ValueError(
                 f'Action must have 2 or 3 colon-separated fields: {str_action}'
             )
-        action_name = fields[0].strip()
         str_fields = fields[1].strip()
         if len(fields) == 3:
             str_options = fields[2].strip()
@@ -114,6 +119,30 @@ def setup_actions_with_args(
             )
     return config
 
+def setup_assign_format_action(
+    config: Config,
+    str_action: str,
+):
+    action_fields = str_action.split(':', 1)
+    if len(action_fields) != 2:
+        raise ValueError(
+            f'Expected 2 fields separated by ":": {str_action}'
+        )
+    action_name = action_fields[0].strip()
+    assert action_name == 'assign-format'
+    assignment_fields = action_fields[1].split('=')
+    if len(assignment_fields) != 2:
+        raise ValueError(
+            f'Expected 2 fields separated by "=": {action_fields[1]}'
+        )
+    target = assignment_fields[0].strip()
+    format = assignment_fields[1].strip()
+    config.actions.append(AssignFormatConfig(
+        target = target,
+        format = format,
+    ))
+    return config
+
 def do_actions(
     status: GlobalStatus,
     row: Row,
@@ -130,6 +159,8 @@ def do_action(
 ):
     if isinstance(action, AssignConstantConfig):
         return assign_constant(row, action)
+    if isinstance(action, AssignFormatConfig):
+        return assign_format(row, action)
     if isinstance(action, AssignIdConfig):
         return assign_id(status.id_context_map, row, action)
     if isinstance(action, SplitConfig):
@@ -234,4 +265,36 @@ def remap_columns(
             new_flat_row[f'{STAGING_FIELD}.{key}'] = row.flat[key]
     row.flat = new_flat_row
     row.nested = nest_row(new_flat_row)
+    return row
+
+def assign_format(
+    row: Row,
+    config: AssignFormatConfig,
+):
+    template = config.format
+    params = {}
+    for key, value in row.flat.items():
+        for prefix in [
+            f'{STAGING_FIELD}.{INPUT_FIELD}.',
+            f'{STAGING_FIELD}.',
+        ]:
+            if key.startswith(prefix):
+                rest = key[len(prefix):]
+                params[rest] = value
+    params.update(row.flat)
+    formatted = None
+    while formatted is None:
+        try:
+            formatted = template.format(**params)
+        except KeyError as e:
+            #ic(e)
+            #ic(e.args)
+            #ic(e.args[0])
+            key = e.args[0]
+            params[key] = f'__{key}__undefined__'
+        except:
+            #ic(params)
+            ic(params.keys())
+            raise
+    set_row_staging_value(row, config.target, formatted)
     return row

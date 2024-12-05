@@ -142,40 +142,6 @@ def save_jsonl(
             )
             f.write('\n')
 
-def map_formats(
-    row: OrderedDict,
-    dict_formats: OrderedDict,
-):
-    new_row = OrderedDict(row)
-    for column in dict_formats.keys():
-        template = dict_formats[column]
-        params = {}
-        for key, value in row.items():
-            for prefix in [
-                f'{STAGING_FIELD}.{INPUT_FIELD}.',
-                f'{STAGING_FIELD}.',
-            ]:
-                if key.startswith(prefix):
-                    rest = key[len(prefix):]
-                    params[rest] = value
-        params.update(row)
-        formatted = None
-        while formatted is None:
-            try:
-                formatted = template.format(**params)
-            except KeyError as e:
-                #ic(e)
-                #ic(e.args)
-                #ic(e.args[0])
-                key = e.args[0]
-                params[key] = f'__{key}__undefined__'
-            except:
-                #ic(params)
-                ic(params.keys())
-                raise
-        new_row[f'{STAGING_FIELD}.{column}'] = formatted
-    return new_row
-
 def assign_array(
     row: OrderedDict,
     dict_config: Mapping[str, list[AssignArrayConfig]],
@@ -276,7 +242,6 @@ def convert(
     input_files: list[str],
     output_file: str | None = None,
     config_path: str | None = None,
-    assign_formats: str | None = None,
     str_filters: str | None = None,
     str_omit_fields: str | None = None,
     output_debug: bool = False,
@@ -290,14 +255,6 @@ def convert(
     global_status = GlobalStatus()
     config = setup_config(config_path)
     ic(config)
-    if assign_formats:
-        fields = assign_formats.split(',')
-        for field in fields:
-            if '=' in field:
-                dst, src = field.split('=')
-                config.process.assign_formats[dst] = src
-            else:
-                raise ValueError(f'Invalid template assignment: {field}')
     if list_pick_columns:
         setup_pick_with_args(config, list_pick_columns)
     if str_filters:
@@ -355,8 +312,6 @@ def convert(
             if STAGING_FIELD not in orig_row.nested:
                 set_row_staging_value(row, FILE_FIELD, input_file)
                 set_row_staging_value(row, INPUT_FIELD, orig_row.nested)
-            if config.process.assign_formats:
-                row.flat = map_formats(row.flat, config.process.assign_formats)
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
             if config.process.push:

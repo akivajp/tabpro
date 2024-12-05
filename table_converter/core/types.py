@@ -26,6 +26,11 @@ class AssignConstantConfig:
     value: Any
 
 @dataclasses.dataclass
+class AssignFormatConfig:
+    target: str
+    format: str
+
+@dataclasses.dataclass
 class AssignIdConfig:
     target: str
     primary: list[str]
@@ -43,7 +48,7 @@ class SplitConfig:
     delimiter: str | None = None
 
 ActionConfig = \
-    AssignIdConfig | AssignConstantConfig | SplitConfig
+    AssignIdConfig | AssignConstantConfig | AssignFormatConfig | SplitConfig
 
 
 type ContextColumnTuple = tuple[str]

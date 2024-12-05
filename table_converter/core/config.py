@@ -17,13 +17,9 @@ from . functions.flatten_row import (
     flatten_row,
 )
 
-from . functions.set_row_value import (
-    set_row_value,
-    set_row_staging_value,
-)
-
 from . types import (
     ActionConfig,
+    AssignFormatConfig,
     AssignIdConfig,
     AssignConstantConfig,
     SplitConfig,
@@ -39,7 +35,6 @@ class AssignArrayConfig:
 class FilterConfig:
     field: str
     operator: Literal['==', '!=', '>', '>=', '<', '<=', 'not-in']
-    #value: str
     value: str | list[str]
 
 @dataclasses.dataclass
@@ -51,13 +46,10 @@ class PushConfig:
 @dataclasses.dataclass
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
-    assign_formats: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
-    #assign_ids: Mapping[str, AssignIdConfig] = dataclasses.field(default_factory=OrderedDict)
     assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
     filter: list[FilterConfig] = dataclasses.field(default_factory=list)
     omit_fields: list[str] = dataclasses.field(default_factory=list)
     push: list[PushConfig] = dataclasses.field(default_factory=list)
-    #split: Mapping[str, SplitConfig] = dataclasses.field(default_factory=OrderedDict)
 
     def __setitem__(self, key, value):
         setattr(self, key, value)
@@ -117,8 +109,6 @@ def setup_process_config(
     dict_process = loaded.get('process')
     if isinstance(dict_process, Mapping):
         for process_key in [
-            #'assign_constants',
-            'assign_formats',
             'assign_length',
         ]:
             dict_subprocess = dict_process.get(process_key)
@@ -126,14 +116,21 @@ def setup_process_config(
                 config.process[process_key] = flatten_row(loaded['process'][process_key])
         for process_key in [
             'assign_constants',
+            'assign_formats',
         ]:
             dict_subprocess = dict_process.get(process_key)
             if isinstance(dict_subprocess, Mapping):
                 for key, value in dict_subprocess.items():
-                    config.actions.append(AssignConstantConfig(
-                        target = key,
-                        value = value,
-                    ))
+                    if process_key == 'assign_constants':
+                        config.actions.append(AssignConstantConfig(
+                            target = key,
+                            value = value,
+                        ))
+                    if process_key == 'assign_formats':
+                        config.actions.append(AssignFormatConfig(
+                            target = key,
+                            format = value,
+                        ))
         setup_process_assign_ids_config(config, dict_process)
         setup_process_assign_array_config(config, dict_process)
         setup_process_filter_config(config, dict_process)
