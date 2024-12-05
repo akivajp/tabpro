@@ -13,11 +13,11 @@ def run(
         input_files = args.input_files,
         output_file = args.output_file,
         config_path = args.config,
-        str_filters = args.filters,
         str_omit_fields= args.omit_fields,
         list_actions = args.do_actions,
         list_pick_columns = args.pick_columns,
         output_debug = args.output_debug,
+        verbose = args.verbose,
     )
 
 def setup_parser(
@@ -45,11 +45,6 @@ def setup_parser(
         type=str,
         nargs='+',
         help='Pick column map',
-    )
-    parser.add_argument(
-        '--filters', '--filter', '-f',
-        type=str,
-        help='Expression list to filter records',
     )
     parser.add_argument(
         '--omit-fields', '--omit',

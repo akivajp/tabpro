@@ -23,6 +23,7 @@ from . types import (
     AssignConstantConfig,
     AssignFormatConfig,
     AssignIdConfig,
+    FilterConfig,
     GlobalStatus,
     PickConfig,
     SplitConfig,
@@ -50,6 +51,9 @@ def setup_actions_with_args(
             action_name = fields[0].strip()
         if action_name == 'assign-format':
             setup_assign_format_action(config, str_action)
+            continue
+        if action_name == 'filter':
+            setup_filter_action(config, str_action)
             continue
         if len(fields) not in [2,3]:
             raise ValueError(
@@ -143,6 +147,38 @@ def setup_assign_format_action(
     ))
     return config
 
+def setup_filter_action(
+    config: Config,
+    str_action: str,
+):
+    action_fields = str_action.split(':', 1)
+    if len(action_fields) != 2:
+        raise ValueError(
+            f'Expected 2 fields separated by ":": {str_action}'
+        )
+    action_name = action_fields[0].strip()
+    assert action_name == 'filter'
+    str_filter = action_fields[1].strip()
+    if '==' in str_filter:
+        field, value = str_filter.split('==')
+        config.actions.append(FilterConfig(
+            field = field.strip(),
+            operator = '==',
+            value = value.strip(),
+        ))
+        return config
+    if '!=' in str_filter:
+        field, value = str_filter.split('!=')
+        config.actions.append(FilterConfig(
+            field = field.strip(),
+            operator = '!=',
+            value = value.strip(),
+        ))
+        return config
+    raise ValueError(
+        f'Unsupported filter: {str_filter}'
+    )
+
 def do_actions(
     status: GlobalStatus,
     row: Row,
@@ -150,6 +186,8 @@ def do_actions(
 ):
     for action in actions:
         row = do_action(status, row, action)
+        if row is None:
+            return None
     return row
 
 def do_action(
@@ -163,6 +201,10 @@ def do_action(
         return assign_format(row, action)
     if isinstance(action, AssignIdConfig):
         return assign_id(status.id_context_map, row, action)
+    if isinstance(action, FilterConfig):
+        if filter_row(row, action):
+            return row
+        return None
     if isinstance(action, SplitConfig):
         return split_field(row, action)
     raise ValueError(
@@ -260,8 +302,17 @@ def remap_columns(
         if key in new_flat_row:
             continue
         if key.startswith(f'{STAGING_FIELD}.'):
+            # NOTE: Skip staging fields
             new_flat_row[key] = row.flat[key]
         else:
+            input_key = f'{STAGING_FIELD}.{INPUT_FIELD}.{key}'
+            if input_key in row.flat:
+                value = row.flat[key]
+                input_value = row.flat[input_key]
+                if value == input_value:
+                    # NOTE: Skip if the same value in the input field
+                    continue
+            # NOTE: Set the unused value to the staging field
             new_flat_row[f'{STAGING_FIELD}.{key}'] = row.flat[key]
     row.flat = new_flat_row
     row.nested = nest_row(new_flat_row)
@@ -298,3 +349,29 @@ def assign_format(
             raise
     set_row_staging_value(row, config.target, formatted)
     return row
+
+def filter_row(
+    row: Row,
+    config: list[FilterConfig],
+):
+    value, found = search_column_value(row.nested, config.field)
+    #ic(config, value, found)
+    if config.operator == '==':
+        if not found:
+            return False
+        if value != config.value and str(value) != str(config.value):
+            return False
+    elif config.operator == '!=':
+        if str(value) == str(config.value) or value == config.value:
+            return False
+    elif config.operator == 'not-in':
+        if isinstance(config.value, list):
+            if value in config.value:
+                return False
+            if str(value) in config.value:
+                return False
+        else:
+            raise ValueError(f'Unsupported filter value type: type{config.value}')
+    else:
+        raise ValueError(f'Unsupported operator: {config.operator}')
+    return True

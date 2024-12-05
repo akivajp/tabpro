@@ -17,8 +17,8 @@ def search_column_value(
 ):
     for key in [
         f'{STAGING_FIELD}.{column}',
-        f'{STAGING_FIELD}.{INPUT_FIELD}.{column}',
         column,
+        f'{STAGING_FIELD}.{INPUT_FIELD}.{column}',
     ]:
         value, found = get_nested_field_value(row, key)
         if found:

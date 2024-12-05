@@ -12,6 +12,7 @@ from collections import (
 from dataclasses import dataclass
 from typing import (
     Any,
+    Literal,
     Mapping,
 )
 
@@ -37,6 +38,12 @@ class AssignIdConfig:
     context: list[str] | None = None
 
 @dataclasses.dataclass
+class FilterConfig:
+    field: str
+    operator: Literal['==', '!=', '>', '>=', '<', '<=', 'not-in']
+    value: str | list[str]
+
+@dataclasses.dataclass
 class PickConfig:
     target: str
     source: str
@@ -48,7 +55,11 @@ class SplitConfig:
     delimiter: str | None = None
 
 ActionConfig = \
-    AssignIdConfig | AssignConstantConfig | AssignFormatConfig | SplitConfig
+    AssignIdConfig | \
+    AssignConstantConfig | \
+    AssignFormatConfig | \
+    FilterConfig | \
+    SplitConfig
 
 
 type ContextColumnTuple = tuple[str]

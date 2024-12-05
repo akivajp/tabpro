@@ -22,6 +22,7 @@ from . types import (
     AssignFormatConfig,
     AssignIdConfig,
     AssignConstantConfig,
+    FilterConfig,
     SplitConfig,
     PickConfig,
 )
@@ -30,12 +31,6 @@ from . types import (
 class AssignArrayConfig:
     field: str
     optional: bool = True
-
-@dataclasses.dataclass
-class FilterConfig:
-    field: str
-    operator: Literal['==', '!=', '>', '>=', '<', '<=', 'not-in']
-    value: str | list[str]
 
 @dataclasses.dataclass
 class PushConfig:
@@ -47,7 +42,6 @@ class PushConfig:
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
     assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
-    filter: list[FilterConfig] = dataclasses.field(default_factory=list)
     omit_fields: list[str] = dataclasses.field(default_factory=list)
     push: list[PushConfig] = dataclasses.field(default_factory=list)
 
@@ -275,7 +269,7 @@ def setup_process_filter_config(
                 raise ValueError(
                     'Value is required for filter.'
                 )
-            config.process.filter.append(FilterConfig(
+            config.actions.append(FilterConfig(
                 field = field,
                 operator = operator,
                 value = value,

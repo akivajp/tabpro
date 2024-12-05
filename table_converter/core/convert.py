@@ -20,7 +20,6 @@ import pandas as pd
 
 from . config import (
     AssignArrayConfig,
-    FilterConfig,
     PushConfig,
     setup_config,
     setup_pick_with_args,
@@ -212,41 +211,15 @@ def assign_length(
             new_row[f'{STAGING_FIELD}.{key}'] = len(value)
     return new_row
 
-def filter_row(
-    row: OrderedDict,
-    list_filters: list[FilterConfig],
-):
-    for config in list_filters:
-        value, found = search_column_value(row, config.field)
-        if config.operator == '==':
-            if not found:
-                return False
-            if value != config.value and str(value) != str(config.value):
-                return False
-        elif config.operator == '!=':
-            if str(value) == str(config.value) or value == config.value:
-                return False
-        elif config.operator == 'not-in':
-            if isinstance(config.value, list):
-                if value in config.value:
-                    return False
-                if str(value) in config.value:
-                    return False
-            else:
-                raise ValueError(f'Unsupported filter value type: type{config.value}')
-        else:
-            raise ValueError(f'Unsupported operator: {config.operator}')
-    return True
-
 def convert(
     input_files: list[str],
     output_file: str | None = None,
     config_path: str | None = None,
-    str_filters: str | None = None,
     str_omit_fields: str | None = None,
     output_debug: bool = False,
     list_actions: list[str] | None = None,
     list_pick_columns: list[str] | None = None,
+    verbose: bool = False,
 ):
     ic.enable()
     ic()
@@ -257,25 +230,6 @@ def convert(
     ic(config)
     if list_pick_columns:
         setup_pick_with_args(config, list_pick_columns)
-    if str_filters:
-        fields = str_filters.split(',')
-        for field in fields:
-            if '==' in field:
-                column, value = field.split('==')
-                config.process.filter.append(FilterConfig(
-                    field = column,
-                    operator = '==',
-                    value = value,
-                ))
-            elif '!=' in field:
-                column, value = field.split('!=')
-                config.process.filter.append(FilterConfig(
-                    field = column,
-                    operator = '!=',
-                    value = value,
-                ))
-            else:
-                raise ValueError(f'Invalid filter eq: {field}')
     if str_omit_fields:
         fields = str_omit_fields.split(',')
         for field in fields:
@@ -318,14 +272,17 @@ def convert(
                 row.flat = push_fields(row.flat, config.process.push)
             if config.process.assign_length:
                 row.flat = assign_length(row.flat, config.process.assign_length)
-            if config.process.filter:
-                if not filter_row(row.flat, config.process.filter):
-                    continue
             if config.process.omit_fields:
                 for field in config.process.omit_fields:
                     row.flat.pop(field, None)
             if config.actions:
-                row = do_actions(global_status, row, config.actions)
+                new_row = do_actions(global_status, row, config.actions)
+                if new_row is None:
+                    if verbose:
+                        pop_row_staging(row)
+                        ic('Filtered out: ', row.flat)
+                    continue
+                row = new_row
             if config.pick:
                 remap_columns(row, config.pick)
             if not output_debug:
