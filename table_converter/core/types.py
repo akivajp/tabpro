@@ -44,6 +44,12 @@ class FilterConfig:
     value: str | list[str]
 
 @dataclasses.dataclass
+class JoinConfig:
+    target: str
+    source: str
+    delimiter: str | None = None
+
+@dataclasses.dataclass
 class OmitConfig:
     field: str
 

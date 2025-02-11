@@ -25,6 +25,7 @@ from . types import (
     AssignIdConfig,
     FilterConfig,
     GlobalStatus,
+    JoinConfig,
     OmitConfig,
     PickConfig,
     SplitConfig,
@@ -109,6 +110,14 @@ def setup_actions_with_args(
                     target = target,
                     primary = [source],
                     context = context,
+                ))
+                continue
+            if action_name == 'join':
+                delimiter = options.get('delimiter', None)
+                config.actions.append(JoinConfig(
+                    target = target,
+                    source = source,
+                    delimiter = delimiter,
                 ))
                 continue
             if action_name == 'omit':
@@ -211,6 +220,8 @@ def do_action(
         if filter_row(row, action):
             return row
         return None
+    if isinstance(action, JoinConfig):
+        return join_field(row, action)
     if isinstance(action, OmitConfig):
         return omit_field(row, action)
     if isinstance(action, SplitConfig):
@@ -393,4 +404,20 @@ def omit_field(
         return row
     if f'{STAGING_FIELD}.{config.field}' not in row.flat:
         set_row_staging_value(row, config.field, value)
+    return row
+
+def join_field(
+    row: Row,
+    config: JoinConfig,
+):
+    value, found = search_column_value(row.nested, config.source)
+    if found:
+        delimiter = config.delimiter
+        if delimiter is None:
+            delimiter = ';'
+        if delimiter == '\\n':
+            delimiter = '\n'
+        if isinstance(value, list):
+            value = delimiter.join(value)
+        set_row_staging_value(row, config.target, value)
     return row

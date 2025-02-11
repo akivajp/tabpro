@@ -146,14 +146,30 @@ def save_csv(
     df: pd.DataFrame,
     output_file: str,
 ):
-    df.to_csv(output_file, index=False)
+    # utf-8
+    #df.to_csv(output_file, index=False)
+    # UTF-8 with BOM
+    df.to_csv(output_file, index=False, encoding='utf-8-sig')
 
 @register_saver('.xlsx')
 def save_excel(
     df: pd.DataFrame,
     output_file: str,
 ):
+    # openpyxl
     df.to_excel(output_file, index=False)
+    # xlsxwriter
+    #writer = pd.ExcelWriter(
+    #    output_file,
+    #    engine='xlsxwriter',
+    #    engine_kwargs={
+    #        'options': {
+    #            'strings_to_urls': False,
+    #        },
+    #    }
+    #)
+    #df.to_excel(writer, index=False)
+    #writer.close()
 
 def assign_array(
     row: OrderedDict,
