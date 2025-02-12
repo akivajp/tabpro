@@ -119,6 +119,18 @@ def save_json(
             ensure_ascii=False,
         )
 
+@register_loader('.jsonl')
+def load_jsonl(
+    input_file: str,
+):
+    rows = []
+    with open(input_file, 'r') as f:
+        for line in f:
+            row = json.loads(line)
+            rows.append(row)
+    df = pd.DataFrame(rows)
+    return df
+
 @register_saver('.jsonl')
 def save_jsonl(
     df: pd.DataFrame,
