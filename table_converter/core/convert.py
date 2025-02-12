@@ -244,6 +244,7 @@ def assign_length(
 def convert(
     input_files: list[str],
     output_file: str | None = None,
+    output_file_filtered_out: str | None = None,
     config_path: str | None = None,
     output_debug: bool = False,
     list_actions: list[str] | None = None,
@@ -254,6 +255,7 @@ def convert(
     ic()
     ic(input_files)
     df_list = []
+    row_list_filtered_out = []
     global_status = GlobalStatus()
     config = setup_config(config_path)
     ic(config)
@@ -300,9 +302,12 @@ def convert(
             if config.actions:
                 new_row = do_actions(global_status, row, config.actions)
                 if new_row is None:
-                    if verbose:
+                    if not output_debug:
                         pop_row_staging(row)
+                    if verbose:
                         ic('Filtered out: ', row.flat)
+                    if output_file_filtered_out:
+                        row_list_filtered_out.append(row.flat)
                     continue
                 row = new_row
             if config.pick:
@@ -320,3 +325,7 @@ def convert(
     if output_file:
         ic('Saing to: ', output_file)
         saver(all_df, output_file)
+    if row_list_filtered_out:
+        df_filtered_out = pd.DataFrame(row_list_filtered_out)
+        ic('Saving filtered out to: ', output_file_filtered_out)
+        saver(df_filtered_out, output_file_filtered_out)

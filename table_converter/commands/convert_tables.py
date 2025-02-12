@@ -12,6 +12,7 @@ def run(
     convert(
         input_files = args.input_files,
         output_file = args.output_file,
+        output_file_filtered_out = args.output_file_filtered_out,
         config_path = args.config,
         list_actions = args.do_actions,
         list_pick_columns = args.pick_columns,
@@ -33,6 +34,12 @@ def setup_parser(
         metavar='OUTPUT_FILE',
         required=True,
         help='Path to the output file.'
+    )
+    parser.add_argument(
+        '--output-file-filtered-out', '--output-filtered-out', '-f',
+        metavar='OUTPUT_FILE_FILTERED_OUT',
+        required=False,
+        help='Path to the output file for filtered out rows.',
     )
     parser.add_argument(
         '--config', '-c',
