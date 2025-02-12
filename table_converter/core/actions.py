@@ -2,6 +2,8 @@
 Actions are used to transform the data in the table.
 '''
 
+import re
+
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import (
@@ -187,6 +189,14 @@ def setup_filter_action(
         config.actions.append(FilterConfig(
             field = field.strip(),
             operator = '!=',
+            value = value.strip(),
+        ))
+        return config
+    if '=~' in str_filter:
+        field, value = str_filter.split('=~')
+        config.actions.append(FilterConfig(
+            field = field.strip(),
+            operator = '=~',
             value = value.strip(),
         ))
         return config
@@ -382,6 +392,11 @@ def filter_row(
             return False
     elif config.operator == '!=':
         if str(value) == str(config.value) or value == config.value:
+            return False
+    elif config.operator == '=~':
+        if not found:
+            return False
+        if not re.search(config.value, value):
             return False
     elif config.operator == 'not-in':
         if isinstance(config.value, list):
