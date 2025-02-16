@@ -16,7 +16,7 @@ style = "pep440"
 
 [tool.poetry.scripts]
 table-converter = "table_converter.cli:main"
-conver-tables = "table_converter.cli:command_convert_tables"
+convert-tables = "table_converter.cli:command_convert_tables"
 
 [tool.poetry.dependencies]
 python = "^3.10"
