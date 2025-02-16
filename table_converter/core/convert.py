@@ -70,6 +70,16 @@ def register_saver(
         return saver
     return decorator
 
+@register_loader('.csv')
+def load_csv(
+    input_file: str,
+):
+    # utf-8
+    #df = pd.read_csv(input_file)
+    # UTF-8 with BOM
+    df = pd.read_csv(input_file, encoding='utf-8-sig')
+    return df
+
 @register_loader('.xlsx')
 def load_excel(
     input_file: str,
@@ -337,6 +347,8 @@ def convert(
     if output_file:
         ic('Saing to: ', output_file)
         saver(all_df, output_file)
+    else:
+        ic(all_df)
     if row_list_filtered_out:
         df_filtered_out = pd.DataFrame(row_list_filtered_out)
         ic('Saving filtered out to: ', output_file_filtered_out)
