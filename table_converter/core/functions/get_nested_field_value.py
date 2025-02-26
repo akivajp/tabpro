@@ -3,11 +3,18 @@
 from collections import OrderedDict
 
 def get_nested_field_value(
-    data: OrderedDict,
+    data: OrderedDict | list,
     field: str,
 ):
-    if field in data:
-        return data[field], True
+    if isinstance(data, list):
+        if field.isdigit():
+            index = int(field)
+            if index < len(data):
+                return data[index], True
+            return None, False
+    if isinstance(data, dict):
+        if field in data:
+            return data[field], True
     if '.' in field:
         field, rest = field.split('.', 1)
         if field in data:
