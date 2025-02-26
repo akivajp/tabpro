@@ -22,6 +22,7 @@ from . constants import (
 )
 
 from . types import (
+    AssignConfig,
     AssignConstantConfig,
     AssignFormatConfig,
     AssignIdConfig,
@@ -85,6 +86,23 @@ def setup_actions_with_args(
             else:
                 target = field.strip()
                 source = field.strip()
+            if action_name == 'assign':
+                assign_default = False
+                default_value = None
+                if 'default' in options:
+                    assign_default = True
+                    default_value = options['default']
+                if default_value in ['None', 'none', 'Null', 'null']:
+                    default_value = None
+                required = options.get('required', False)
+                config.actions.append(AssignConfig(
+                    target = target,
+                    source = source,
+                    assign_default = assign_default,
+                    default_value = default_value,
+                    required = required,
+                ))
+                continue
             if action_name == 'assign-constant':
                 str_type = options.get('type', 'str')
                 if str_type in ['str', 'string']:
@@ -220,6 +238,8 @@ def do_action(
     row: Row,
     action: AssignConstantConfig,
 ):
+    if isinstance(action, AssignConfig):
+        return assign(row, action)
     if isinstance(action, AssignConstantConfig):
         return assign_constant(row, action)
     if isinstance(action, AssignFormatConfig):
@@ -349,6 +369,24 @@ def remap_columns(
             new_flat_row[f'{STAGING_FIELD}.{key}'] = row.flat[key]
     row.flat = new_flat_row
     row.nested = nest_row(new_flat_row)
+    return row
+
+def assign(
+    row: Row,
+    config: AssignConfig,
+):
+    value, found = search_column_value(row.nested, config.source)
+    if config.required:
+        if not found or bool(value) == False:
+            raise ValueError(
+                'Required field not found or empty, ' +
+                f'field: {config.source}, found: {found}, value: {value}'
+            )
+    if found:
+        set_row_staging_value(row, config.target, value)
+    else:
+        if config.assign_default:
+            set_row_staging_value(row, config.target, config.default_value)
     return row
 
 def assign_format(

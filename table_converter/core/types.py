@@ -22,6 +22,14 @@ class Row:
     nested: OrderedDict
 
 @dataclasses.dataclass
+class AssignConfig:
+    target: str
+    source: str
+    assign_default: bool = False
+    default_value: Any = None
+    required: bool = False
+
+@dataclasses.dataclass
 class AssignConstantConfig:
     target: str
     value: Any
