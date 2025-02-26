@@ -245,7 +245,11 @@ def prepare_row(
 ):
     if flat_row is None:
         flat_row = OrderedDict()
-    nested_row = nest_row(flat_row)
+    try:
+        nested_row = nest_row(flat_row)
+    except:
+        ic(flat_row)
+        raise
     return Row(
         flat = OrderedDict(flat_row),
         nested = nested_row,
