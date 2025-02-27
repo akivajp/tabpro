@@ -359,6 +359,7 @@ def split_field(
     if found:
         if isinstance(value, str):
             new_value = value.split(config.delimiter)
+            new_value = map(str.strip, new_value)
             new_value = list(filter(None, new_value))
             value = new_value
         set_row_staging_value(row, config.target, value)
