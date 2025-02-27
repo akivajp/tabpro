@@ -131,10 +131,12 @@ def setup_actions_with_args(
                 context = options.get('context', None)
                 if context:
                     context = context.split(',')
+                reverse = options.get('reverse', False)
                 config.actions.append(AssignIdConfig(
                     target = target,
                     primary = [source],
                     context = context,
+                    reverse = reverse,
                 ))
                 continue
             if action_name == 'filter-empty':

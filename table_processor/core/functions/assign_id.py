@@ -36,7 +36,6 @@ from .. types import (
 )
 
 def get_key_value(
-    id_context_map: IdContextMap,
     row: Row,
     primary: list[str],
     context: list[str],
@@ -75,7 +74,6 @@ def get_id(
     context: list[str],
 ):
     context_key, primary_value = get_key_value(
-        id_context_map=id_context_map,
         row=row,
         primary=primary,
         context=context,
@@ -103,14 +101,16 @@ def set_id(
     id_value: int,
 ):
     context_key, primary_value = get_key_value(
-        id_context_map=id_context_map,
         row=row,
         primary=primary,
         context=context,
     )
     id_map = id_context_map[context_key]
     if id_value in id_map.dict_id_to_value:
-        raise ValueError(f'ID already exists: {id_value}')
+        #raise ValueError(f'ID already exists: {id_value}')
+        field_id = id_map.dict_id_to_value[id_value]
+        if field_id != primary_value:
+            raise ValueError(f'ID already exists: {id_value} for {field_id}')
     id_map.dict_value_to_id[primary_value] = id_value
     id_map.dict_id_to_value[id_value] = primary_value
     id_map.max_id = max(id_map.max_id, id_value)
@@ -122,6 +122,26 @@ def assign_id(
     row: Row,
     config: Config,
 ):
+    if config.reverse:
+        #ic(row)
+        #ic(type(row))
+        #ic(config)
+        value, found = search_column_value(row.nested, config.target)
+        #ic(row, value, found)
+        if type(value) is str:
+            if value.isdigit():
+                value = int(value)
+        if type(value) is int:
+            field_id = value
+            set_id(
+                id_context_map=id_context_map,
+                row=row,
+                primary=config.primary,
+                context=config.context,
+                id_value=field_id,
+            )
+            #return field_id, True
+            return row
     field_id, id_exists = get_id(
         id_context_map=id_context_map,
         row=row,

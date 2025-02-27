@@ -44,6 +44,7 @@ class AssignIdConfig:
     target: str
     primary: list[str]
     context: list[str] | None = None
+    reverse: bool = False
 
 @dataclasses.dataclass
 class FilterConfig:

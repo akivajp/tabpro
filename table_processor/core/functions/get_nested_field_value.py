@@ -2,11 +2,14 @@
 
 from collections import OrderedDict
 
+from icecream import ic
+
 def get_nested_field_value(
     data: OrderedDict | list,
     field: str,
 ):
     if isinstance(data, list):
+        #ic(data, field)
         if field.isdigit():
             index = int(field)
             if index < len(data):
