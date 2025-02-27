@@ -96,6 +96,8 @@ def load_excel(
         zip(df_with_column_number.columns, new_column_names)
     ))
     df = pd.concat([df, df2], axis=1)
+    df = df.dropna(axis=0, how='all')
+    df = df.dropna(axis=1, how='all')
     return df
 
 @register_loader('.json')
@@ -338,16 +340,22 @@ def convert(
             if config.process.assign_length:
                 row.flat = assign_length(row.flat, config.process.assign_length)
             if config.actions:
-                new_row = do_actions(global_status, row, config.actions)
-                if new_row is None:
-                    if not output_debug:
-                        pop_row_staging(row)
+                try:
+                    new_row = do_actions(global_status, row, config.actions)
+                    if new_row is None:
+                        if not output_debug:
+                            pop_row_staging(row)
+                        if verbose:
+                            ic('Filtered out: ', row.flat)
+                        if output_file_filtered_out:
+                            row_list_filtered_out.append(row.flat)
+                        continue
+                    row = new_row
+                except Exception as e:
                     if verbose:
-                        ic('Filtered out: ', row.flat)
-                    if output_file_filtered_out:
-                        row_list_filtered_out.append(row.flat)
-                    continue
-                row = new_row
+                        ic(index)
+                        ic(flat_row)
+                    raise e
             if config.pick:
                 remap_columns(row, config.pick)
             if not output_debug:
