@@ -1,13 +1,13 @@
 [tool.poetry]
-name = "python-table-converter"
+name = "python-table-processor"
 version = "0.0.0"
-description = "A table data converter"
+description = "A table data processor"
 authors = ["Akiva Miura <akiva.miura@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/akivajp/python-table-converter"
+repository = "https://github.com/akivajp/python-table-processor"
 packages = [
-    { include = "table_converter" },
+    { include = "table_processor" },
 ]
 
 [tool.poetry-dynamic-versioning]
@@ -15,8 +15,8 @@ enable = true
 style = "pep440"
 
 [tool.poetry.scripts]
-table-converter = "table_converter.cli:main"
-convert-tables = "table_converter.cli:command_convert_tables"
+table-processor = "table_processor.cli:main"
+convert-tables = "table_processor.cli:command_convert_tables"
 
 [tool.poetry.dependencies]
 python = "^3.10"
