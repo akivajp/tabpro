@@ -35,15 +35,18 @@ from .. types import (
     Row,
 )
 
-def assign_id(
+def get_id(
     id_context_map: IdContextMap,
     row: Row,
-    config: Config,
+    primary: list[str],
+    context: list[str],
 ):
+    if not primary:
+        raise ValueError('Primary columns must be specified')
     context_columns = []
     context_values = []
-    if config.context:
-        for context_column in config.context:
+    if context:
+        for context_column in context:
             value, found = search_column_value(row.nested, context_column)
             if not found:
                 raise KeyError(f'Column not found: {context_column}, existing columns: {row.flat.keys()}')
@@ -51,7 +54,7 @@ def assign_id(
             context_values.append(value)
     primary_columns = []
     primary_values = []
-    for primary_column in config.primary:
+    for primary_column in primary:
         value, found = search_column_value(row.nested, primary_column)
         if not found:
             raise KeyError(f'Column not found: {primary_column}, existing columns: {row.flat.keys()}')
@@ -69,7 +72,24 @@ def assign_id(
         id_map.max_id = field_id
         id_map.dict_value_to_id[primary_value] = field_id
         id_map.dict_id_to_value[field_id] = primary_value
+        id_exists = False
     else:
         field_id = id_map.dict_value_to_id[primary_value]
+        id_exists = True
+    return field_id, id_exists
+
+
+
+def assign_id(
+    id_context_map: IdContextMap,
+    row: Row,
+    config: Config,
+):
+    field_id, id_exists = get_id(
+        id_context_map=id_context_map,
+        row=row,
+        primary=config.primary,
+        context=config.context,
+    )
     set_row_staging_value(row, config.target, field_id)
     return row
