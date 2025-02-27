@@ -35,7 +35,7 @@ from .. types import (
     Row,
 )
 
-def get_id(
+def get_key_value(
     id_context_map: IdContextMap,
     row: Row,
     primary: list[str],
@@ -66,6 +66,20 @@ def get_id(
         tuple(primary_columns),
     )
     primary_value = tuple(primary_values)
+    return context_key, primary_value
+
+def get_id(
+    id_context_map: IdContextMap,
+    row: Row,
+    primary: list[str],
+    context: list[str],
+):
+    primary_value, context_key = get_key_value(
+        id_context_map=id_context_map,
+        row=row,
+        primary=primary,
+        context=context,
+    )
     id_map = id_context_map[context_key]
     if primary_value not in id_map.dict_value_to_id:
         field_id = id_map.max_id + 1
@@ -78,6 +92,27 @@ def get_id(
         id_exists = True
     return field_id, id_exists
 
+
+def set_id(
+    id_context_map: IdContextMap,
+    row: Row,
+    primary: list[str],
+    context: list[str],
+    id_value: int,
+):
+    primary_value, context_key = get_key_value(
+        id_context_map=id_context_map,
+        row=row,
+        primary=primary,
+        context=context,
+    )
+    id_map = id_context_map[context_key]
+    if id_value in id_map.dict_id_to_value:
+        raise ValueError(f'ID already exists: {id_value}')
+    id_map.dict_value_to_id[primary_value] = id_value
+    id_map.dict_id_to_value[id_value] = primary_value
+    id_map.max_id = max(id_map.max_id, id_value)
+    return
 
 
 def assign_id(
