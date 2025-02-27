@@ -1,3 +1,5 @@
 FILE_FIELD = '__file__'
+ROW_INDEX_FIELD = '__row_index__'
+FILE_ROW_INDEX_FIELD = '__file_row_index__'
 INPUT_FIELD = '__input__'
 STAGING_FIELD = '__staging__'

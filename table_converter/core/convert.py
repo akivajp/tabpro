@@ -26,6 +26,8 @@ from . config import (
 )
 from . constants import (
     FILE_FIELD,
+    ROW_INDEX_FIELD,
+    FILE_ROW_INDEX_FIELD,
     INPUT_FIELD,
     STAGING_FIELD,
 )
@@ -328,11 +330,16 @@ def convert(
         #new_rows = []
         new_flat_rows = []
         for index, flat_row in df.iterrows():
+            #if flat_row.empty:
+            #    continue
             orig_row = prepare_row(flat_row)
             row = prepare_row(flat_row)
             if STAGING_FIELD not in orig_row.nested:
                 set_row_staging_value(row, FILE_FIELD, input_file)
+                set_row_staging_value(row, ROW_INDEX_FIELD, index)
                 set_row_staging_value(row, INPUT_FIELD, orig_row.nested)
+                file_row_index = f'{input_file}:{index}'
+                set_row_staging_value(row, FILE_ROW_INDEX_FIELD, file_row_index)
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
             if config.process.push:
@@ -355,6 +362,7 @@ def convert(
                     if verbose:
                         ic(index)
                         ic(flat_row)
+                        ic(row.flat)
                     raise e
             if config.pick:
                 remap_columns(row, config.pick)
