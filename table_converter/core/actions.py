@@ -175,6 +175,8 @@ def setup_actions_with_args(
                 continue
             if action_name == 'split':
                 delimiter = options.get('delimiter', None)
+                if delimiter == '\\n':
+                    delimiter = '\n'
                 config.actions.append(SplitConfig(
                     target = target,
                     source = source,
