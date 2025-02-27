@@ -84,7 +84,9 @@ def load_csv(
 def load_excel(
     input_file: str,
 ):
-    df = pd.read_excel(input_file)
+    #df = pd.read_excel(input_file)
+    # NOTE: Excelで勝手に日時データなどに変換されてしまうことを防ぐため
+    df = pd.read_excel(input_file, dtype=str)
     return df
 
 @register_loader('.json')
@@ -344,6 +346,11 @@ def convert(
             new_flat_rows.append(row.flat)
         new_df = pd.DataFrame(new_flat_rows)
         df_list.append(new_df)
+        # NOTE: concatの仕様が変わり、all-NAの列を含むdfを連結しようとすると警告が出るようになった
+        #if ic(new_df.dropna(axis=1, how='all').empty):
+        #    ic(new_df.dropna(axis=1, how='all'))
+        #    raise ValueError('No rows to output.')
+        #df_list.append(new_df.dropna(axis=1, how='all'))
     all_df = pd.concat(df_list)
     #ic(all_df)
     ic(len(all_df))
