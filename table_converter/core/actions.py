@@ -2,6 +2,7 @@
 Actions are used to transform the data in the table.
 '''
 
+import json
 import re
 
 from collections import OrderedDict
@@ -30,6 +31,7 @@ from . types import (
     GlobalStatus,
     JoinConfig,
     OmitConfig,
+    ParseConfig,
     PickConfig,
     SplitConfig,
     Row,
@@ -143,6 +145,33 @@ def setup_actions_with_args(
             if action_name == 'omit':
                 config.actions.append(OmitConfig(
                     field = target,
+                ))
+                continue
+            if action_name == 'parse':
+                as_type = options.get('as')
+                required = options.get('required', False)
+                if as_type is None:
+                    raise ValueError(
+                        f'"as" option is required for action: {str_action}'
+                    )
+                if as_type not in ['json']:
+                    raise ValueError(
+                        f'Unsupported as type: {as_type}'
+                    )
+                config.actions.append(ParseConfig(
+                    target = target,
+                    source = source,
+                    as_type = as_type,
+                    required = required,
+                ))
+                continue
+            if action_name == 'parse-json':
+                required = options.get('required', False)
+                config.actions.append(ParseConfig(
+                    target = target,
+                    source = source,
+                    as_type = 'json',
+                    required = required,
                 ))
                 continue
             if action_name == 'split':
@@ -477,4 +506,32 @@ def join_field(
         if isinstance(value, list):
             value = delimiter.join(value)
         set_row_staging_value(row, config.target, value)
+    return row
+
+def parse(
+    row: Row,
+    config: AssignConfig,
+):
+    value, found = search_column_value(row.nested, config.source)
+    if config.required:
+        if not found:
+            raise ValueError(
+                f'Required field not found, field: {config.source}'
+            )
+    if found:
+        if config.as_type == 'json':
+            if type(value) == str:
+                try:
+                    parsed = json.loads(value)
+                except:
+                    raise ValueError(
+                        f'Failed to parse JSON: {value}'
+                    )
+            else:
+                parsed = value
+        else:
+            raise ValueError(
+                f'Unsupported as type: {config.as_type}'
+            )
+        set_row_staging_value(row, config.target, parsed)
     return row
