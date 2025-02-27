@@ -288,15 +288,19 @@ def convert(
     list_pick_columns: list[str] | None = None,
     action_delimiter: str = ':',
     verbose: bool = False,
+    ignore_file_rows: list[str] | None = None,
 ):
     ic.enable()
     ic()
     ic(input_files)
     df_list = []
     row_list_filtered_out = []
+    set_ignore_file_rows = set()
     global_status = GlobalStatus()
     config = setup_config(config_path)
     ic(config)
+    if ignore_file_rows:
+        set_ignore_file_rows = set(ignore_file_rows)
     if list_pick_columns:
         setup_pick_with_args(config, list_pick_columns)
     if list_actions:
@@ -316,6 +320,7 @@ def convert(
         ic(input_file)
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
+        base_name = os.path.basename(input_file)
         ext = os.path.splitext(input_file)[1]
         ic(ext)
         if ext not in dict_loaders:
@@ -330,16 +335,21 @@ def convert(
         #new_rows = []
         new_flat_rows = []
         for index, flat_row in df.iterrows():
+            file_row_index = f'{input_file}:{index}'
+            if file_row_index in set_ignore_file_rows:
+                continue
+            short_file_row_index = f'{base_name}:{index}'
+            if short_file_row_index in set_ignore_file_rows:
+                continue
             #if flat_row.empty:
             #    continue
             orig_row = prepare_row(flat_row)
             row = prepare_row(flat_row)
             if STAGING_FIELD not in orig_row.nested:
                 set_row_staging_value(row, FILE_FIELD, input_file)
+                set_row_staging_value(row, FILE_ROW_INDEX_FIELD, file_row_index)
                 set_row_staging_value(row, ROW_INDEX_FIELD, index)
                 set_row_staging_value(row, INPUT_FIELD, orig_row.nested)
-                file_row_index = f'{input_file}:{index}'
-                set_row_staging_value(row, FILE_ROW_INDEX_FIELD, file_row_index)
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
             if config.process.push:

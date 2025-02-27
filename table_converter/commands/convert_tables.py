@@ -19,6 +19,7 @@ def run(
         action_delimiter = args.action_delimiter,
         output_debug = args.output_debug,
         verbose = args.verbose,
+        ignore_file_rows = args.ignore_file_rows,
     )
 
 def setup_parser(
@@ -64,6 +65,12 @@ def setup_parser(
         nargs='+',
         type=str,
         help='Actions to do',
+    )
+    parser.add_argument(
+        '--ignore-file-rows', '--ignore-rows', '--ignore',
+        nargs='+',
+        type=str,
+        help='Ignore tuples of file name and row index',
     )
     parser.add_argument(
         '--output-debug',
