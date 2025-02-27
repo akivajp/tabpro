@@ -271,6 +271,7 @@ def convert(
     output_debug: bool = False,
     list_actions: list[str] | None = None,
     list_pick_columns: list[str] | None = None,
+    action_delimiter: str = ':',
     verbose: bool = False,
 ):
     ic.enable()
@@ -284,7 +285,7 @@ def convert(
     if list_pick_columns:
         setup_pick_with_args(config, list_pick_columns)
     if list_actions:
-        setup_actions_with_args(config, list_actions)
+        setup_actions_with_args(config, list_actions, delimiter=action_delimiter)
     if output_file:
         ext = os.path.splitext(output_file)[1]
         if ext not in dict_savers:

@@ -2,6 +2,7 @@
 Actions are used to transform the data in the table.
 '''
 
+import ast
 import json
 import re
 
@@ -50,17 +51,18 @@ from . functions.set_nested_field_value import set_nested_field_value
 def setup_actions_with_args(
     config: Config,
     list_actions: list[str],
+    delimiter: str = ':',
 ):
     ic(list_actions)
     for str_action in list_actions:
-        fields = str_action.split(':')
+        fields = str_action.split(delimiter)
         if len(fields) >= 1:
             action_name = fields[0].strip()
         if action_name == 'assign-format':
-            setup_assign_format_action(config, str_action)
+            setup_assign_format_action(config, str_action, delimiter)
             continue
         if action_name == 'filter':
-            setup_filter_action(config, str_action)
+            setup_filter_action(config, str_action, delimiter)
             continue
         if len(fields) not in [2,3]:
             raise ValueError(
@@ -148,13 +150,9 @@ def setup_actions_with_args(
                 ))
                 continue
             if action_name == 'parse':
-                as_type = options.get('as')
+                as_type = options.get('as', 'literal')
                 required = options.get('required', False)
-                if as_type is None:
-                    raise ValueError(
-                        f'"as" option is required for action: {str_action}'
-                    )
-                if as_type not in ['json']:
+                if as_type not in ['json', 'literal']:
                     raise ValueError(
                         f'Unsupported as type: {as_type}'
                     )
@@ -190,8 +188,9 @@ def setup_actions_with_args(
 def setup_assign_format_action(
     config: Config,
     str_action: str,
+    delimiter: str = ':',
 ):
-    action_fields = str_action.split(':', 1)
+    action_fields = str_action.split(delimiter, 1)
     if len(action_fields) != 2:
         raise ValueError(
             f'Expected 2 fields separated by ":": {str_action}'
@@ -214,8 +213,9 @@ def setup_assign_format_action(
 def setup_filter_action(
     config: Config,
     str_action: str,
+    delimiter: str = ':',
 ):
-    action_fields = str_action.split(':', 1)
+    action_fields = str_action.split(delimiter, 1)
     if len(action_fields) != 2:
         raise ValueError(
             f'Expected 2 fields separated by ":": {str_action}'
@@ -281,6 +281,8 @@ def do_action(
         return None
     if isinstance(action, JoinConfig):
         return join_field(row, action)
+    if isinstance(action, ParseConfig):
+        return parse(row, action)
     if isinstance(action, OmitConfig):
         return omit_field(row, action)
     if isinstance(action, SplitConfig):
@@ -519,8 +521,15 @@ def parse(
                 f'Required field not found, field: {config.source}'
             )
     if found:
-        if config.as_type == 'json':
-            if type(value) == str:
+        if type(value) == str:
+            if config.as_type == 'literal':
+                try:
+                    parsed = ast.literal_eval(value)
+                except:
+                    raise ValueError(
+                        f'Failed to parse literal: {value}'
+                    )
+            elif config.as_type == 'json':
                 try:
                     parsed = json.loads(value)
                 except:
@@ -528,10 +537,10 @@ def parse(
                         f'Failed to parse JSON: {value}'
                     )
             else:
-                parsed = value
+                raise ValueError(
+                    f'Unsupported as type: {config.as_type}'
+                )
         else:
-            raise ValueError(
-                f'Unsupported as type: {config.as_type}'
-            )
+            parsed = value
         set_row_staging_value(row, config.target, parsed)
     return row

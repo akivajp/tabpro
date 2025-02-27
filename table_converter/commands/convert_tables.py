@@ -16,6 +16,7 @@ def run(
         config_path = args.config,
         list_actions = args.do_actions,
         list_pick_columns = args.pick_columns,
+        action_delimiter = args.action_delimiter,
         output_debug = args.output_debug,
         verbose = args.verbose,
     )
@@ -51,6 +52,12 @@ def setup_parser(
         type=str,
         nargs='+',
         help='Pick column map',
+    )
+    parser.add_argument(
+        '--action-delimiter', '--do-delimiter', '--do-delim',
+        type=str,
+        default=':',
+        help='Action delimiter',
     )
     parser.add_argument(
         '--do-actions', '--actions', '--do',

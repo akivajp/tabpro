@@ -65,7 +65,7 @@ class OmitConfig:
 class ParseConfig:
     target: str
     source: str
-    as_type: Literal['json', 'int', 'float', 'str', 'bool']
+    as_type: Literal['json', 'literal']
     required: bool = False
 
 @dataclasses.dataclass
