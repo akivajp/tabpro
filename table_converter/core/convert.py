@@ -87,6 +87,15 @@ def load_excel(
     #df = pd.read_excel(input_file)
     # NOTE: Excelで勝手に日時データなどに変換されてしまうことを防ぐため
     df = pd.read_excel(input_file, dtype=str)
+    # NOTE: 列番号でもアクセスできるようフィールドを追加する
+    df_with_column_number = pd.read_excel(
+        input_file, dtype=str, header=None, skiprows=1
+    )
+    new_column_names = [f'__values__.{i}' for i in df_with_column_number.columns]
+    df2 = df_with_column_number.rename(columns=dict(
+        zip(df_with_column_number.columns, new_column_names)
+    ))
+    df = pd.concat([df, df2], axis=1)
     return df
 
 @register_loader('.json')
