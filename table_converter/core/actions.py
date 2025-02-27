@@ -420,11 +420,34 @@ def remap_columns(
     row.nested = nest_row(new_flat_row)
     return row
 
+
+def search_with_operator(
+    row: Row,
+    source: str,
+):
+    or_operator = '\|\|'
+    null_or_operator = '\?\?'
+    operator_group = f'{or_operator}|{null_or_operator}'
+    matched = re.split(f'({operator_group})', source, 1)
+    #ic(source, matched)
+    if len(matched) == 1:
+        return search_column_value(row.nested, source)
+    matched = map(str.strip, matched)
+    left, operator, rest = matched
+    value, found = search_column_value(row.nested, left)
+    if operator == '||':
+        if bool(value):
+            return value, found
+    if operator == '??':
+        if found and value is not None:
+            return value, found
+    return search_with_operator(row, rest)
+
 def assign(
     row: Row,
     config: AssignConfig,
 ):
-    value, found = search_column_value(row.nested, config.source)
+    value, found = search_with_operator(row, config.source)
     if config.required:
         if not found or bool(value) == False:
             raise ValueError(
