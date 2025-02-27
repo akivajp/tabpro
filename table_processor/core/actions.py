@@ -488,7 +488,8 @@ def assign_format(
             params[key] = f'__{key}__undefined__'
         except:
             #ic(params)
-            ic(params.keys())
+            #ic(params.keys())
+            ic(row.flat)
             raise
     set_row_staging_value(row, config.target, formatted)
     return row

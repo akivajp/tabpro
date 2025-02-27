@@ -74,13 +74,15 @@ def get_id(
     primary: list[str],
     context: list[str],
 ):
-    primary_value, context_key = get_key_value(
+    context_key, primary_value = get_key_value(
         id_context_map=id_context_map,
         row=row,
         primary=primary,
         context=context,
     )
     id_map = id_context_map[context_key]
+    #ic(primary_value, context_key)
+    #ic(primary_value in id_map.dict_value_to_id)
     if primary_value not in id_map.dict_value_to_id:
         field_id = id_map.max_id + 1
         id_map.max_id = field_id
@@ -100,7 +102,7 @@ def set_id(
     context: list[str],
     id_value: int,
 ):
-    primary_value, context_key = get_key_value(
+    context_key, primary_value = get_key_value(
         id_context_map=id_context_map,
         row=row,
         primary=primary,
@@ -126,5 +128,6 @@ def assign_id(
         primary=config.primary,
         context=config.context,
     )
+    #ic(config, field_id, id_exists)
     set_row_staging_value(row, config.target, field_id)
     return row
