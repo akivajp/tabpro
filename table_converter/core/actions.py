@@ -137,6 +137,20 @@ def setup_actions_with_args(
                     context = context,
                 ))
                 continue
+            if action_name == 'filter-empty':
+                config.actions.append(FilterConfig(
+                    field = target,
+                    operator = 'empty',
+                    value = '',
+                ))
+                continue
+            if action_name == 'filter-not-empty':
+                config.actions.append(FilterConfig(
+                    field = target,
+                    operator = 'not-empty',
+                    value = '',
+                ))
+                continue
             if action_name == 'join':
                 delimiter = options.get('delimiter', None)
                 config.actions.append(JoinConfig(
@@ -456,6 +470,14 @@ def assign_format(
     set_row_staging_value(row, config.target, formatted)
     return row
 
+def check_empty(
+    value: Any,
+    found: str | None,
+):
+    if not found:
+        return True
+    return not bool(value)
+
 def filter_row(
     row: Row,
     config: list[FilterConfig],
@@ -483,6 +505,12 @@ def filter_row(
                 return False
         else:
             raise ValueError(f'Unsupported filter value type: type{config.value}')
+    elif config.operator == 'empty':
+        if not check_empty(value, found):
+            return False
+    elif config.operator == 'not-empty':
+        if check_empty(value, found):
+            return False
     else:
         raise ValueError(f'Unsupported operator: {config.operator}')
     return True

@@ -48,7 +48,10 @@ class AssignIdConfig:
 @dataclasses.dataclass
 class FilterConfig:
     field: str
-    operator: Literal['==', '!=', '>', '>=', '<', '<=', '=~', 'not-in']
+    operator: Literal[
+        '==', '!=', '>', '>=', '<', '<=', '=~', 'not-in',
+        'empty', 'not-empty',
+    ]
     value: str | list[str]
 
 @dataclasses.dataclass
