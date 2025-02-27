@@ -51,22 +51,23 @@ from . functions.set_nested_field_value import set_nested_field_value
 def setup_actions_with_args(
     config: Config,
     list_actions: list[str],
-    delimiter: str = ':',
+    action_delimiter: str = ':',
 ):
     ic(list_actions)
     for str_action in list_actions:
-        fields = str_action.split(delimiter)
+        fields = str_action.split(action_delimiter)
         if len(fields) >= 1:
             action_name = fields[0].strip()
         if action_name == 'assign-format':
-            setup_assign_format_action(config, str_action, delimiter)
+            setup_assign_format_action(config, str_action, action_delimiter)
             continue
         if action_name == 'filter':
-            setup_filter_action(config, str_action, delimiter)
+            setup_filter_action(config, str_action, action_delimiter)
             continue
         if len(fields) not in [2,3]:
             raise ValueError(
-                f'Action must have 2 or 3 colon-separated fields: {str_action}'
+                'Action must have 2 or 3 delimiter-separated fields: ' +
+                f'delimiter:{action_delimiter!r}, action string: {str_action!r}'
             )
         str_fields = fields[1].strip()
         if len(fields) == 3:

@@ -285,7 +285,11 @@ def convert(
     if list_pick_columns:
         setup_pick_with_args(config, list_pick_columns)
     if list_actions:
-        setup_actions_with_args(config, list_actions, delimiter=action_delimiter)
+        setup_actions_with_args(
+            config,
+            list_actions,
+            action_delimiter=action_delimiter
+        )
     if output_file:
         ext = os.path.splitext(output_file)[1]
         if ext not in dict_savers:
