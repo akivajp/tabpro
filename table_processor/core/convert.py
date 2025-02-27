@@ -63,6 +63,15 @@ def register_loader(
         return loader
     return decorator
 
+def load(
+    input_file: str,
+):
+    ext = os.path.splitext(input_file)[1]
+    if ext not in dict_loaders:
+        raise ValueError(f'Unsupported file type: {ext}')
+    loader = dict_loaders[ext]
+    return loader(input_file)
+
 dict_savers: dict[str, callable] = {}
 def register_saver(
     ext: str,
@@ -71,6 +80,16 @@ def register_saver(
         dict_savers[ext] = saver
         return saver
     return decorator
+
+def save(
+    df: pd.DataFrame,
+    output_file: str,
+):
+    ext = os.path.splitext(output_file)[1]
+    if ext not in dict_savers:
+        raise ValueError(f'Unsupported file type: {ext}')
+    saver = dict_savers[ext]
+    saver(df, output_file)
 
 @register_loader('.csv')
 def load_csv(
