@@ -45,7 +45,8 @@ def merge(
     keys: list[str],
     allow_duplicate_keys: bool = False,
     ignore_not_found: bool = False,
-    output_file: str | None = None,
+    output_base_data_file: str | None = None,
+    output_modified_data_file: str | None = None,
 ):
     ic.enable()
     ic()
@@ -53,7 +54,8 @@ def merge(
     ic(modification_files)
     ic(keys)
     dict_key_to_row = {}
-    all_rows = []
+    all_base_rows = []
+    all_modified_rows = []
     list_ignored_keys = []
     num_modified = 0
     for previous_file in previous_files:
@@ -85,7 +87,7 @@ def merge(
                     ic(index)
                     raise ValueError(f'Duplicate key: {key}')
             dict_key_to_row[primary_key] = row
-            all_rows.append(row)
+            all_base_rows.append(row)
     for modification_file in modification_files:
         if not os.path.exists(modification_file):
             raise FileNotFoundError(f'File not found: {modification_file}')
@@ -123,6 +125,7 @@ def merge(
                 ic(index)
                 raise ValueError(f'Key not found: {primary_key}')
             previous_row = dict_key_to_row[primary_key]
+            all_modified_rows.append(previous_row)
             #ic(previous_row)
             #ic(previous_row.flat)
             for key, value in row.flat.items():
@@ -141,8 +144,11 @@ def merge(
     if ignore_not_found:
         ic(len(list_ignored_keys))
         ic(list_ignored_keys)
-    if output_file:
-        #all_df = pd.DataFrame(all_rows)
-        all_df = pd.DataFrame([row.flat for row in all_rows])
-        ic('Saving to: ', output_file)
-        save(all_df, output_file)
+    if output_base_data_file:
+        all_df = pd.DataFrame([row.flat for row in all_base_rows])
+        ic('Saving to: ', output_base_data_file)
+        save(all_df, output_base_data_file)
+    if output_modified_data_file:
+        all_df = pd.DataFrame([row.flat for row in all_modified_rows])
+        ic('Saving to: ', output_modified_data_file)
+        save(all_df, output_modified_data_file)

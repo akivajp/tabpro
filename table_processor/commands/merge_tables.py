@@ -15,7 +15,8 @@ def run(
         keys=args.keys,
         allow_duplicate_keys=args.allow_duplicate_keys,
         ignore_not_found=args.ignore_not_found,
-        output_file=args.output_file,
+        output_base_data_file=args.output_base_data_file,
+        output_modified_data_file=args.output_modified_data_file,
     )
 
 def setup_parser(
@@ -50,9 +51,13 @@ def setup_parser(
         help='Ignore not found',
     )
     parser.add_argument(
-        '--output-file', '--output', '-o',
-        metavar='OUTPUT_FILE',
+        '--output-base-data-file', '--output-base',
         required=False,
-        help='Path to the output file.',
+        help='Path to output base data file',
+    )
+    parser.add_argument(
+        '--output-modified-data-file', '--output-modified',
+        required=False,
+        help='Path to output modified data file',
     )
     parser.set_defaults(handler=run)
