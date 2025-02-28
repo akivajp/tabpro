@@ -74,8 +74,12 @@ class OmitConfig:
 class ParseConfig:
     target: str
     source: str
-    as_type: Literal['json', 'literal']
+    as_type: Literal[
+        'bool', 'json', 'literal'
+    ]
     required: bool = False
+    assign_default: bool = False
+    default_value: Any = None
 
 @dataclasses.dataclass
 class PickConfig:

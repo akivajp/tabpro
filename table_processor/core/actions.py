@@ -177,15 +177,26 @@ def setup_actions_with_args(
             if action_name == 'parse':
                 as_type = options.get('as', 'literal')
                 required = options.get('required', False)
-                if as_type not in ['json', 'literal']:
+                if as_type in ['boolean']:
+                    as_type = 'bool'
+                if as_type not in ['bool', 'json', 'literal']:
                     raise ValueError(
                         f'Unsupported as type: {as_type}'
                     )
+                assign_default = False
+                default_value = None
+                if 'default' in options:
+                    assign_default = True
+                    default_value = options['default']
+                    if default_value in ['None', 'none', 'Null', 'null']:
+                        default_value = None
                 config.actions.append(ParseConfig(
                     target = target,
                     source = source,
                     as_type = as_type,
                     required = required,
+                    assign_default = assign_default,
+                    default_value = default_value,
                 ))
                 continue
             if action_name == 'parse-json':
@@ -599,27 +610,48 @@ def parse(
                 f'Required field not found, field: {config.source}'
             )
     if found:
-        if type(value) == str:
-            if config.as_type == 'literal':
-                try:
+        if config.as_type == 'literal':
+            try:
+                if type(value) is str:
                     parsed = ast.literal_eval(value)
-                except:
-                    raise ValueError(
-                        f'Failed to parse literal: {value}'
-                    )
-            elif config.as_type == 'json':
-                try:
+                else:
+                    parsed = value
+            except:
+                raise ValueError(
+                    f'Failed to parse literal: {value}'
+                )
+        elif config.as_type == 'json':
+            try:
+                if type(value) is str:
                     parsed = json.loads(value)
-                except:
+                else:
+                    parsed = value
+            except:
+                raise ValueError(
+                    f'Failed to parse JSON: {value}'
+                )
+        elif config.as_type == 'bool':
+            if config.assign_default and value in [None, '']:
+                value = config.default_value
+            if type(value) is bool:
+                parsed = value
+            elif type(value) is str:
+                if value.lower() in ['true', 'yes', 'on', '1']:
+                    parsed = True
+                elif value.lower() in ['false', 'no', 'off', '0']:
+                    parsed = False
+                else:
                     raise ValueError(
-                        f'Failed to parse JSON: {value}'
+                        f'Failed to parse bool: {value}'
                     )
             else:
                 raise ValueError(
-                    f'Unsupported as type: {config.as_type}'
+                    f'Failed to parse bool: {value}'
                 )
         else:
-            parsed = value
+            raise ValueError(
+                f'Unsupported as type: {config.as_type}'
+            )
         set_row_staging_value(row, config.target, parsed)
     return row
 
