@@ -28,6 +28,7 @@ from . types import (
     AssignConstantConfig,
     AssignFormatConfig,
     AssignIdConfig,
+    AssignLengthConfig,
     FilterConfig,
     GlobalStatus,
     JoinConfig,
@@ -138,6 +139,12 @@ def setup_actions_with_args(
                     primary = [source],
                     context = context,
                     reverse = reverse,
+                ))
+                continue
+            if action_name == 'assign-length':
+                config.actions.append(AssignLengthConfig(
+                    target = target,
+                    source = source,
                 ))
                 continue
             if action_name == 'filter-empty':
@@ -303,6 +310,8 @@ def do_action(
         return assign_format(row, action)
     if isinstance(action, AssignIdConfig):
         return assign_id(status.id_context_map, row, action)
+    if isinstance(action, AssignLengthConfig):
+        return assign_length(row, action)
     if isinstance(action, FilterConfig):
         if filter_row(row, action):
             return row
@@ -634,4 +643,13 @@ def push_field(
             array = []
             set_row_staging_value(row, config.target, array)
         array.append(source_value)
+    return row
+
+def assign_length(
+    row: Row,
+    config: AssignLengthConfig,
+):
+    value, found = search_column_value(row.nested, config.source)
+    if found:
+        set_row_staging_value(row, config.target, len(value))
     return row

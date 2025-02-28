@@ -263,17 +263,6 @@ def search_column_value_from_nested(
     return None, False
 
 
-def assign_length(
-    row: OrderedDict,
-    dict_fields: OrderedDict,
-):
-    new_row = OrderedDict(row)
-    for key, field in dict_fields.items():
-        value, found = search_column_value(row, field)
-        if found:
-            new_row[f'{STAGING_FIELD}.{key}'] = len(value)
-    return new_row
-
 def convert(
     input_files: list[str],
     output_file: str | None = None,
@@ -348,8 +337,6 @@ def convert(
                 set_row_staging_value(row, INPUT_FIELD, orig_row.nested)
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
-            if config.process.assign_length:
-                row.flat = assign_length(row.flat, config.process.assign_length)
             if config.actions:
                 try:
                     new_row = do_actions(global_status, row, config.actions)

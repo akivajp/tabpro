@@ -34,7 +34,6 @@ class AssignArrayConfig:
 @dataclasses.dataclass
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
-    assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
 
     def __setitem__(self, key, value):
         setattr(self, key, value)

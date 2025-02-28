@@ -47,6 +47,11 @@ class AssignIdConfig:
     reverse: bool = False
 
 @dataclasses.dataclass
+class AssignLengthConfig:
+    target: str
+    source: str
+
+@dataclasses.dataclass
 class FilterConfig:
     field: str
     operator: Literal[
