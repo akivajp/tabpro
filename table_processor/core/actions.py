@@ -486,9 +486,9 @@ def search_with_operator(
     row: Row,
     source: str,
 ):
-    or_operator = '\|\|'
-    null_or_operator = '\?\?'
-    operator_group = f'{or_operator}|{null_or_operator}'
+    or_operator = '||'
+    null_or_operator = '??'
+    operator_group = f'{re.escape(or_operator)}|{re.escape(null_or_operator)}'
     matched = re.split(f'({operator_group})', source, 1)
     #ic(source, matched)
     if len(matched) == 1:
@@ -496,10 +496,10 @@ def search_with_operator(
     matched = map(str.strip, matched)
     left, operator, rest = matched
     value, found = search_column_value(row.nested, left)
-    if operator == '||':
+    if operator == or_operator:
         if bool(value):
             return value, found
-    if operator == '??':
+    if operator == null_or_operator:
         if found and value is not None:
             return value, found
     return search_with_operator(row, rest)
