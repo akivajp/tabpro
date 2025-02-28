@@ -80,6 +80,7 @@ class JoinConfig:
 @dataclasses.dataclass
 class OmitConfig:
     field: str
+    purge: bool = False
 
 @dataclasses.dataclass
 class ParseConfig:

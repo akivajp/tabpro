@@ -18,6 +18,7 @@ def run(
         output_base_data_file=args.output_base_data_file,
         output_modified_data_file=args.output_modified_data_file,
         output_remaining_data_file=args.output_remaining_data_file,
+        merge_fields=args.merge_fields,
     )
 
 def setup_parser(
@@ -65,5 +66,11 @@ def setup_parser(
         '--output-remaining-data-file', '--output-remaining', '--output-remain',
         required=False,
         help='Path to output remaining data file',
+    )
+    parser.add_argument(
+        '--merge-fields', '--merge-field', '--merge-keys', '--merge-key',
+        nargs='+',
+        required=False,
+        help='Fields to merge',
     )
     parser.set_defaults(handler=run)

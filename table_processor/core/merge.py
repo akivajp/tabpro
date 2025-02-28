@@ -61,6 +61,7 @@ def merge(
     output_base_data_file: str | None = None,
     output_modified_data_file: str | None = None,
     output_remaining_data_file: str | None = None,
+    merge_fields: list[str] | None = None,
 ):
     ic.enable()
     ic()
@@ -132,12 +133,18 @@ def merge(
             all_modified_rows.append(previous_row)
             #ic(previous_row)
             #ic(previous_row.flat)
-            for key, value in row.flat.items():
-                if key.startswith('__staging__.'):
-                    continue
+            if merge_fields is None:
+                merge_fields = []
+                for field in row.flat.keys():
+                    if field.startswith('__staging__.'):
+                        continue
+                    merge_fields.append(field)
+            for field in merge_fields:
+                value, found = search_column_value(row.flat, field)
                 #ic(key)
                 #ic(key, value)
-                set_row_value(previous_row, key, value)
+                if found:
+                    set_row_value(previous_row, field, value)
             #ic(previous_row)
             #ic(previous_row.flat)
             #raise
@@ -152,6 +159,9 @@ def merge(
         ic('Saving to: ', output_base_data_file)
         save(all_df, output_base_data_file)
     if output_modified_data_file:
+        #all_modified_rows = []
+        #for key in set_modified_keys:
+        #    all_modified_rows.append(dict_key_to_row[key])
         all_df = pd.DataFrame([row.flat for row in all_modified_rows])
         ic('Saving to: ', output_modified_data_file)
         save(all_df, output_modified_data_file)

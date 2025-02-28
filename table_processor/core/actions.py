@@ -196,8 +196,10 @@ def setup_actions_with_args(
                 ))
                 continue
             if action_name == 'omit':
+                purge = options.get('purge', False)
                 config.actions.append(OmitConfig(
                     field = target,
+                    purge = purge,
                 ))
                 continue
             if action_name == 'parse':
@@ -607,8 +609,9 @@ def omit_field(
     value, found = pop_row_value(row, config.field)
     if not found:
         return row
-    if f'{STAGING_FIELD}.{config.field}' not in row.flat:
-        set_row_staging_value(row, config.field, value)
+    if not config.purge:
+        if f'{STAGING_FIELD}.{config.field}' not in row.flat:
+            set_row_staging_value(row, config.field, value)
     return row
 
 def join_field(
