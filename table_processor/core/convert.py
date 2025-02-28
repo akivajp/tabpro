@@ -20,7 +20,6 @@ import pandas as pd
 
 from . config import (
     AssignArrayConfig,
-    PushConfig,
     setup_config,
     setup_pick_with_args,
 )
@@ -264,28 +263,6 @@ def search_column_value_from_nested(
     return None, False
 
 
-def push_fields(
-    row: OrderedDict,
-    list_config: list[PushConfig],
-):
-    nested_row = nest(row)
-    for config in list_config:
-        target_value, found = search_column_value_from_nested(nested_row, config.target)
-        if found:
-            array = target_value
-        else:
-            array = []
-            #set_field_value(nested_row, f'{STAGING_FIELD}.{config.target}', array)
-            set_row_staging_value(nested_row, config.target, array)
-        source_value, found = search_column_value_from_nested(nested_row, config.source)
-        if config.condition is None:
-            array.append(source_value)
-            continue
-        condition_value, found = search_column_value_from_nested(nested_row, config.condition)
-        if condition_value:
-            array.append(source_value)
-    return flatten_row(nested_row)
-
 def assign_length(
     row: OrderedDict,
     dict_fields: OrderedDict,
@@ -371,8 +348,6 @@ def convert(
                 set_row_staging_value(row, INPUT_FIELD, orig_row.nested)
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
-            if config.process.push:
-                row.flat = push_fields(row.flat, config.process.push)
             if config.process.assign_length:
                 row.flat = assign_length(row.flat, config.process.assign_length)
             if config.actions:

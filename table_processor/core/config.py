@@ -32,16 +32,9 @@ class AssignArrayConfig:
     optional: bool = True
 
 @dataclasses.dataclass
-class PushConfig:
-    target: str
-    source: str
-    condition: str | None = None
-
-@dataclasses.dataclass
 class ProcessConfig:
     assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
     assign_length: FlatFieldMap = dataclasses.field(default_factory=OrderedDict)
-    push: list[PushConfig] = dataclasses.field(default_factory=list)
 
     def __setitem__(self, key, value):
         setattr(self, key, value)

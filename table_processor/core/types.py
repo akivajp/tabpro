@@ -78,6 +78,12 @@ class PickConfig:
     source: str
 
 @dataclasses.dataclass
+class PushConfig:
+    target: str
+    source: str
+    condition: str | None = None
+
+@dataclasses.dataclass
 class SplitConfig:
     target: str
     source: str

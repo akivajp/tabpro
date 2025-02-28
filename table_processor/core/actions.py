@@ -34,6 +34,7 @@ from . types import (
     OmitConfig,
     ParseConfig,
     PickConfig,
+    PushConfig,
     SplitConfig,
     Row,
 )
@@ -189,6 +190,14 @@ def setup_actions_with_args(
                     required = required,
                 ))
                 continue
+            if action_name == 'push':
+                condition = options.get('condition', None)
+                config.actions.append(PushConfig(
+                    target = target,
+                    source = source,
+                    condition = condition,
+                ))
+                continue
             if action_name == 'split':
                 delimiter = options.get('delimiter', None)
                 if delimiter == '\\n':
@@ -304,6 +313,8 @@ def do_action(
         return parse(row, action)
     if isinstance(action, OmitConfig):
         return omit_field(row, action)
+    if isinstance(action, PushConfig):
+        return push_field(row, action)
     if isinstance(action, SplitConfig):
         return split_field(row, action)
     raise ValueError(
@@ -601,4 +612,26 @@ def parse(
         else:
             parsed = value
         set_row_staging_value(row, config.target, parsed)
+    return row
+
+def push_field(
+    row: Row,
+    config: PushConfig,
+):
+    source_value, found = search_column_value(row.nested, config.source)
+    do_append = False
+    if config.condition is None:
+        do_append = True
+    else:
+        condition_value, found = search_column_value(row.nested, config.condition)
+        if condition_value:
+            do_append = True
+    if do_append:
+        target_value, found = search_column_value(row.nested, config.target)
+        if found:
+            array = target_value
+        else:
+            array = []
+            set_row_staging_value(row, config.target, array)
+        array.append(source_value)
     return row
