@@ -85,7 +85,7 @@ def merge(
             if not allow_duplicate_keys:
                 if primary_key in dict_key_to_row:
                     ic(index)
-                    raise ValueError(f'Duplicate key: {key}')
+                    raise ValueError(f'Duplicate key: {primary_key}')
             dict_key_to_row[primary_key] = row
             all_base_rows.append(row)
     for modification_file in modification_files:
@@ -134,8 +134,6 @@ def merge(
                 #ic(key)
                 #ic(key, value)
                 set_row_value(previous_row, key, value)
-                #set_row_value(previous_row, '指示追従性？', 'test')
-                #set_row_value(previous_row, 'modified', True)
             #ic(previous_row)
             #ic(previous_row.flat)
             #raise
