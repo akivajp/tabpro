@@ -64,12 +64,13 @@ def register_loader(
 
 def load(
     input_file: str,
+    **kwargs,
 ):
     ext = os.path.splitext(input_file)[1]
     if ext not in dict_loaders:
         raise ValueError(f'Unsupported file type: {ext}')
     loader = dict_loaders[ext]
-    return loader(input_file)
+    return loader(input_file, **kwargs)
 
 dict_savers: dict[str, callable] = {}
 def register_saver(
@@ -93,16 +94,34 @@ def save(
 @register_loader('.csv')
 def load_csv(
     input_file: str,
+    **kwargs,
 ):
+    skip_header = kwargs.get('skip_header', False)
     # utf-8
     #df = pd.read_csv(input_file)
     # UTF-8 with BOM
-    df = pd.read_csv(input_file, encoding='utf-8-sig')
+    if skip_header:
+        df = pd.read_csv(
+            input_file,
+            encoding='utf-8-sig',
+            header=None,
+        )
+        #new_column_names = [f'__values__.{i}' for i in df.columns]
+        new_column_names = [f'{i}' for i in df.columns]
+        df = df.rename(columns=dict(
+            zip(df.columns, new_column_names)
+        ))
+    else:
+        df = pd.read_csv(
+            input_file,
+            encoding='utf-8-sig',
+        )
     return df
 
 @register_loader('.xlsx')
 def load_excel(
     input_file: str,
+    **kwargs,
 ):
     #df = pd.read_excel(input_file)
     # NOTE: Excelで勝手に日時データなどに変換されてしまうことを防ぐため
@@ -123,6 +142,7 @@ def load_excel(
 @register_loader('.json')
 def load_json(
     input_file: str,
+    **kiwargs,
 ):
     with open(input_file, 'r') as f:
         data = json.load(f)
@@ -165,6 +185,7 @@ def save_json(
 @register_loader('.jsonl')
 def load_jsonl(
     input_file: str,
+    **kwargs,
 ):
     rows = []
     with open(input_file, 'r') as f:
@@ -274,6 +295,7 @@ def convert(
     action_delimiter: str = ':',
     verbose: bool = False,
     ignore_file_rows: list[str] | None = None,
+    skip_header: bool = False,
 ):
     ic.enable()
     ic()
@@ -306,11 +328,7 @@ def convert(
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
         base_name = os.path.basename(input_file)
-        ext = os.path.splitext(input_file)[1]
-        ic(ext)
-        if ext not in dict_loaders:
-            raise ValueError(f'Unsupported file type: {ext}')
-        df = dict_loaders[ext](input_file)
+        df = load(input_file, skip_header=skip_header)
         # NOTE: NaN を None に変換しておかないと厄介
         df = df.replace([np.nan], [None])
         #ic(df)

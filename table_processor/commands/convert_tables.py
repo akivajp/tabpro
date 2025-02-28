@@ -20,6 +20,7 @@ def run(
         output_debug = args.output_debug,
         verbose = args.verbose,
         ignore_file_rows = args.ignore_file_rows,
+        skip_header = args.skip_header,
     )
 
 def setup_parser(
@@ -76,5 +77,10 @@ def setup_parser(
         '--output-debug',
         action='store_true',
         help='Output debug information',
+    )
+    parser.add_argument(
+        '--skip-header',
+        action='store_true',
+        help='Skip header',
     )
     parser.set_defaults(handler=run)

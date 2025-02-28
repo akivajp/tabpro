@@ -116,17 +116,20 @@ def merge(
             #    dict_key_to_row[key].flat.update(row.flat)
             if primary_key not in dict_key_to_row:
                 if ignore_not_found:
+                    ic(primary_key)
+                    ic(row.flat['__staging__.__file_row_index__'])
                     list_ignored_keys.append(primary_key)
                     continue
                 ic(index)
-                raise ValueError(f'Key not found: {key}')
+                raise ValueError(f'Key not found: {primary_key}')
             previous_row = dict_key_to_row[primary_key]
             #ic(previous_row)
             #ic(previous_row.flat)
             for key, value in row.flat.items():
                 if key.startswith('__staging__.'):
                     continue
-                ic(key, value)
+                #ic(key)
+                #ic(key, value)
                 set_row_value(previous_row, key, value)
                 #set_row_value(previous_row, '指示追従性？', 'test')
                 #set_row_value(previous_row, 'modified', True)

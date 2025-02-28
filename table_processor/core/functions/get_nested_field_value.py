@@ -15,11 +15,17 @@ def get_nested_field_value(
             if index < len(data):
                 return data[index], True
             return None, False
+        if '.' in field:
+            field, rest = field.split('.', 1)
+            if field.isdigit():
+                index = int(field)
+                if index < len(data):
+                    return get_nested_field_value(data[index], rest)
     if isinstance(data, dict):
         if field in data:
             return data[field], True
-    if '.' in field:
-        field, rest = field.split('.', 1)
-        if field in data:
-            return get_nested_field_value(data[field], rest)
+        if '.' in field:
+            field, rest = field.split('.', 1)
+            if field in data:
+                return get_nested_field_value(data[field], rest)
     return None, False
