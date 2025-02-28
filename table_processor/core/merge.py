@@ -39,6 +39,19 @@ from . convert import (
     save,
 )
 
+def get_primary_key(
+    row: Mapping,
+    keys: list[str],
+):
+    list_keys = []
+    for key in keys:
+        value, found = search_column_value(row, key)
+        if not found:
+            raise KeyError(f'Column not found: {key}, existing columns: {row.keys()}')
+        list_keys.append(value)
+    primary_key = tuple(list_keys)
+    return primary_key
+
 def merge(
     previous_files: list[str],
     modification_files: list[str],
@@ -47,13 +60,16 @@ def merge(
     ignore_not_found: bool = False,
     output_base_data_file: str | None = None,
     output_modified_data_file: str | None = None,
+    output_remaining_data_file: str | None = None,
 ):
     ic.enable()
     ic()
     ic(previous_files)
     ic(modification_files)
     ic(keys)
-    dict_key_to_row = {}
+    #dict_key_to_row = {}
+    dict_key_to_row = OrderedDict()
+    set_modified_keys = set()
     all_base_rows = []
     all_modified_rows = []
     list_ignored_keys = []
@@ -74,13 +90,7 @@ def merge(
             total=len(df),
         ):
             row = prepare_row(flat_row)
-            list_keys = []
-            for key in keys:
-                value, found = search_column_value(row.nested, key)
-                if not found:
-                    raise KeyError(f'Column not found: {key}, existing columns: {row.flat.keys()}')
-                list_keys.append(value)
-            primary_key = tuple(list_keys)
+            primary_key = get_primary_key(row.flat, keys)
             #ic(key)
             if not allow_duplicate_keys:
                 if primary_key in dict_key_to_row:
@@ -104,13 +114,7 @@ def merge(
             total=len(df),
         ):
             row = prepare_row(flat_row)
-            list_keys = []
-            for key in keys:
-                value, found = search_column_value(row.nested, key)
-                if not found:
-                    raise KeyError(f'Column not found: {key}, existing columns: {row.flat.keys()}')
-                list_keys.append(value)
-            primary_key = tuple(list_keys)
+            primary_key = get_primary_key(row.flat, keys)
             #ic(key)
             #if key not in dict_key_to_row:
             #    dict_key_to_row[key] = row
@@ -137,6 +141,7 @@ def merge(
             #ic(previous_row)
             #ic(previous_row.flat)
             #raise
+            set_modified_keys.add(primary_key)
             num_modified += 1
     ic(num_modified)
     if ignore_not_found:
@@ -150,3 +155,11 @@ def merge(
         all_df = pd.DataFrame([row.flat for row in all_modified_rows])
         ic('Saving to: ', output_modified_data_file)
         save(all_df, output_modified_data_file)
+    if output_remaining_data_file:
+        remaining_rows = []
+        for key, row in dict_key_to_row.items():
+            if key not in set_modified_keys:
+                remaining_rows.append(row)
+        all_df = pd.DataFrame([row.flat for row in remaining_rows])
+        ic('Saving to: ', output_remaining_data_file)
+        save(all_df, output_remaining_data_file)

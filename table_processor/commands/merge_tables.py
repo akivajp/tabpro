@@ -17,6 +17,7 @@ def run(
         ignore_not_found=args.ignore_not_found,
         output_base_data_file=args.output_base_data_file,
         output_modified_data_file=args.output_modified_data_file,
+        output_remaining_data_file=args.output_remaining_data_file,
     )
 
 def setup_parser(
@@ -59,5 +60,10 @@ def setup_parser(
         '--output-modified-data-file', '--output-modified',
         required=False,
         help='Path to output modified data file',
+    )
+    parser.add_argument(
+        '--output-remaining-data-file', '--output-remaining', '--output-remain',
+        required=False,
+        help='Path to output remaining data file',
     )
     parser.set_defaults(handler=run)
