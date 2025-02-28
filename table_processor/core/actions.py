@@ -29,6 +29,7 @@ from . types import (
     AssignFormatConfig,
     AssignIdConfig,
     AssignLengthConfig,
+    CastConfig,
     FilterConfig,
     GlobalStatus,
     JoinConfig,
@@ -145,6 +146,31 @@ def setup_actions_with_args(
                 config.actions.append(AssignLengthConfig(
                     target = target,
                     source = source,
+                ))
+                continue
+            if action_name == 'cast':
+                required = options.get('required', False)
+                as_type = options.get('as', 'literal')
+                if as_type in ['boolean']:
+                    as_type = 'bool'
+                if as_type not in ['bool', 'int', 'float', 'str']:
+                    raise ValueError(
+                        f'Unsupported as type: {as_type}'
+                    )
+                assign_default = False
+                default_value = None
+                if 'default' in options:
+                    assign_default = True
+                    default_value = options['default']
+                    if default_value in ['None', 'none', 'Null', 'null']:
+                        default_value = None
+                config.actions.append(CastConfig(
+                    target = target,
+                    source = source,
+                    as_type = as_type,
+                    required = required,
+                    assign_default = assign_default,
+                    default_value = default_value,
                 ))
                 continue
             if action_name == 'filter-empty':
@@ -323,6 +349,8 @@ def do_action(
         return assign_id(status.id_context_map, row, action)
     if isinstance(action, AssignLengthConfig):
         return assign_length(row, action)
+    if isinstance(action, CastConfig):
+        return cast(row, action)
     if isinstance(action, FilterConfig):
         if filter_row(row, action):
             return row
@@ -684,4 +712,38 @@ def assign_length(
     value, found = search_column_value(row.nested, config.source)
     if found:
         set_row_staging_value(row, config.target, len(value))
+    return row
+
+def cast(
+    row: Row,
+    config: CastConfig,
+):
+    value, found = search_column_value(row.nested, config.source)
+    if config.required:
+        if not found:
+            raise ValueError(
+                f'Required field not found, field: {config.source}'
+            )
+    if config.as_type == 'bool':
+        cast_func = bool
+    elif config.as_type == 'int':
+        cast_func = int
+    elif config.as_type == 'float':
+        cast_func = float
+    elif config.as_type == 'str':
+        cast_func = str
+    else:
+        raise ValueError(
+            f'Unsupported as type: {config.as_type}'
+        )
+    try:
+        casted = cast_func(value)
+    except:
+        if config.assign_default:
+            casted = config.default_value
+        else:
+            raise ValueError(
+                f'Failed to cast: {value}'
+            )
+    set_row_staging_value(row, config.target, casted)
     return row

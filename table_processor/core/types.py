@@ -52,6 +52,17 @@ class AssignLengthConfig:
     source: str
 
 @dataclasses.dataclass
+class CastConfig:
+    target: str
+    source: str
+    as_type: Literal[
+        'bool', 'int', 'float', 'str'
+    ]
+    required: bool = False
+    assign_default: bool = False
+    default_value: Any = None
+
+@dataclasses.dataclass
 class FilterConfig:
     field: str
     operator: Literal[
