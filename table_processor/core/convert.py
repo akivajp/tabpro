@@ -30,10 +30,8 @@ from . constants import (
     INPUT_FIELD,
     STAGING_FIELD,
 )
-from . functions.flatten_row import flatten_row
 from . functions.get_nested_field_value import get_nested_field_value
 from . functions.get_nested_field_value import get_nested_field_value
-from . functions.nest_row import nest_row as nest
 from . functions.search_column_value import search_column_value
 from . functions.set_nested_field_value import set_nested_field_value
 from . functions.set_row_value import (
@@ -53,199 +51,12 @@ from . types import (
     GlobalStatus,
 )
 
-dict_loaders: dict[str, callable] = {}
-def register_loader(
-    ext: str,
-):
-    def decorator(loader):
-        dict_loaders[ext] = loader
-        return loader
-    return decorator
-
-def load(
-    input_file: str,
-    **kwargs,
-):
-    ext = os.path.splitext(input_file)[1]
-    if ext not in dict_loaders:
-        raise ValueError(f'Unsupported file type: {ext}')
-    loader = dict_loaders[ext]
-    return loader(input_file, **kwargs)
-
-dict_savers: dict[str, callable] = {}
-def register_saver(
-    ext: str,
-):
-    def decorator(saver):
-        dict_savers[ext] = saver
-        return saver
-    return decorator
-
-def save(
-    df: pd.DataFrame,
-    output_file: str,
-):
-    ext = os.path.splitext(output_file)[1]
-    if ext not in dict_savers:
-        raise ValueError(f'Unsupported file type: {ext}')
-    saver = dict_savers[ext]
-    saver(df, output_file)
-
-@register_loader('.csv')
-def load_csv(
-    input_file: str,
-    **kwargs,
-):
-    skip_header = kwargs.get('skip_header', False)
-    # utf-8
-    #df = pd.read_csv(input_file)
-    # UTF-8 with BOM
-    if skip_header:
-        df = pd.read_csv(
-            input_file,
-            encoding='utf-8-sig',
-            header=None,
-        )
-        #new_column_names = [f'__values__.{i}' for i in df.columns]
-        new_column_names = [f'{i}' for i in df.columns]
-        df = df.rename(columns=dict(
-            zip(df.columns, new_column_names)
-        ))
-    else:
-        df = pd.read_csv(
-            input_file,
-            encoding='utf-8-sig',
-        )
-    return df
-
-@register_loader('.xlsx')
-def load_excel(
-    input_file: str,
-    **kwargs,
-):
-    #df = pd.read_excel(input_file)
-    # NOTE: Excelで勝手に日時データなどに変換されてしまうことを防ぐため
-    df = pd.read_excel(input_file, dtype=str)
-    # NOTE: 列番号でもアクセスできるようフィールドを追加する
-    df_with_column_number = pd.read_excel(
-        input_file, dtype=str, header=None, skiprows=1
-    )
-    new_column_names = [f'__values__.{i}' for i in df_with_column_number.columns]
-    df2 = df_with_column_number.rename(columns=dict(
-        zip(df_with_column_number.columns, new_column_names)
-    ))
-    df = pd.concat([df, df2], axis=1)
-    df = df.dropna(axis=0, how='all')
-    df = df.dropna(axis=1, how='all')
-    return df
-
-@register_loader('.json')
-def load_json(
-    input_file: str,
-    **kiwargs,
-):
-    with open(input_file, 'r') as f:
-        data = json.load(f)
-    if not isinstance(data, list):
-        raise ValueError(f'Invalid JSON array data: {input_file}')
-    #ic(data[0])
-    rows = []
-    for row in data:
-        new_row = flatten_row(row)
-        rows.append(new_row)
-    df = pd.DataFrame(rows)
-    return df
-
-@register_saver('.json')
-def save_json(
-    df: pd.DataFrame,
-    output_file: str,
-):
-    # NOTE: この方法だとスラッシュがすべてエスケープされてしまった
-    #df.to_json(
-    #    output_file,
-    #    orient='records',
-    #    force_ascii=False,
-    #    indent=2,
-    #    escape_forward_slashes=False,
-    #)
-    #ic(df.iloc[0])
-    data = df.to_dict(orient='records')
-    #ic(data[0])
-    data = [nest(row) for row in data]
-    #ic(data[0])
-    with open(output_file, 'w') as f:
-        json.dump(
-            data,
-            f,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-@register_loader('.jsonl')
-def load_jsonl(
-    input_file: str,
-    **kwargs,
-):
-    rows = []
-    with open(input_file, 'r') as f:
-        for line in f:
-            row = json.loads(line)
-            rows.append(row)
-    df = pd.DataFrame(rows)
-    return df
-
-@register_saver('.jsonl')
-def save_jsonl(
-    df: pd.DataFrame,
-    output_file: str,
-):
-    # NOTE: この方法だとスラッシュがすべてエスケープされてしまった
-    #df.to_json(
-    #    output_file,
-    #    orient='records',
-    #    lines=True,
-    #    force_ascii=False,
-    #)
-    with open(output_file, 'w') as f:
-        for index, row in df.iterrows():
-            data = row.to_dict()
-            json.dump(
-                data,
-                f,
-                ensure_ascii=False,
-            )
-            f.write('\n')
-
-@register_saver('.csv')
-def save_csv(
-    df: pd.DataFrame,
-    output_file: str,
-):
-    # utf-8
-    #df.to_csv(output_file, index=False)
-    # UTF-8 with BOM
-    df.to_csv(output_file, index=False, encoding='utf-8-sig')
-
-@register_saver('.xlsx')
-def save_excel(
-    df: pd.DataFrame,
-    output_file: str,
-):
-    # openpyxl
-    df.to_excel(output_file, index=False)
-    # xlsxwriter
-    #writer = pd.ExcelWriter(
-    #    output_file,
-    #    engine='xlsxwriter',
-    #    engine_kwargs={
-    #        'options': {
-    #            'strings_to_urls': False,
-    #        },
-    #    }
-    #)
-    #df.to_excel(writer, index=False)
-    #writer.close()
+from . io import (
+    get_loader,
+    get_saver,
+    load,
+    save,
+)
 
 def assign_array(
     row: OrderedDict,
@@ -317,10 +128,7 @@ def convert(
             action_delimiter=action_delimiter
         )
     if output_file:
-        ext = os.path.splitext(output_file)[1]
-        if ext not in dict_savers:
-            raise ValueError(f'Unsupported file type: {ext}')
-        saver = dict_savers[ext]
+        saver = get_saver(output_file)
     ic(config)
     #return # debug return
     for input_file in input_files:

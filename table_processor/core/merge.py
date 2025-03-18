@@ -34,7 +34,9 @@ from . actions import (
     prepare_row,
 )
 
-from . convert import (
+from . io import (
+    get_loader,
+    get_saver,
     load,
     save,
 )
@@ -75,6 +77,13 @@ def merge(
     all_modified_rows = []
     list_ignored_keys = []
     num_modified = 0
+    for output_path in [
+        output_base_data_file,
+        output_modified_data_file,
+        output_remaining_data_file,
+    ]:
+        if output_path:
+            get_saver(output_path)
     for previous_file in previous_files:
         if not os.path.exists(previous_file):
             raise FileNotFoundError(f'File not found: {previous_file}')
