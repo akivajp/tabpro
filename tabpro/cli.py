@@ -36,8 +36,8 @@ def command_convert_tables(
         command_parser = parser
     from . commands.convert_tables import setup_parser
     setup_parser(command_parser)
-    setup_common_args(command_parser)
     if parser is None:
+        setup_common_args(command_parser)
         parse_and_run(command_parser)
 
 def command_merge_tables(
@@ -51,8 +51,8 @@ def command_merge_tables(
         command_parser = parser
     from . commands.merge_tables import setup_parser
     setup_parser(command_parser)
-    setup_common_args(command_parser)
     if parser is None:
+        setup_common_args(command_parser)
         parse_and_run(command_parser)
 
 def setup_common_args(
