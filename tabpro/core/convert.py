@@ -140,7 +140,7 @@ def convert(
         # NOTE: NaN を None に変換しておかないと厄介
         df = df.replace([np.nan], [None])
         #ic(df)
-        #ic(len(df))
+        ic(len(df))
         #ic(df.columns)
         #ic(df.iloc[0])
         #new_rows = []

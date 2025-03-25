@@ -180,5 +180,6 @@ def merge(
             if key not in set_modified_keys:
                 remaining_rows.append(row)
         all_df = pd.DataFrame([row.flat for row in remaining_rows])
+        ic(len(remaining_rows))
         ic('Saving to: ', output_remaining_data_file)
         save(all_df, output_remaining_data_file)
