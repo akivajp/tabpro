@@ -1,3 +1,7 @@
+'''
+Row class
+'''
+
 from collections import (
     OrderedDict
 )
@@ -16,6 +20,9 @@ class Row(Mapping):
         self.flat = OrderedDict()
         self.nested = OrderedDict()
 
+    def clone(self):
+        return self.__class__.from_dict(self.flat)
+
     def get(self, key, default=None):
         value, found = get_nested_field_value(self.nested, key)
         if not found:
@@ -32,6 +39,10 @@ class Row(Mapping):
         set_nested_field_value(self.nested, key, value)
         set_flat_field_value(self.flat, key, value)
 
+    def __contains__(self, key):
+        _, found = get_nested_field_value(self.nested, key)
+        return found
+
     def __iter__(self):
         return iter(self.flat)
 
@@ -41,3 +52,9 @@ class Row(Mapping):
     def __repr__(self):
         return f'Row(flat={self.flat}, nested={self.nested})'
     
+    @staticmethod
+    def from_dict(data: dict):
+        row = Row()
+        for key, value in data.items():
+            row[key] = value
+        return row
