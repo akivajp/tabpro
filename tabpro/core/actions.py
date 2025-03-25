@@ -38,8 +38,10 @@ from . types import (
     PickConfig,
     PushConfig,
     SplitConfig,
-    Row,
+    #Row,
 )
+
+from . classes.row import Row
 
 from . functions.assign_id import assign_id
 from . functions.flatten_row import flatten_row

@@ -1,5 +1,6 @@
 import pytest
 from tabpro.core.classes.row import Row
+from tabpro.core.io.loader import Loader
 
 from icecream import ic
 

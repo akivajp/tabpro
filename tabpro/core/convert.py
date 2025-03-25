@@ -13,6 +13,7 @@ from typing import (
 # 3-rd party modules
 
 from icecream import ic
+from logzero import logger
 import numpy as np
 import pandas as pd
 
@@ -33,11 +34,6 @@ from . constants import (
 from . functions.get_nested_field_value import get_nested_field_value
 from . functions.get_nested_field_value import get_nested_field_value
 from . functions.search_column_value import search_column_value
-from . functions.set_nested_field_value import set_nested_field_value
-from . functions.set_row_value import (
-    set_row_value,
-    set_row_staging_value,
-)
 
 from . actions import (
     do_actions,
@@ -53,9 +49,10 @@ from . types import (
 
 from . io import (
     get_loader,
-    get_saver,
-    load,
-    save,
+    #get_saver,
+    get_writer,
+    #load,
+    #save,
 )
 
 def assign_array(
@@ -106,12 +103,13 @@ def convert(
     action_delimiter: str = ':',
     verbose: bool = False,
     ignore_file_rows: list[str] | None = None,
-    skip_header: bool = False,
+    #skip_header: bool = False,
+    no_header: bool = False,
 ):
     ic.enable()
     ic()
     ic(input_files)
-    df_list = []
+    #df_list = []
     row_list_filtered_out = []
     set_ignore_file_rows = set()
     global_status = GlobalStatus()
@@ -128,39 +126,28 @@ def convert(
             action_delimiter=action_delimiter
         )
     if output_file:
-        saver = get_saver(output_file)
+        #saver = get_saver(output_file)
+        writer = get_writer(output_file)
     ic(config)
-    #return # debug return
     for input_file in input_files:
-        ic(input_file)
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
         base_name = os.path.basename(input_file)
-        df = load(input_file, skip_header=skip_header)
-        # NOTE: NaN を None に変換しておかないと厄介
-        df = df.replace([np.nan], [None])
-        #ic(df)
-        ic(len(df))
-        #ic(df.columns)
-        #ic(df.iloc[0])
-        #new_rows = []
-        new_flat_rows = []
-        for index, flat_row in df.iterrows():
+        loader = get_loader(input_file, no_header=no_header)
+        logger.info('# rows: %s', len(loader))
+        for index, row in enumerate(loader):
             file_row_index = f'{input_file}:{index}'
             if file_row_index in set_ignore_file_rows:
                 continue
             short_file_row_index = f'{base_name}:{index}'
             if short_file_row_index in set_ignore_file_rows:
                 continue
-            #if flat_row.empty:
-            #    continue
-            orig_row = prepare_row(flat_row)
-            row = prepare_row(flat_row)
-            if STAGING_FIELD not in orig_row.nested:
-                set_row_staging_value(row, FILE_FIELD, input_file)
-                set_row_staging_value(row, FILE_ROW_INDEX_FIELD, file_row_index)
-                set_row_staging_value(row, ROW_INDEX_FIELD, index)
-                set_row_staging_value(row, INPUT_FIELD, orig_row.nested)
+            orig_row = row.clone()
+            if STAGING_FIELD not in row:
+                row[FILE_FIELD] = input_file
+                row[FILE_ROW_INDEX_FIELD] = file_row_index
+                row[ROW_INDEX_FIELD] = index
+                row[INPUT_FIELD] = orig_row.nested
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
             if config.actions:
@@ -178,32 +165,19 @@ def convert(
                 except Exception as e:
                     if verbose:
                         ic(index)
-                        ic(flat_row)
+                        #ic(flat_row)
                         ic(row.flat)
                     raise e
             if config.pick:
                 remap_columns(row, config.pick)
             if not output_debug:
                 pop_row_staging(row)
-            new_flat_rows.append(row.flat)
-        new_df = pd.DataFrame(new_flat_rows)
-        df_list.append(new_df)
-        # NOTE: concatの仕様が変わり、all-NAの列を含むdfを連結しようとすると警告が出るようになった
-        #if ic(new_df.dropna(axis=1, how='all').empty):
-        #    ic(new_df.dropna(axis=1, how='all'))
-        #    raise ValueError('No rows to output.')
-        #df_list.append(new_df.dropna(axis=1, how='all'))
-    all_df = pd.concat(df_list)
-    #ic(all_df)
-    ic(len(all_df))
-    #ic(all_df.columns)
-    #ic(all_df.iloc[0])
-    if output_file:
-        ic('Saving to: ', output_file)
-        saver(all_df, output_file)
-    else:
-        ic(all_df)
+            writer.push_row(row)
+    if writer:
+        writer.close()
+    #else:
+    #    ic(all_df)
     if row_list_filtered_out:
         df_filtered_out = pd.DataFrame(row_list_filtered_out)
         ic('Saving filtered out to: ', output_file_filtered_out)
-        saver(df_filtered_out, output_file_filtered_out)
+        writer(df_filtered_out, output_file_filtered_out)

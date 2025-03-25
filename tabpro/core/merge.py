@@ -36,8 +36,9 @@ from . actions import (
 
 from . io import (
     get_loader,
-    get_saver,
-    load,
+    #get_saver,
+    get_writer,
+    #load,
     save,
 )
 
@@ -83,25 +84,18 @@ def merge(
         output_remaining_data_file,
     ]:
         if output_path:
-            get_saver(output_path)
+            get_writer(output_path)
     for previous_file in previous_files:
         if not os.path.exists(previous_file):
             raise FileNotFoundError(f'File not found: {previous_file}')
-        df = load(previous_file)
-        # NOTE: NaN を None に変換しておかないと厄介
-        df = df.replace([np.nan], [None])
-        #ic(df)
-        ic(len(df))
-        #ic(df.columns)
-        #ic(df.iloc[0])
-        for index, flat_row in tqdm(
-            df.iterrows(),
+        loader = get_loader(previous_file)
+        ic(len(loader))
+        for index, row in enumerate(tqdm(
+            loader,
             desc=f'Loading: {previous_file}',
-            total=len(df),
-        ):
-            row = prepare_row(flat_row)
+            total=len(loader),
+        )):
             primary_key = get_primary_key(row.flat, keys)
-            #ic(key)
             if not allow_duplicate_keys:
                 if primary_key in dict_key_to_row:
                     ic(index)
@@ -111,25 +105,14 @@ def merge(
     for modification_file in modification_files:
         if not os.path.exists(modification_file):
             raise FileNotFoundError(f'File not found: {modification_file}')
-        df = load(modification_file)
-        # NOTE: NaN を None に変換しておかないと厄介
-        df = df.replace([np.nan], [None])
-        #ic(df)
-        ic(len(df))
-        #ic(df.columns)
-        #ic(df.iloc[0])
-        for index, flat_row in tqdm(
-            df.iterrows(),
+        loader = get_loader(modification_file)
+        ic(len(loader))
+        for index, row in enumerate(tqdm(
+            loader,
             desc=f'Processing: {modification_file}',
-            total=len(df),
-        ):
-            row = prepare_row(flat_row)
+            total=len(loader),
+        )):
             primary_key = get_primary_key(row.flat, keys)
-            #ic(key)
-            #if key not in dict_key_to_row:
-            #    dict_key_to_row[key] = row
-            #else:
-            #    dict_key_to_row[key].flat.update(row.flat)
             if primary_key not in dict_key_to_row:
                 if ignore_not_found:
                     ic(primary_key)
@@ -140,8 +123,6 @@ def merge(
                 raise ValueError(f'Key not found: {primary_key}')
             previous_row = dict_key_to_row[primary_key]
             all_modified_rows.append(previous_row)
-            #ic(previous_row)
-            #ic(previous_row.flat)
             if merge_fields is None:
                 merge_fields = []
                 for field in row.flat.keys():
@@ -150,13 +131,8 @@ def merge(
                     merge_fields.append(field)
             for field in merge_fields:
                 value, found = search_column_value(row.flat, field)
-                #ic(key)
-                #ic(key, value)
                 if found:
                     set_row_value(previous_row, field, value)
-            #ic(previous_row)
-            #ic(previous_row.flat)
-            #raise
             set_modified_keys.add(primary_key)
             num_modified += 1
     ic(num_modified)
@@ -164,22 +140,16 @@ def merge(
         ic(len(list_ignored_keys))
         ic(list_ignored_keys)
     if output_base_data_file:
-        all_df = pd.DataFrame([row.flat for row in all_base_rows])
         ic('Saving to: ', output_base_data_file)
-        save(all_df, output_base_data_file)
+        save(all_base_rows, output_base_data_file)
     if output_modified_data_file:
-        #all_modified_rows = []
-        #for key in set_modified_keys:
-        #    all_modified_rows.append(dict_key_to_row[key])
-        all_df = pd.DataFrame([row.flat for row in all_modified_rows])
         ic('Saving to: ', output_modified_data_file)
-        save(all_df, output_modified_data_file)
+        save(all_modified_rows, output_modified_data_file)
     if output_remaining_data_file:
         remaining_rows = []
         for key, row in dict_key_to_row.items():
             if key not in set_modified_keys:
                 remaining_rows.append(row)
-        all_df = pd.DataFrame([row.flat for row in remaining_rows])
         ic(len(remaining_rows))
         ic('Saving to: ', output_remaining_data_file)
-        save(all_df, output_remaining_data_file)
+        save(remaining_rows, output_remaining_data_file)
