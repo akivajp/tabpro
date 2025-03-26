@@ -61,8 +61,8 @@ class CsvWriter(BaseWriter):
 
     def write_row(self, row: Row):
         if self.writer is None:
-            self.writer = csv.DictWriter(self.fobj)
-            self.writer.writeheader(row.flat.keys())
+            self.writer = csv.DictWriter(self.fobj, fieldnames=row.flat.keys())
+            self.writer.writeheader()
         self.writer.writerow(row.flat)
 
     def write_all_rows(self):
@@ -78,6 +78,6 @@ class CsvWriter(BaseWriter):
         self.writer.writeheader(header)
         for row in self.rows:
             self.write_row(row)
-
-    def close(self):
-        self.writer.close()
+        self.writer = None
+        self.fobj.close()
+        self.fobj = None
