@@ -118,19 +118,16 @@ def convert(
     action_delimiter: str = ':',
     verbose: bool = False,
     ignore_file_rows: list[str] | None = None,
-    #skip_header: bool = False,
     no_header: bool = False,
 ):
     console = Console()
     ic.enable()
-    ic()
-    ic(input_files)
-    #df_list = []
+    console.log('input_files: ', input_files)
     row_list_filtered_out = []
     set_ignore_file_rows = set()
     global_status = GlobalStatus()
     config = setup_config(config_path)
-    ic(config)
+    #console.log('config: ', config)
     if ignore_file_rows:
         set_ignore_file_rows = set(ignore_file_rows)
     if list_pick_columns:
@@ -144,7 +141,6 @@ def convert(
     writer = None
     if output_file:
         writer = get_writer(output_file, console=console)
-    ic(config)
     total_row_index = 0
     for input_file in input_files:
         if not os.path.exists(input_file):
