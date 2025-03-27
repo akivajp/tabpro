@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import json
-import math
 import os
+import sys
 
 from collections import OrderedDict
+
+import rich
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
 
 from typing import (
     Mapping,
@@ -54,6 +59,16 @@ from . io import (
     #load,
     #save,
 )
+
+def capture_dict(
+    row: dict,
+):
+    console = Console()
+    with console.capture() as capture:
+        #console.print(row)
+        console.print_json(data=row)
+    text = Text.from_ansi(capture.get())
+    return text
 
 def assign_array(
     row: OrderedDict,
@@ -106,6 +121,7 @@ def convert(
     #skip_header: bool = False,
     no_header: bool = False,
 ):
+    console = Console()
     ic.enable()
     ic()
     ic(input_files)
@@ -125,16 +141,21 @@ def convert(
             list_actions,
             action_delimiter=action_delimiter
         )
+    writer = None
     if output_file:
-        #saver = get_saver(output_file)
-        writer = get_writer(output_file)
+        writer = get_writer(output_file, console=console)
     ic(config)
+    total_row_index = 0
     for input_file in input_files:
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
         base_name = os.path.basename(input_file)
-        loader = get_loader(input_file, no_header=no_header)
-        logger.info('# rows: %s', len(loader))
+        loader = get_loader(
+            input_file,
+            no_header=no_header,
+            console=console,
+        )
+        console.log('# rows: ', len(loader))
         for index, row in enumerate(loader):
             file_row_index = f'{input_file}:{index}'
             if file_row_index in set_ignore_file_rows:
@@ -172,7 +193,20 @@ def convert(
                 remap_columns(row, config.pick)
             if not output_debug:
                 pop_row_staging(row)
-            writer.push_row(row)
+            if writer:
+                writer.push_row(row)
+            elif sys.stdout.isatty():
+                if total_row_index == 0:
+                    console.print(
+                        Panel(
+                            capture_dict(
+                                row.nested
+                            ),
+                            title='First Row',
+                        )
+                    )
+            total_row_index += 1
+    console.log('Total input rows: ', total_row_index)
     if writer:
         writer.close()
     #else:

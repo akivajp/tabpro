@@ -2,8 +2,15 @@
 Loader class is responsible for loading the data from the source.
 '''
 
+from rich.console import Console
+
 from . extensions.manage_loaders import get_loader
 from ..classes.row import Row
+
+from .. progress import (
+    Progress,
+    track,
+)
 
 from tqdm.auto import tqdm
 
@@ -13,30 +20,45 @@ class Loader:
         source: str,
         quiet: bool = False,
         no_header: bool = False,
+        console: Console | None = None,
     ):
         self.source = source
         self.quiet = quiet
         self.no_header = no_header
         self.rows: list[Row] | None = None
-        self.fn_load = get_loader(self.source)
+        self.console = console
+        self.fn_load = get_loader(
+            self.source,
+        )
 
     def __iter__(self):
-        return self.yield_data()
+        return self._yield_data()
     
     def __len__(self):
         if self.rows is None:
-            for _ in self.yield_data(quiet=self.quiet):
+            for _ in self._yield_data(quiet=self.quiet):
                 pass
         return len(self.rows)
-
-    def yield_data(self, quiet: bool = False):
+    
+    def _get_console(self):
+        if self.console is None:
+            self.console = Console()
+        return self.console
+    
+    def _yield_data(self, quiet: bool = False):
         if self.rows:
             def get_iter():
                 if quiet:
                     return self.rows
                 else:
-                    return tqdm(self.rows, desc=f'Processing rows from: {self.source}')
+                    console = self._get_console()
+                    return track(
+                        self.rows,
+                        description = 'Processing rows...',
+                        console = console,
+                    )
             for row in get_iter():
+                import time
                 yield row
         else:
             self.rows = []
@@ -44,6 +66,7 @@ class Loader:
                 self.source,
                 quiet=quiet,
                 no_header=self.no_header,
+                console=self.console,
             ):
                 self.rows.append(row)
                 yield row

@@ -1,6 +1,6 @@
 import json
 
-from logzero import logger
+from rich.console import Console
 
 from . manage_loaders import (
     Row,
@@ -14,11 +14,14 @@ from . manage_writers import (
 @register_loader('.json')
 def load_json(
     input_file: str,
+    console: Console | None = None,
     **kwargs,
 ):
     quiet = kwargs.get('quiet', False)
     if not quiet:
-        logger.info('Loading JSON data from: %s', input_file)
+        if console is None:
+            console = Console()
+        console.log('Loading JSON data from: ', input_file)
     with open(input_file, 'r') as f:
         data = json.load(f)
     if not isinstance(data, list):
@@ -38,10 +41,11 @@ class JsonWriter(BaseWriter):
     def support_streaming(self):
         return False
     
-    def write_all_rows(self):
+    def _write_all_rows(self):
         self.open()
         if not self.quiet:
-            logger.info('Writing %s JSON rows into: %s', len(self.rows), self.target)
+            console = self._get_console()
+            console.log(f'Writing {len(self.rows)} JSON rows into: ', self.target)
         rows = [row.nested for row in self.rows]
         self.fobj.write(json.dumps(rows, indent=2, ensure_ascii=False))
         self.fobj.close()

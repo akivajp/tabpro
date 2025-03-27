@@ -65,7 +65,7 @@ class CsvWriter(BaseWriter):
             self.writer.writeheader()
         self.writer.writerow(row.flat)
 
-    def write_all_rows(self):
+    def _write_all_rows(self):
         if self.rows is None:
             return
         self.open()

@@ -2,6 +2,8 @@ from icecream import ic
 from tqdm.auto import tqdm
 import pandas as pd
 
+from rich.console import Console
+
 from logzero import logger
 
 from . manage_loaders import (
@@ -42,24 +44,27 @@ def load_excel(
 class ExcelWriter(BaseWriter):
     def __init__(
         self,
-        output_file: str,
+        target: str,
         **kwargs,
     ):
-        super().__init__(output_file, **kwargs)
+        super().__init__(target, **kwargs)
 
     def support_streaming(self):
         return False
     
-    def write_all_rows(
+    def _write_all_rows(
         self,
     ):
         if not self.quiet:
-            logger.info('Writing Excel data into: %s', self.output_file)
-        self.df.to_excel(self.writer, index=False)
+            #logger.info('Writing Excel data into: %s', self.output_file)
+            console = self._get_console()
+            console.log('Writing excel data into: ', self.target)
+        df = pd.DataFrame([row.flat for row in self.rows])
+        df.to_excel(self.target, index=False)
         self.finished = True
 
     def close(
         self,
     ):
         if self.finished: return
-        self.write_all_rows()
+        self._write_all_rows()

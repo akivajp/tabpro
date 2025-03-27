@@ -3,6 +3,8 @@ import pandas as pd
 
 from typing import Callable
 
+from rich.console import Console
+
 from ..writer import BaseWriter
 
 type Saver = Callable[[pd.DataFrame, str], None]
@@ -19,12 +21,16 @@ def register_writer(
 
 def get_writer(
     output_file: str,
+    console: Console | None = None,
 ):
     ext = os.path.splitext(output_file)[1]
     if ext not in dict_writers:
         raise ValueError(f'Unsupported file type: {ext}')
     writer_class = dict_writers[ext]
-    return writer_class(output_file)
+    return writer_class(
+        output_file,
+        console=console,
+    )
 
 def save(
     rows: list[dict],

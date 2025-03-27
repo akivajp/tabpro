@@ -6,6 +6,8 @@ from typing import (
     IO,
 )
 
+from rich.console import Console
+
 from ..classes.row import Row
 
 from tqdm.auto import tqdm
@@ -18,6 +20,7 @@ class BaseWriter:
         quiet: bool = False,
         encoding: str = 'utf-8',
         skip_header: bool = False,
+        console: Console | None = None,
     ):
         self.target = target
         self.streaming = streaming
@@ -27,6 +30,7 @@ class BaseWriter:
         self.rows: list[Row] | None = None
         self.fobj: IO | None = None
         self.finished: bool = False
+        self.console = console
         if not self.support_streaming():
             self.streaming = False
         if self.streaming:
@@ -51,17 +55,22 @@ class BaseWriter:
         for row in rows:
             self.push_row(row)
 
+    def _get_console(self):
+        if self.console is None:
+            self.console = Console()
+        return self.console
+
     def write_row(self, row: Row):
         raise NotImplementedError
     
-    def write_all_rows(self):
+    def _write_all_rows(self):
         raise NotImplementedError
     
     def close(self):
         if self.finished: return
         if self.rows:
             if not self.streaming:
-                self.write_all_rows()
+                self._write_all_rows()
             self.finished = True
         if self.fobj:
             self.fobj.close()
