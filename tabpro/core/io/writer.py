@@ -87,6 +87,9 @@ class BaseWriter:
         if self.finished: return
         if self.rows:
             if not self.streaming:
+                if not self.quiet:
+                    console = self._get_console()
+                    console.log(f'Writing {len(self.rows)} rows into: ', self.target)
                 self._write_all_rows()
             self.finished = True
         if self.fobj:

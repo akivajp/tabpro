@@ -58,16 +58,6 @@ class ExcelWriter(BaseWriter):
     def _write_all_rows(
         self,
     ):
-        if not self.quiet:
-            #logger.info('Writing Excel data into: %s', self.output_file)
-            console = self._get_console()
-            console.log('Writing excel data into: ', self.target)
         df = pd.DataFrame([row.flat for row in self.rows])
         df.to_excel(self.target, index=False)
         self.finished = True
-
-    def close(
-        self,
-    ):
-        if self.finished: return
-        self._write_all_rows()

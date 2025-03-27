@@ -198,22 +198,23 @@ def convert(
                     raise e
             if config.pick:
                 remap_columns(row, config.pick)
+            if writer is None:
+                if sys.stdout.isatty():
+                    if num_stacked_rows == 0:
+                        console.print(
+                            Panel(
+                                capture_dict(
+                                    row.nested
+                                ),
+                                title='First Row',
+                            )
+                        )
             if not output_debug:
                 pop_row_staging(row)
-            #console.log('writer: ', writer)
-            #console.log('sys.stdout.isatty(): ', sys.stdout.isatty())
             if writer:
                 writer.push_row(row)
-            elif sys.stdout.isatty():
-                if num_stacked_rows == 0:
-                    console.print(
-                        Panel(
-                            capture_dict(
-                                row.nested
-                            ),
-                            title='First Row',
-                        )
-                    )
+            else:
+                pass
             num_stacked_rows += 1
     console.log('Total input rows: ', num_stacked_rows)
     if writer:
