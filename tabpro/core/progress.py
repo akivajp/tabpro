@@ -1,4 +1,7 @@
-from typing import Iterable
+from typing import (
+    Iterable,
+    TypeVar,
+)
 
 from rich import progress
 from rich.console import Console
@@ -6,6 +9,8 @@ from rich.progress import (
     Task,
     track as base_track,
 )
+
+T = TypeVar("T")
 
 class Progress(progress.Progress):
     def add_task(self, *args, **kwargs):
@@ -31,7 +36,7 @@ class Progress(progress.Progress):
     
     def track(
         self,
-        sequence: Iterable,
+        sequence: Iterable[T],
         description: str,
         total: int | None = None,
         disable: bool = False,
@@ -50,7 +55,7 @@ class Progress(progress.Progress):
         )
 
 def track(
-    sequence: Iterable,
+    sequence: Iterable[T],
     description: str,
     total: int | None = None,
     disable: bool = False,
