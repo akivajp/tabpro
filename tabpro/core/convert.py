@@ -172,10 +172,10 @@ def convert(
                 continue
             orig_row = row.clone()
             if STAGING_FIELD not in row:
-                row[FILE_FIELD] = input_file
-                row[FILE_ROW_INDEX_FIELD] = file_row_index
-                row[ROW_INDEX_FIELD] = index
-                row[INPUT_FIELD] = orig_row.nested
+                row.staging[FILE_FIELD] = input_file
+                row.staging[FILE_ROW_INDEX_FIELD] = file_row_index
+                row.staging[ROW_INDEX_FIELD] = index
+                row.staging[INPUT_FIELD] = orig_row.nested
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
             if config.actions:
