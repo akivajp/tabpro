@@ -18,11 +18,14 @@ from . manage_writers import (
 @register_loader('.xlsx')
 def load_excel(
     input_file: str,
+    console: Console | None = None,
     **kwargs,
 ):
     quiet = kwargs.get('quiet', False)
     if not quiet:
-        logger.info('Loading Excel data from: %s', input_file)
+        if console is None:
+            console = Console()
+        console.log('Loading excel data from: ', input_file)
     # NOTE: Excelで勝手に日時データなどに変換されてしまうことを防ぐため
     df = pd.read_excel(input_file, dtype=str)
     # NOTE: 列番号でもアクセスできるようフィールドを追加する

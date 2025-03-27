@@ -5,6 +5,8 @@ from typing import Callable
 
 from rich.console import Console
 
+from ... progress import Progress
+
 from ..writer import BaseWriter
 
 type Saver = Callable[[pd.DataFrame, str], None]
@@ -21,7 +23,7 @@ def register_writer(
 
 def get_writer(
     output_file: str,
-    console: Console | None = None,
+    progress: Progress | None = None,
 ):
     ext = os.path.splitext(output_file)[1]
     if ext not in dict_writers:
@@ -29,7 +31,7 @@ def get_writer(
     writer_class = dict_writers[ext]
     return writer_class(
         output_file,
-        console=console,
+        progress=progress,
     )
 
 def save(

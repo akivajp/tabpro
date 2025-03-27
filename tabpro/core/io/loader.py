@@ -20,13 +20,13 @@ class Loader:
         source: str,
         quiet: bool = False,
         no_header: bool = False,
-        console: Console | None = None,
+        progress: Progress | None = None,
     ):
         self.source = source
         self.quiet = quiet
         self.no_header = no_header
         self.rows: list[Row] | None = None
-        self.console = console
+        self.progress = progress
         self.fn_load = get_loader(
             self.source,
         )
@@ -51,11 +51,10 @@ class Loader:
                 if quiet:
                     return self.rows
                 else:
-                    console = self._get_console()
-                    return track(
+                    return self.progress.track(
                         self.rows,
                         description = 'Processing rows...',
-                        console = console,
+                        #console = console,
                     )
             for row in get_iter():
                 import time
@@ -66,7 +65,7 @@ class Loader:
                 self.source,
                 quiet=quiet,
                 no_header=self.no_header,
-                console=self.console,
+                progress=self.progress,
             ):
                 self.rows.append(row)
                 yield row

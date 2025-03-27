@@ -38,11 +38,11 @@ class JsonLinesWriter(BaseWriter):
     def support_streaming(self):
         return True
 
-    def write_row(self, row: Row):
+    def _write_row(self, row: Row):
         self.fobj.write(json.dumps(row.flat, ensure_ascii=False))
         self.fobj.write('\n')
 
     def _write_all_rows(self):
         for row in self.rows:
-            self.write_row(row)
+            self._write_row(row)
         self.fobj.close()

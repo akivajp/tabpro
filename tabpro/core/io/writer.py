@@ -10,6 +10,11 @@ from rich.console import Console
 
 from ..classes.row import Row
 
+from ..progress import (
+    Progress,
+    Task,
+)
+
 from tqdm.auto import tqdm
 
 class BaseWriter:
@@ -20,7 +25,7 @@ class BaseWriter:
         quiet: bool = False,
         encoding: str = 'utf-8',
         skip_header: bool = False,
-        console: Console | None = None,
+        progress: Progress | None = None,
     ):
         self.target = target
         self.streaming = streaming
@@ -30,16 +35,25 @@ class BaseWriter:
         self.rows: list[Row] | None = None
         self.fobj: IO | None = None
         self.finished: bool = False
-        self.console = console
+        self.progress: Progress | None = progress
+        self.task: Task | None = None
         if not self.support_streaming():
             self.streaming = False
         if self.streaming:
-            self.open()
+            self._open()
 
-    def open(self):
+    def _open(self):
         if self.fobj:
             return
         self.fobj = open(self.target, 'w', encoding=self.encoding)
+        if self.streaming:
+            if self.progress:
+                if self.task is None:
+                    console = self._get_console()
+                    console.log('Writing into: ', self.target)
+                    self.task = self.progress.add_task(
+                        f'Writing rows...',
+                    )
 
     def support_streaming(self):
         return False
@@ -49,18 +63,21 @@ class BaseWriter:
             self.rows = []
         self.rows.append(row)
         if self.streaming:
-            self.write_row(row)
+            self._write_row(row)
+            if self.task is not None:
+                self.progress.update(self.task, advance=1)
 
     def push_rows(self, rows: list[Row]):
         for row in rows:
             self.push_row(row)
 
     def _get_console(self):
-        if self.console is None:
-            self.console = Console()
-        return self.console
+        if self.progress:
+            return self.progress.console
+        else:
+            Console()
 
-    def write_row(self, row: Row):
+    def _write_row(self, row: Row):
         raise NotImplementedError
     
     def _write_all_rows(self):

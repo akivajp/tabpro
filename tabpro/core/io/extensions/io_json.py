@@ -11,15 +11,19 @@ from . manage_writers import (
     register_writer,
 )
 
+from ... progress import Progress
+
 @register_loader('.json')
 def load_json(
     input_file: str,
-    console: Console | None = None,
+    progress: Progress | None = None,
     **kwargs,
 ):
     quiet = kwargs.get('quiet', False)
     if not quiet:
-        if console is None:
+        if progress is not None:
+            console = progress.console
+        else:
             console = Console()
         console.log('Loading JSON data from: ', input_file)
     with open(input_file, 'r') as f:
@@ -42,7 +46,7 @@ class JsonWriter(BaseWriter):
         return False
     
     def _write_all_rows(self):
-        self.open()
+        self._open()
         if not self.quiet:
             console = self._get_console()
             console.log(f'Writing {len(self.rows)} JSON rows into: ', self.target)

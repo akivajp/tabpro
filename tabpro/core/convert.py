@@ -22,6 +22,8 @@ from logzero import logger
 import numpy as np
 import pandas as pd
 
+from . progress import Progress
+
 # local
 
 from . config import (
@@ -120,8 +122,14 @@ def convert(
     ignore_file_rows: list[str] | None = None,
     no_header: bool = False,
 ):
-    console = Console()
-    ic.enable()
+    #console = Console()
+    progress = Progress(
+        #console = console,
+        redirect_stdout = False,
+    )
+    progress.start()
+    #ic.enable()
+    console = progress.console
     console.log('input_files: ', input_files)
     row_list_filtered_out = []
     set_ignore_file_rows = set()
@@ -140,8 +148,11 @@ def convert(
         )
     writer = None
     if output_file:
-        writer = get_writer(output_file, console=console)
-    total_row_index = 0
+        writer = get_writer(
+            output_file,
+            progress=progress,
+        )
+    num_stacked_rows = 0
     for input_file in input_files:
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
@@ -149,7 +160,7 @@ def convert(
         loader = get_loader(
             input_file,
             no_header=no_header,
-            console=console,
+            progress=progress,
         )
         console.log('# rows: ', len(loader))
         for index, row in enumerate(loader):
@@ -189,10 +200,12 @@ def convert(
                 remap_columns(row, config.pick)
             if not output_debug:
                 pop_row_staging(row)
+            #console.log('writer: ', writer)
+            #console.log('sys.stdout.isatty(): ', sys.stdout.isatty())
             if writer:
                 writer.push_row(row)
             elif sys.stdout.isatty():
-                if total_row_index == 0:
+                if num_stacked_rows == 0:
                     console.print(
                         Panel(
                             capture_dict(
@@ -201,8 +214,8 @@ def convert(
                             title='First Row',
                         )
                     )
-            total_row_index += 1
-    console.log('Total input rows: ', total_row_index)
+            num_stacked_rows += 1
+    console.log('Total input rows: ', num_stacked_rows)
     if writer:
         writer.close()
     #else:

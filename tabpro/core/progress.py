@@ -2,14 +2,20 @@ from typing import Iterable
 
 from rich import progress
 from rich.console import Console
+from rich.progress import (
+    Task,
+    track as base_track,
+)
 
 class Progress(progress.Progress):
     def add_task(self, *args, **kwargs):
         indent = " " * 10
         first = args[0]
+        total = kwargs.pop('total', None)
         task = super().add_task(
             f'{indent} [cyan]{first}',
             *args[1:],
+            total = total,
             **kwargs
         )
         return task
@@ -22,20 +28,47 @@ class Progress(progress.Progress):
             "[yellow]Elasped:",
             progress.TimeElapsedColumn(),
         ]
-
-def track(
-    sequence: Iterable,
-    description: str = 'Working...',
-    total: int | None = None,
-    console: Console | None = None,
-):
-    with Progress(
-        console = console,
-    ) as progress:
+    
+    def track(
+        self,
+        sequence: Iterable,
+        description: str,
+        total: int | None = None,
+        disable: bool = False,
+        **kwargs,
+    ):
         if total is None:
             if hasattr(sequence, '__len__'):
                 total = len(sequence)
-        task = progress.add_task(description, total=total)
-        for item in sequence:
-            progress.update(task, advance=1)
-            yield item
+        if disable:
+            return sequence
+        return super().track(
+            sequence,
+            total = total,
+            description = description,
+            **kwargs,
+        )
+
+def track(
+    sequence: Iterable,
+    description: str,
+    total: int | None = None,
+    disable: bool = False,
+    progress: Progress | None = None,
+    **kwargs,
+):
+    if progress is None:
+        return base_track(
+            sequence,
+            description = description,
+            total = total,
+            disable = disable,
+            **kwargs,
+        )
+    return progress.track(
+        sequence,
+        description = description,
+        total = total,
+        disable = disable,
+        **kwargs,
+    )
