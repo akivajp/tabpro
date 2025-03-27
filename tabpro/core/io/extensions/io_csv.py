@@ -2,6 +2,8 @@
 
 import csv
 
+from collections import OrderedDict
+
 from rich.console import Console
 
 from tqdm.auto import tqdm
@@ -42,17 +44,24 @@ def load_csv(
             disable=quiet,
             progress=progress,
         )
+    reader = csv.reader(open(input_file, 'r', encoding=encoding))
     if no_header:
-        reader = csv.reader(open(input_file, 'r', encoding=encoding))
         for i, row in enumerate(get_iter(reader)):
             d = {}
             for j, field in enumerate(row):
                 d[f'{j}'] = field
             yield Row.from_dict(d)
     else:
-        reader = csv.DictReader(open(input_file, 'r', encoding=encoding))
         for i, row in enumerate(get_iter(reader)):
-            yield Row.from_dict(row)
+            if i == 0:
+                header = row
+                continue
+            d = OrderedDict()
+            for j, field in enumerate(row):
+                d[header[j]] = field
+            #for j in range(len(row), len(header)):
+            #    d[f'__staging__.__values__.{j}'] = None
+            yield Row.from_dict(d)
 
 @register_writer('.csv')
 class CsvWriter(BaseWriter):

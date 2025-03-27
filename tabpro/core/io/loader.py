@@ -2,6 +2,8 @@
 Loader class is responsible for loading the data from the source.
 '''
 
+import os.path
+
 from rich.console import Console
 
 from . extensions.manage_loaders import get_loader
@@ -30,6 +32,7 @@ class Loader:
         self.fn_load = get_loader(
             self.source,
         )
+        self.extension = os.path.splitext(self.source)[1]
 
     def __iter__(self):
         return self._yield_data()

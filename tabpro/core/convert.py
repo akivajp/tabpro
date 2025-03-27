@@ -176,6 +176,14 @@ def convert(
                 row.staging[FILE_ROW_INDEX_FIELD] = file_row_index
                 row.staging[ROW_INDEX_FIELD] = index
                 row.staging[INPUT_FIELD] = orig_row.nested
+                if loader.extension in ['.csv', '.xlsx']:
+                    #values = []
+                    #for (key, value) in orig_row.flat.items():
+                    #    values.append(value)
+                    #if values:
+                    #    row.staging[f'{INPUT_FIELD}.__values__'] = values
+                    for key_index, (key, value) in enumerate(orig_row.flat.items()):
+                        row.staging[f'{INPUT_FIELD}.__values__.{key_index}'] = value
             if config.process.assign_array:
                 row.flat= assign_array(row.flat, config.process.assign_array)
             if config.actions:
