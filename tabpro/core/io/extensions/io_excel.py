@@ -1,5 +1,6 @@
 from icecream import ic
 from tqdm.auto import tqdm
+import numpy as np
 import pandas as pd
 
 from rich.console import Console
@@ -32,13 +33,15 @@ def load_excel(
     df_with_column_number = pd.read_excel(
         input_file, dtype=str, header=None, skiprows=1
     )
-    new_column_names = [f'__values__.{i}' for i in df_with_column_number.columns]
+    new_column_names = [f'__staging__.__input__.__values__.{i}' for i in df_with_column_number.columns]
     df2 = df_with_column_number.rename(columns=dict(
         zip(df_with_column_number.columns, new_column_names)
     ))
     df = pd.concat([df, df2], axis=1)
-    df = df.dropna(axis=0, how='all')
-    df = df.dropna(axis=1, how='all')
+    #df = df.dropna(axis=0, how='all')
+    #df = df.dropna(axis=1, how='all')
+    # NOTE: NaN を None に変換しておかないと厄介
+    df = df.replace([np.nan], [None])
     #return df
     for i, row in df.iterrows():
         yield Row.from_dict(row.to_dict())
