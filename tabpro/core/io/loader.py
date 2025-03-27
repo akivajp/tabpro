@@ -48,6 +48,7 @@ class Loader:
     def _yield_data(self, quiet: bool = False):
         if self.rows:
             def get_iter():
+                assert self.rows is not None
                 if quiet:
                     return self.rows
                 else:
@@ -57,7 +58,6 @@ class Loader:
                         #console = console,
                     )
             for row in get_iter():
-                import time
                 yield row
         else:
             self.rows = []
