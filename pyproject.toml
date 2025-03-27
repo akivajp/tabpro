@@ -31,6 +31,7 @@ openpyxl = "^3.1.5"
 pyyaml = "^6.0.2"
 xlsxwriter = "^3.2.0"
 pytest = "^8.3.5"
+rich = "^13.9.4"
 
 
 [build-system]
