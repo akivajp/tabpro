@@ -12,17 +12,33 @@ from . manage_writers import (
     register_writer,
 )
 
+from ... progress import (
+    Console,
+    Progress,
+    track,
+)
+
 @register_loader('.jsonl')
 def load_jsonl(
     input_file: str,
+    progress: Progress | None = None,
     **kwargs,
 ):
     quiet = kwargs.get('quiet', False)
+    if progress is None:
+        console = Console()
+    else:
+        console = progress.console
+    if not quiet:
+        console.log('Loading from: ', input_file)
     with open(input_file, 'r') as f:
-        for line in tqdm(
+        for line in track(
             f,
-            desc=f'Loading JSON Lines from: {input_file}',
+            description=f'Loading JSON rows',
+            disable=quiet,
+            progress=progress,
         ):
+            #logger.debug(line
             row = json.loads(line)
             yield Row.from_dict(row)
 
