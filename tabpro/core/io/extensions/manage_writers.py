@@ -24,7 +24,7 @@ def register_writer(
 def get_writer(
     output_file: str,
     progress: Progress | None = None,
-):
+) -> BaseWriter:
     ext = os.path.splitext(output_file)[1]
     if ext not in dict_writers:
         raise ValueError(f'Unsupported file type: {ext}')
