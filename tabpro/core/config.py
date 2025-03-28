@@ -18,32 +18,21 @@ from . functions.flatten_row import (
 
 from . types import (
     ActionConfig,
+    AssignArrayConfig,
+    AssignArrayElementConfig,
     AssignFormatConfig,
     AssignIdConfig,
     AssignConstantConfig,
     FilterConfig,
     SplitConfig,
     PickConfig,
+    PushConfig,
 )
-
-@dataclasses.dataclass
-class AssignArrayConfig:
-    field: str
-    optional: bool = True
-
-@dataclasses.dataclass
-class ProcessConfig:
-    assign_array: Mapping[str, list[AssignArrayConfig]] = dataclasses.field(default_factory=OrderedDict)
-
-    def __setitem__(self, key, value):
-        setattr(self, key, value)
 
 @dataclasses.dataclass
 class Config:
     actions: list[ActionConfig] = dataclasses.field(default_factory=list)
-
     pick: list[PickConfig] = dataclasses.field(default_factory=list)
-    process: ProcessConfig = dataclasses.field(default_factory=ProcessConfig)
 
 def setup_config(
     config_path: str | None = None,
@@ -195,8 +184,8 @@ def setup_process_assign_array_config(
         )
     for key, value in dict_subprocess.items():
         if isinstance(value, list):
-            config.process.assign_array[key] = []
             array = value
+            items = []
             for item in array:
                 if isinstance(item, Mapping):
                     field = item.get('field')
@@ -208,17 +197,21 @@ def setup_process_assign_array_config(
                         raise ValueError(
                             'Field is required for assign_array.'
                         )
-                    config.process.assign_array[key].append(AssignArrayConfig(
+                    items.append(AssignArrayElementConfig(
                         field = field,
                         optional = optional,
                     ))
                 elif isinstance(item, str):
-                    config.process.assign_array[key].append(AssignArrayConfig(
+                    items.append(AssignArrayElementConfig(
                         field = item,
                         optional = True,
                     ))
                 else:
                     raise_error_for_unsupported_type(item, 'dict or str')
+            config.actions.append(AssignArrayConfig(
+                target = key,
+                items = items,
+            ))
         else:
             raise_error_for_unsupported_type(value, 'list')
 
@@ -289,7 +282,7 @@ def setup_process_push_config(
             target = require_item(item, 'target', str_for)
             source = require_item(item, 'source', str_for)
             condition = item.get('condition')
-            config.process.push.append(PushConfig(
+            config.actions.append(PushConfig(
                 target = target,
                 source = source,
                 condition = condition,

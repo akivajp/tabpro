@@ -22,6 +22,15 @@ class Row:
     nested: OrderedDict
 
 @dataclasses.dataclass
+class AssignArrayElementConfig:
+    source: list[str]
+    optional: bool = True
+@dataclasses.dataclass
+class AssignArrayConfig:
+    target: str
+    items: list[AssignArrayElementConfig]
+
+@dataclasses.dataclass
 class AssignConfig:
     target: str
     source: str

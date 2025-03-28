@@ -24,6 +24,7 @@ from . constants import (
 )
 
 from . types import (
+    AssignArrayConfig,
     AssignConfig,
     AssignConstantConfig,
     AssignFormatConfig,
@@ -736,4 +737,21 @@ def cast(
                 f'Failed to cast: {value}'
             )
     set_row_staging_value(row, config.target, casted)
+    return row
+
+def assign_array(
+    row: Row,
+    config: AssignArrayConfig,
+):
+    array = []
+    for item in config.items:
+        value, found = search_column_value(row, item.source)
+        if found and value is not None:
+            array.append(value)
+        elif item.optional:
+            array.append(None)
+    if array:
+        row.staging[config.target] = array
+    else:
+        row.staging[config.target] = None
     return row

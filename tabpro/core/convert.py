@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import json
 import os
 import sys
 
 from collections import OrderedDict
 
-import rich
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -54,10 +52,7 @@ from . types import (
 
 from . io import (
     get_loader,
-    #get_saver,
     get_writer,
-    #load,
-    #save,
 )
 
 def capture_dict(
@@ -65,27 +60,9 @@ def capture_dict(
 ):
     console = Console()
     with console.capture() as capture:
-        #console.print(row)
         console.print_json(data=row)
     text = Text.from_ansi(capture.get())
     return text
-
-def assign_array(
-    row: OrderedDict,
-    dict_config: Mapping[str, list[AssignArrayConfig]],
-):
-    new_row = OrderedDict(row)
-    #ic(dict_config)
-    for key, config in dict_config.items():
-        array = []
-        for item in config:
-            value, found = search_column_value(row, item.field)
-            if found and value is not None:
-                array.append(value)
-            elif not item.optional:
-                array.append(None)
-        new_row[f'{STAGING_FIELD}.{key}'] = array
-    return new_row
 
 def search_column_value_from_nested(
     nested_row: OrderedDict,
