@@ -3,20 +3,13 @@
 import os
 import sys
 
-from collections import OrderedDict
-
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from typing import (
-    Mapping,
-)
-
 # 3-rd party modules
 
 from icecream import ic
-import numpy as np
 import pandas as pd
 
 from . progress import Progress
@@ -24,7 +17,6 @@ from . progress import Progress
 # local
 
 from . config import (
-    AssignArrayConfig,
     setup_config,
     setup_pick_with_args,
 )
@@ -35,9 +27,6 @@ from . constants import (
     INPUT_FIELD,
     STAGING_FIELD,
 )
-from . functions.get_nested_field_value import get_nested_field_value
-from . functions.get_nested_field_value import get_nested_field_value
-from . functions.search_column_value import search_column_value
 
 from . actions import (
     do_actions,
@@ -63,26 +52,6 @@ def capture_dict(
         console.print_json(data=row)
     text = Text.from_ansi(capture.get())
     return text
-
-def search_column_value_from_nested(
-    nested_row: OrderedDict,
-    column: str,
-):
-    if STAGING_FIELD in nested_row:
-        value, found = get_nested_field_value(nested_row[STAGING_FIELD], column)
-        if found:
-            return value, True
-    value, found = get_nested_field_value(nested_row[STAGING_FIELD], column)
-    original, found = get_nested_field_value(nested_row, f'{STAGING_FIELD}.{INPUT_FIELD}')
-    if found:
-        value, found = get_nested_field_value(original, column)
-        if found:
-            return value, True
-    value, found = get_nested_field_value(nested_row, column)
-    if found:
-        return value, True
-    return None, False
-
 
 def convert(
     input_files: list[str],
@@ -152,15 +121,8 @@ def convert(
                 row.staging[ROW_INDEX_FIELD] = index
                 row.staging[INPUT_FIELD] = orig_row.nested
                 if loader.extension in ['.csv', '.xlsx']:
-                    #values = []
-                    #for (key, value) in orig_row.flat.items():
-                    #    values.append(value)
-                    #if values:
-                    #    row.staging[f'{INPUT_FIELD}.__values__'] = values
                     for key_index, (key, value) in enumerate(orig_row.flat.items()):
                         row.staging[f'{INPUT_FIELD}.__values__.{key_index}'] = value
-            if config.process.assign_array:
-                row.flat= assign_array(row.flat, config.process.assign_array)
             if config.actions:
                 try:
                     new_row = do_actions(global_status, row, config.actions)
