@@ -44,6 +44,8 @@ from . io import (
     get_writer,
 )
 
+from . console.views import Panel
+
 def capture_dict(
     row: dict,
 ):
@@ -147,12 +149,7 @@ def convert(
                 if sys.stdout.isatty():
                     if num_stacked_rows == 0:
                         console.print(
-                            Panel(
-                                capture_dict(
-                                    row.nested
-                                ),
-                                title='First Row',
-                            )
+                            Panel(row.nested, title='First Row')
                         )
             if not output_debug:
                 pop_row_staging(row)
