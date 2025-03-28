@@ -373,21 +373,6 @@ def do_action(
         f'Unsupported action: {action}'
     )
 
-def prepare_row(
-    flat_row: OrderedDict | None = None,
-):
-    if flat_row is None:
-        flat_row = OrderedDict()
-    try:
-        nested_row = nest_row(flat_row)
-    except:
-        ic(flat_row)
-        raise
-    return Row(
-        flat = OrderedDict(flat_row),
-        nested = nested_row,
-    )
-
 def delete_flat_row_value(
     flat_row: OrderedDict,
     target: str,
