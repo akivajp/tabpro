@@ -45,6 +45,26 @@ class Row(Mapping):
         if not found:
             return default
         return value
+    
+    def iter(
+        self,
+        include_staging: bool = False,
+    ):
+        for key in self.flat:
+            if include_staging:
+                if key == '__staging__' or key.startswith('__staging__.'):
+                    continue
+            yield key
+
+    def items(
+        self,
+        include_staging: bool = False,
+    ):
+        for key, value in self.flat.items():
+            if include_staging:
+                if key == '__staging__' or key.startswith('__staging__.'):
+                    continue
+            yield key, value
 
     def __getitem__(self, key):
         if self._prefix:
