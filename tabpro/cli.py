@@ -9,6 +9,8 @@ from typing import Callable
 
 from icecream import ic
 
+from . import __version__
+
 def parse_and_run(
     parser: argparse.ArgumentParser,
 ):
@@ -21,6 +23,9 @@ def parse_and_run(
     if args.verbose:
         ic.enable()
     ic(args)
+    if args.version:
+        print(f'tabpro v{__version__}')
+        sys.exit(0)
     if args.handler:
         args.handler(args)
     else:
@@ -82,6 +87,10 @@ def setup_common_args(
 ):
     parser.add_argument(
         '--verbose', '-v',
+        action='store_true',
+    )
+    parser.add_argument(
+        '--version', '-V',
         action='store_true',
     )
 
