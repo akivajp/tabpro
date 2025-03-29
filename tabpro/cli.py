@@ -39,9 +39,9 @@ def setup_command(
         command_parser = argparse.ArgumentParser(
             description=description
         )
-        setup_common_args(command_parser)
     else:
         command_parser = subparsers.add_parser(command_name, help=description)
+    setup_common_args(command_parser)
     setup_parser(command_parser)
     if subparsers is None:
         parse_and_run(command_parser)
