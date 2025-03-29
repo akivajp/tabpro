@@ -3,8 +3,6 @@
 import os
 import sys
 
-from rich.panel import Panel
-
 # 3-rd party modules
 
 from icecream import ic
@@ -138,7 +136,10 @@ def convert(
                 if sys.stdout.isatty():
                     if num_stacked_rows == 0:
                         console.print(
-                            Panel(row.nested, title='First Row')
+                            Panel(
+                                row.nested,
+                                title='First Row',
+                            )
                         )
             if not output_debug:
                 pop_row_staging(row)
