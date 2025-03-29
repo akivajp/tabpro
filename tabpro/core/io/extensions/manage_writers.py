@@ -37,7 +37,8 @@ def get_writer(
 def save(
     rows: list[dict],
     output_file: str,
+    progress: Progress | None = None,
 ):
-    writer = get_writer(output_file)
+    writer = get_writer(output_file, progress=progress)
     writer.push_rows(rows)
     writer.close()

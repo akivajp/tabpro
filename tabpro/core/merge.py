@@ -28,15 +28,32 @@ from . io import (
     save,
 )
 
+from . classes.row import Row
+
+from . console.views import (
+    Panel,
+)
+
+from . progress import (
+    Progress,
+)
+
 def get_primary_key(
-    row: Mapping,
+    #row: Mapping,
+    row: Row,
     keys: list[str],
 ):
     list_keys = []
     for key in keys:
-        value, found = search_column_value(row, key)
+        #value, found = search_column_value(row, key)
+        value, found = search_column_value(row.nested, key)
         if not found:
-            raise KeyError(f'Column not found: {key}, existing columns: {row.keys()}')
+            progress = Progress()
+            progress.console.print(Panel(
+                row.nested,
+            ))
+            existing_first20 = list(row.keys())[:20]
+            raise KeyError(f'Column not found: {key}, existing columns: {existing_first20}')
         list_keys.append(value)
     primary_key = tuple(list_keys)
     return primary_key
@@ -52,12 +69,14 @@ def merge(
     output_remaining_data_file: str | None = None,
     merge_fields: list[str] | None = None,
 ):
-    ic.enable()
-    ic()
-    ic(previous_files)
-    ic(modification_files)
-    ic(keys)
-    #dict_key_to_row = {}
+    progress = Progress(
+        transient=True,
+    )
+    progress.start()
+    console = progress.console
+    console.log('previous files: ', previous_files)
+    console.log('modification files: ', modification_files)
+    console.log('keys: ', keys)
     dict_key_to_row = OrderedDict()
     set_modified_keys = set()
     all_base_rows = []
@@ -74,14 +93,21 @@ def merge(
     for previous_file in previous_files:
         if not os.path.exists(previous_file):
             raise FileNotFoundError(f'File not found: {previous_file}')
-        loader = get_loader(previous_file)
-        ic(len(loader))
-        for index, row in enumerate(tqdm(
+        loader = get_loader(
+            previous_file,
+            progress=progress,
+        )
+        console.log('# rows: ', len(loader))
+        #for index, row in enumerate(tqdm(
+        #    loader,
+        #    desc=f'Loading: {previous_file}',
+        #    total=len(loader),
+        #)):
+        for index, row in enumerate(progress.track(
             loader,
-            desc=f'Loading: {previous_file}',
-            total=len(loader),
+            description=f'prcessing ...',
         )):
-            primary_key = get_primary_key(row.flat, keys)
+            primary_key = get_primary_key(row, keys)
             if not allow_duplicate_keys:
                 if primary_key in dict_key_to_row:
                     ic(index)
@@ -91,14 +117,16 @@ def merge(
     for modification_file in modification_files:
         if not os.path.exists(modification_file):
             raise FileNotFoundError(f'File not found: {modification_file}')
-        loader = get_loader(modification_file)
-        ic(len(loader))
-        for index, row in enumerate(tqdm(
+        loader = get_loader(
+            modification_file,
+            progress=progress,
+        )
+        console.log('# rows: ', len(loader))
+        for index, row in enumerate(progress.track(
             loader,
-            desc=f'Processing: {modification_file}',
-            total=len(loader),
+            description=f'processing ...',
         )):
-            primary_key = get_primary_key(row.flat, keys)
+            primary_key = get_primary_key(row, keys)
             if primary_key not in dict_key_to_row:
                 if ignore_not_found:
                     ic(primary_key)
@@ -121,7 +149,7 @@ def merge(
                     set_row_value(previous_row, field, value)
             set_modified_keys.add(primary_key)
             num_modified += 1
-    ic(num_modified)
+    console.log('# modified rows: ', num_modified)
     if ignore_not_found:
         ic(len(list_ignored_keys))
         ic(list_ignored_keys)
@@ -136,6 +164,11 @@ def merge(
         for key, row in dict_key_to_row.items():
             if key not in set_modified_keys:
                 remaining_rows.append(row)
-        ic(len(remaining_rows))
-        ic('Saving to: ', output_remaining_data_file)
-        save(remaining_rows, output_remaining_data_file)
+        #ic(len(remaining_rows))
+        #ic('Saving to: ', output_remaining_data_file)
+        console.log('# remaining rows: ', len(remaining_rows))
+        save(
+            remaining_rows,
+            output_remaining_data_file,
+            progress=progress,
+        )

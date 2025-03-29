@@ -25,11 +25,11 @@ def load_json(
             console = progress.console
         else:
             console = Console()
-        console.log('Loading JSON data from: ', input_file)
+        console.log('loading json data from: ', input_file)
     with open(input_file, 'r') as f:
         data = json.load(f)
     if not isinstance(data, list):
-        raise ValueError(f'Invalid JSON array data: {input_file}')
+        raise ValueError(f'invalid json array data: {input_file}')
     for row in data:
         yield Row.from_dict(row)
 
@@ -47,9 +47,9 @@ class JsonWriter(BaseWriter):
     
     def _write_all_rows(self):
         self._open()
-        if not self.quiet:
-            console = self._get_console()
-            console.log(f'Writing {len(self.rows)} JSON rows into: ', self.target)
+        #if not self.quiet:
+        #    console = self._get_console()
+        #    console.log(f'writing {len(self.rows)} json rows into: ', self.target)
         rows = [row.nested for row in self.rows]
         self.fobj.write(json.dumps(rows, indent=2, ensure_ascii=False))
         self.fobj.close()

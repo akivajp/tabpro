@@ -50,17 +50,7 @@ class Loader:
     
     def _yield_data(self, quiet: bool = False):
         if self.rows:
-            def get_iter():
-                assert self.rows is not None
-                if quiet or self.progress is None:
-                    return self.rows
-                else:
-                    return self.progress.track(
-                        self.rows,
-                        description = 'Processing rows...',
-                        #console = console,
-                    )
-            for row in get_iter():
+            for row in self.rows:
                 yield row
         else:
             self.rows = []
