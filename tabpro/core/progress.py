@@ -1,3 +1,5 @@
+import sys
+
 from typing import (
     Iterable,
     TypeVar,
@@ -13,6 +15,27 @@ from rich.progress import (
 T = TypeVar("T")
 
 class Progress(progress.Progress):
+    def __init__(
+        self,
+        *args,
+        console: Console | None = None,
+        **kwargs,
+    ):
+        if console is None:
+            if sys.stdout.isatty():
+                console = Console()
+            else:
+                console = Console(
+                    stderr=True,
+                    #force_terminal = True,
+                    #force_interactive = False,
+                )
+        super().__init__(
+            *args,
+            console = console,
+            **kwargs
+        )
+
     def add_task(self, *args, **kwargs):
         indent = " " * 10
         first = args[0]
