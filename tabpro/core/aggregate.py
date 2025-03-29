@@ -1,41 +1,16 @@
 # -*- coding: utf-8 -*-
 
+import json
 import os
 import sys
 
 from collections import OrderedDict
 
-from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-
 # 3-rd party modules
-
-from icecream import ic
-import pandas as pd
 
 from . progress import Progress
 
 # local
-
-from . config import (
-    setup_config,
-    setup_pick_with_args,
-)
-from . constants import (
-    FILE_FIELD,
-    ROW_INDEX_FIELD,
-    FILE_ROW_INDEX_FIELD,
-    INPUT_FIELD,
-    STAGING_FIELD,
-)
-
-from . actions import (
-    do_actions,
-    pop_row_staging,
-    remap_columns,
-    setup_actions_with_args,
-)
 
 from . types import (
     GlobalStatus,
@@ -43,33 +18,39 @@ from . types import (
 
 from . io import (
     get_loader,
-    get_writer,
 )
+
+from . console.views import (
+    Panel,
+)
+
+def get_sorted(
+    counter: dict,
+    max_items: int = 100,
+    reverse: bool = True,
+):
+    dict_sorted = OrderedDict()
+    for key, value in sorted(
+        counter.items(),
+        key=lambda item: item[1],
+        reverse=reverse,
+    ):
+        dict_sorted[key] = value
+        if len(dict_sorted) >= max_items:
+            break
+    return dict_sorted
 
 def aggregate(
     input_files: list[str],
     output_file: str | None = None,
-    #output_file_filtered_out: str | None = None,
-    #config_path: str | None = None,
-    #output_debug: bool = False,
-    #list_actions: list[str] | None = None,
-    #list_pick_columns: list[str] | None = None,
-    #action_delimiter: str = ':',
     verbose: bool = False,
-    #ignore_file_rows: list[str] | None = None,
-    #no_header: bool = False,
 ):
-    #console = Console()
     progress = Progress(
-        #console = console,
         redirect_stdout = False,
     )
     progress.start()
-    #ic.enable()
     console = progress.console
     console.log('input_files: ', input_files)
-    row_list_filtered_out = []
-    set_ignore_file_rows = set()
     global_status = GlobalStatus()
     if output_file:
         ext = os.path.splitext(output_file)[1]
@@ -81,39 +62,56 @@ def aggregate(
     for input_file in input_files:
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
-        base_name = os.path.basename(input_file)
         loader = get_loader(
             input_file,
             progress=progress,
         )
         console.log('# rows: ', len(loader))
         for index, row in enumerate(loader):
-            file_row_index = f'{input_file}:{index}'
-            if file_row_index in set_ignore_file_rows:
-                continue
-            short_file_row_index = f'{base_name}:{index}'
-            if short_file_row_index in set_ignore_file_rows:
-                continue
-            orig_row = row.clone()
-            if STAGING_FIELD not in row:
-                row.staging[FILE_FIELD] = input_file
-                row.staging[FILE_ROW_INDEX_FIELD] = file_row_index
-                row.staging[ROW_INDEX_FIELD] = index
-                row.staging[INPUT_FIELD] = orig_row.nested
-                if loader.extension in ['.csv', '.xlsx']:
-                    for key_index, (key, value) in enumerate(orig_row.flat.items()):
-                        row.staging[f'{INPUT_FIELD}.__values__.{key_index}'] = value
-            #if writer:
-            #    writer.push_row(row)
-            #else:
-            #    pass
+            for key, value in row.items():
+                aggregation = aggregated.setdefault(key, {})
+                counter = dict_counters.setdefault(key, {})
+                if not isinstance(value, (list)):
+                    counter[value] = counter.get(value, 0) + 1
+                if isinstance(value, (list)):
+                    for item in value:
+                        if isinstance(item, list):
+                            continue
+                        if isinstance(item, dict):
+                            continue
+                        counter[item] = counter.get(item, 0) + 1
+                if hasattr(value, '__len__'):
+                    length = len(value)
+                    if length > aggregation.get('max_length', -1):
+                        aggregation['max_length'] = length
+                    if length < aggregation.get('min_length', 10 ** 10):
+                        aggregation['min_length'] = length
             num_stacked_rows += 1
+    for key, aggregation in aggregated.items():
+        counter = dict_counters[key]
+        if len(counter) > 0:
+            aggregation['num_variations'] = len(counter)
+            if len(counter) <= 50:
+                aggregation['count'] = get_sorted(counter)
     console.log('Total input rows: ', num_stacked_rows)
-    #if writer:
-    #    writer.close()
-    #else:
-    #    ic(all_df)
-    #if row_list_filtered_out:
-    #    df_filtered_out = pd.DataFrame(row_list_filtered_out)
-    #    ic('Saving filtered out to: ', output_file_filtered_out)
-    #    writer(df_filtered_out, output_file_filtered_out)
+    if output_file:
+        pass
+    if output_file is None and sys.stdout.isatty():
+        console.print(Panel(
+            aggregated,
+            title='Aggregation',
+            title_align='left',
+            border_style='cyan',
+        ))
+    else:
+        json_aggregated = json.dumps(
+            aggregated,
+            indent=4,
+            ensure_ascii=False,
+        )
+        if output_file:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(json_aggregated)
+        else:
+            # NOTE: output redirection
+            print(json_aggregated)
