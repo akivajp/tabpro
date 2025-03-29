@@ -52,7 +52,7 @@ class Loader:
         if self.rows:
             def get_iter():
                 assert self.rows is not None
-                if quiet:
+                if quiet or self.progress is None:
                     return self.rows
                 else:
                     return self.progress.track(

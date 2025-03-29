@@ -75,7 +75,7 @@ class BaseWriter:
         if self.progress:
             return self.progress.console
         else:
-            Console()
+            return Console()
 
     def _write_row(self, row: Row):
         raise NotImplementedError
