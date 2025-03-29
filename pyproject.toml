@@ -16,6 +16,8 @@ style = "pep440"
 
 [tool.poetry.scripts]
 tabpro= "tabpro.cli:main"
+tabpro-aggregate = "tabpro.cli:command_aggregate_tables"
+aggregate-tables = "tabpro.cli:command_aggregate_tables"
 tabpro-convert= "tabpro.cli:command_convert_tables"
 convert-tables = "tabpro.cli:command_convert_tables"
 tabpro-merge= "tabpro.cli:command_merge_tables"
