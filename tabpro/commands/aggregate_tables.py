@@ -27,9 +27,4 @@ def setup_parser(
         required=False,
         help='Path to output file',
     )
-    parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-        help='Verbose output',
-    )
     parser.set_defaults(handler=run)

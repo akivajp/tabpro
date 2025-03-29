@@ -23,9 +23,6 @@ def parse_and_run(
     if args.verbose:
         ic.enable()
     ic(args)
-    if args.version:
-        print(f'tabpro v{__version__}')
-        sys.exit(0)
     if args.handler:
         args.handler(args)
     else:
@@ -93,29 +90,19 @@ def setup_common_args(
         '--version', '-V',
         action='store_true',
     )
+    args, _ = parser.parse_known_args()
+    if args.version:
+        print(f'tabpro v{__version__}')
+        sys.exit(0)
 
 def main():
     parser = argparse.ArgumentParser(description='Table Data Converter')
     setup_common_args(parser)
     parser.set_defaults(handler=None)
-    subparsers = parser.add_subparsers(dest='command')
+    subparsers = parser.add_subparsers(title='command')
 
     command_aggregate_tables(subparsers)
-
-    #parser_convert_tables = subparsers.add_parser(
-    #    'convert',
-    #    help='Convert a table to a different format.'
-    #)
-    #setup_common_args(parser_convert_tables)
-    #command_convert_tables(parser_convert_tables)
     command_convert_tables(subparsers)
-
-    #parser_merge_tables = subparsers.add_parser(
-    #    'merge',
-    #    help='Merge tables.'
-    #)
-    #setup_common_args(parser_merge_tables)
-    #command_merge_tables(parser_merge_tables)
     command_merge_tables(subparsers)
 
     parse_and_run(parser)
