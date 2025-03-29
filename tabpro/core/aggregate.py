@@ -116,7 +116,7 @@ def aggregate(
             if len(counter) <= threashold:
                 aggregation['count'] = get_sorted(counter)
             else:
-                aggregation[f'count_{top_n}'] = get_sorted(
+                aggregation[f'count_top{top_n}'] = get_sorted(
                     counter,
                     max_items=top_n,
                     reverse=True,
