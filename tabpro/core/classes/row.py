@@ -51,7 +51,7 @@ class Row(Mapping):
         include_staging: bool = False,
     ):
         for key in self.flat:
-            if include_staging:
+            if not include_staging:
                 if key == '__staging__' or key.startswith('__staging__.'):
                     continue
             yield key
@@ -61,7 +61,7 @@ class Row(Mapping):
         include_staging: bool = False,
     ):
         for key, value in self.flat.items():
-            if include_staging:
+            if not include_staging:
                 if key == '__staging__' or key.startswith('__staging__.'):
                     continue
             yield key, value
