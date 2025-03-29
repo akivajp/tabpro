@@ -119,16 +119,18 @@ def convert(
                         if not output_debug:
                             pop_row_staging(row)
                         if verbose:
-                            ic('Filtered out: ', row.flat)
+                            #ic('Filtered out: ', row.flat)
+                            console.log('filtered out: ', row.flat)
                         if output_file_filtered_out:
                             row_list_filtered_out.append(row.flat)
                         continue
                     row = new_row
                 except Exception as e:
                     if verbose:
-                        ic(index)
+                        #ic(index)
+                        console.log('error in row index: ', index)
                         #ic(flat_row)
-                        ic(row.flat)
+                        #ic(row.flat)
                     raise e
             if config.pick:
                 remap_columns(row, config.pick)
@@ -155,5 +157,6 @@ def convert(
     #    ic(all_df)
     if row_list_filtered_out:
         df_filtered_out = pd.DataFrame(row_list_filtered_out)
-        ic('Saving filtered out to: ', output_file_filtered_out)
+        #ic('Saving filtered out to: ', output_file_filtered_out)
+        console.log('saving filtered out to: ', output_file_filtered_out)
         writer(df_filtered_out, output_file_filtered_out)

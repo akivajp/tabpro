@@ -70,7 +70,8 @@ def merge(
     merge_fields: list[str] | None = None,
 ):
     progress = Progress(
-        transient=True,
+        #redirect_stdout = False,
+        #transient=True,
     )
     progress.start()
     console = progress.console
@@ -154,7 +155,7 @@ def merge(
         ic(len(list_ignored_keys))
         ic(list_ignored_keys)
     if output_base_data_file:
-        ic('Saving to: ', output_base_data_file)
+        #ic('Saving to: ', output_base_data_file)
         save(all_base_rows, output_base_data_file)
     if output_modified_data_file:
         ic('Saving to: ', output_modified_data_file)
