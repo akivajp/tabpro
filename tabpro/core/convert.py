@@ -3,9 +3,7 @@
 import os
 import sys
 
-from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 
 # 3-rd party modules
 
@@ -45,15 +43,6 @@ from . io import (
 )
 
 from . console.views import Panel
-
-def capture_dict(
-    row: dict,
-):
-    console = Console()
-    with console.capture() as capture:
-        console.print_json(data=row)
-    text = Text.from_ansi(capture.get())
-    return text
 
 def convert(
     input_files: list[str],
