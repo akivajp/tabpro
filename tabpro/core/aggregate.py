@@ -121,18 +121,19 @@ def aggregate(
                     max_items=top_n,
                     reverse=True,
                 )
-    console.log('Total input rows: ', num_input_rows)
+    console.log('total input rows: ', num_input_rows)
     dict_output = OrderedDict()
     dict_output['num_rows'] = num_input_rows
     dict_output['aggregated'] = aggregated
     if output_file is None and sys.stdout.isatty():
         console.print(Panel(
             dict_output,
-            title='Aggregation',
+            title='aggregation',
             title_align='left',
             border_style='cyan',
         ))
     else:
+        console.log('writing output to: ', output_file)
         json_output = json.dumps(
             dict_output,
             indent=4,
