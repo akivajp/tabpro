@@ -11,6 +11,7 @@ def run(
         input_files=args.input_files,
         output_file=args.output_file,
         verbose=args.verbose,
+        list_keys_to_show_duplicates=args.keys_to_show_duplicates,
     )
 
 def setup_parser(
@@ -26,5 +27,12 @@ def setup_parser(
         '--output-file', '--output',
         required=False,
         help='Path to output file',
+    )
+    parser.add_argument(
+        '--keys-to-show-duplicates',
+        required=False,
+        default=None,
+        nargs='+',
+        help='Keys to show duplicates',
     )
     parser.set_defaults(handler=run)

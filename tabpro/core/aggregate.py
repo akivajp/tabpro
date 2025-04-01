@@ -26,8 +26,9 @@ from . console.views import (
 
 def get_sorted(
     counter: dict,
-    max_items: int = 100,
+    max_items: int | None = 100,
     reverse: bool = True,
+    min_count: int = 0,
 ):
     dict_sorted = OrderedDict()
     for key, value in sorted(
@@ -35,9 +36,14 @@ def get_sorted(
         key=lambda item: item[1],
         reverse=reverse,
     ):
+        if value < min_count:
+            if reverse:
+                break
+            continue
         dict_sorted[key] = value
-        if len(dict_sorted) >= max_items:
-            break
+        if max_items is not None:
+            if len(dict_sorted) >= max_items:
+                break
     return dict_sorted
 
 def aggregate_one(
@@ -76,6 +82,7 @@ def aggregate(
     input_files: list[str],
     output_file: str | None = None,
     verbose: bool = False,
+    list_keys_to_show_duplicates: list[str] | None = None,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -121,6 +128,15 @@ def aggregate(
                     max_items=top_n,
                     reverse=True,
                 )
+            if list_keys_to_show_duplicates:
+                if key in list_keys_to_show_duplicates:
+                    #aggregation[f'count_2_or_more'] = get_sorted(
+                    aggregation[f'count_duplicates'] = get_sorted(
+                        counter,
+                        max_items=None,
+                        reverse=True,
+                        min_count=2,
+                    )
     console.log('total input rows: ', num_input_rows)
     dict_output = OrderedDict()
     dict_output['num_rows'] = num_input_rows
