@@ -71,7 +71,7 @@ class Row(Mapping):
             key = f'{self._prefix}.{key}'
         value, found = get_nested_field_value(self.nested, key)
         if not found:
-            raise KeyError(f'Key not found: {key}')
+            raise KeyError(f'key not found: {key}')
         return value
 
     def __setitem__(self, key, value):

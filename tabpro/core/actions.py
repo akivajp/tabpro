@@ -449,41 +449,38 @@ def remap_columns(
 ):
     if not list_config:
         list_config = []
-        for key in row.nested[STAGING_FIELD][INPUT_FIELD].keys():
+        for key in row.staging.keys():
             list_config.append(PickConfig(
                 source = key,
                 target = key,
             ))
-    new_flat_row = OrderedDict()
+    new_row = Row()
     picked = []
     for config in list_config:
         value, key = search_column_value(row.nested, config.source)
         if key:
-            set_flat_field_value(new_flat_row, config.target, value)
+            new_row[config.target] = value
             picked.append(key)
-    for key in row.flat.keys():
+    for key in row.keys():
         if key in picked:
             if not key.startswith(f'{STAGING_FIELD}.{INPUT_FIELD}.'):
                 continue
-        if key in new_flat_row:
+        if key in new_row:
             continue
-        if key.startswith(f'{STAGING_FIELD}.'):
+        if isinstance(key, str) and key.startswith(f'{STAGING_FIELD}.'):
             # NOTE: Skip staging fields
-            new_flat_row[key] = row.flat[key]
+            new_row[key] = row[key]
         else:
             input_key = f'{STAGING_FIELD}.{INPUT_FIELD}.{key}'
-            if input_key in row.flat:
-                value = row.flat[key]
-                input_value = row.flat[input_key]
+            if input_key in row:
+                value = row[key]
+                input_value = row[input_key]
                 if value == input_value:
                     # NOTE: Skip if the same value in the input field
                     continue
             # NOTE: Set the unused value to the staging field
-            new_flat_row[f'{STAGING_FIELD}.{key}'] = row.flat[key]
-    row.flat = new_flat_row
-    row.nested = nest_row(new_flat_row)
-    return row
-
+            new_row.staging[key] = row[key]
+    return new_row
 
 def search_with_operator(
     row: Row,
