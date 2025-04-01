@@ -5,7 +5,6 @@ import sys
 
 # 3-rd party modules
 
-from icecream import ic
 import pandas as pd
 
 from . progress import Progress
@@ -77,7 +76,8 @@ def convert(
         setup_actions_with_args(
             config,
             list_actions,
-            action_delimiter=action_delimiter
+            action_delimiter=action_delimiter,
+            console=console,
         )
     writer = None
     if output_file:

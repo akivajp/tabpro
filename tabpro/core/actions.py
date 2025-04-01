@@ -14,6 +14,8 @@ from typing import (
 
 from icecream import ic
 
+from rich.console import Console
+
 from . config import (
     Config,
 )
@@ -58,8 +60,11 @@ def setup_actions_with_args(
     config: Config,
     list_actions: list[str],
     action_delimiter: str = ':',
+    console: Console | None = None,
 ):
-    ic(list_actions)
+    #ic(list_actions)
+    if console:
+        console.log('list_actions: ', list_actions)
     for str_action in list_actions:
         fields = str_action.split(action_delimiter)
         if len(fields) >= 1:
