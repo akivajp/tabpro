@@ -21,6 +21,7 @@ def run(
         output_remaining_data_file=args.output_remaining_data_file,
         merge_fields=args.merge_fields,
         merge_staging=args.merge_staging,
+        use_staging=args.use_staging,
     )
 
 def setup_parser(
@@ -81,8 +82,13 @@ def setup_parser(
         help='Fields to merge',
     )
     parser.add_argument(
-        '--merge-staging', '--staging',
+        '--merge-staging',
         action='store_true',
         help='Merge staging fields from modification files',
+    )
+    parser.add_argument(
+        '--use-staging', '--staging',
+        action='store_true',
+        help='Use staging fields files',
     )
     parser.set_defaults(handler=run)

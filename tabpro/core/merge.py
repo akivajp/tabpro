@@ -20,10 +20,13 @@ from tqdm.auto import tqdm
 
 from .. logging import logger
 
-from . functions.search_column_value import search_column_value
-from . functions.set_row_value import (
-    set_row_value,
+from . constants import (
+    FILE_FIELD,
+    ROW_INDEX_FIELD,
+    FILE_ROW_INDEX_FIELD,
 )
+
+from . functions.search_column_value import search_column_value
 
 from . io import (
     get_loader,
@@ -61,6 +64,16 @@ def get_primary_key(
     primary_key = tuple(list_keys)
     return primary_key
 
+def set_staging_values(
+    row: Row,
+    file_path: str,
+    file_row_index: int,
+):
+    row.staging[FILE_FIELD] = input_file
+    row.staging[FILE_ROW_INDEX_FIELD] = file_row_index
+    row.staging[ROW_INDEX_FIELD] = index
+
+
 def merge(
     previous_files: list[str],
     modification_files: list[str],
@@ -73,6 +86,7 @@ def merge(
     output_remaining_data_file: str | None = None,
     merge_fields: list[str] | None = None,
     merge_staging: bool = False,
+    use_staging: bool = False,
 ):
     progress = Progress(
         #redirect_stdout = False,
@@ -89,6 +103,8 @@ def merge(
     all_modified_rows = []
     list_ignored_keys = []
     num_modified = 0
+    if use_staging:
+        merge_staging = True
     for output_path in [
         output_base_data_file,
         output_modified_data_file,

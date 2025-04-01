@@ -12,10 +12,6 @@ from . progress import Progress
 
 # local
 
-from . types import (
-    GlobalStatus,
-)
-
 from . io import (
     get_loader,
 )
@@ -77,7 +73,6 @@ def aggregate_one(
     value: str,
 ):
     aggregation = aggregated.setdefault(key, {})
-    #counter = dict_counters.setdefault(key, {})
     if key not in dict_counters:
         dict_counters[key] = ValueCounter()
     counter = dict_counters[key]
