@@ -4,18 +4,18 @@
 
 # local
 
-from .. config import (
+from ..config import (
     Config,
 )
 
-from . search_column_value import search_column_value
-from . set_row_value import set_row_staging_value
+from ..functions.search_column_value import search_column_value
+from ..functions.set_row_value import set_row_staging_value
 
-from .. types import (
+from ..types import (
     IdContextMap,
 )
 
-from .. classes.row import Row
+from ..classes.row import Row
 
 def get_key_value(
     row: Row,
