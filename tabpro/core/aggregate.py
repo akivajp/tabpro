@@ -28,6 +28,7 @@ class ValueCounter:
     def __init__(self):
         self.counter = OrderedDict()
         self.count1 = 0
+        self.max_count = 0
 
     def add(self, key: str):
         if key not in self.counter:
@@ -37,6 +38,8 @@ class ValueCounter:
             self.count1 += 1
         if self.counter[key] == 2:
             self.count1 -= 1
+        if self.counter[key] > self.max_count:
+            self.max_count = self.counter[key]
 
     def items(self):
         return self.counter.items()
@@ -148,17 +151,20 @@ def aggregate(
         counter = dict_counters[key]
         if len(counter) > 0:
             aggregation['num_variations'] = len(counter)
+            aggregation['max_count'] = counter.max_count
             top_threshold = 50
             count1_threshold = 30
             top_n  = 10
             show_all = False
-            if key in list_keys_to_show_all_count:
+            if len(counter) <= top_threshold:
                 show_all = True
-            elif len(counter) <= top_threshold:
-                show_all = True
+            elif key in list_keys_to_show_all_count:
+                if counter.max_count > 1:
+                    # NOTE: show all only if max_count > 1
+                    show_all = True
             if show_all:
                 aggregation['count'] = get_sorted(counter)
-            else:
+            elif counter.max_count > 1:
                 aggregation[f'count_top{top_n}'] = get_sorted(
                     counter,
                     max_items=top_n,
