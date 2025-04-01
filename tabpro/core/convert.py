@@ -29,10 +29,14 @@ from .actions import (
     do_actions,
     pop_row_staging,
     remap_columns,
+    #setup_actions_with_args,
+)
+
+from .actions.setup_actions import (
     setup_actions_with_args,
 )
 
-from . types import (
+from .actions.types import (
     GlobalStatus,
 )
 
@@ -79,7 +83,6 @@ def convert(
             config,
             list_actions,
             action_delimiter=action_delimiter,
-            console=console,
         )
     writer = None
     if output_file:

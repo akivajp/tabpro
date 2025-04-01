@@ -10,9 +10,10 @@ from typing import (
     Mapping,
 )
 
-from .. functions.get_nested_field_value import get_nested_field_value
-from .. functions.set_nested_field_value import set_nested_field_value
-from .. functions.set_flat_field_value import set_flat_field_value
+from ..functions.get_nested_field_value import get_nested_field_value
+from ..functions.search_column_value import search_column_value
+from ..functions.set_nested_field_value import set_nested_field_value
+from ..functions.set_flat_field_value import set_flat_field_value
 
 class Row(Mapping):
     def __init__(
@@ -65,6 +66,12 @@ class Row(Mapping):
                 if key == '__staging__' or key.startswith('__staging__.'):
                     continue
             yield key, value
+
+    def search(
+        self,
+        field: str,
+    ):
+        return search_column_value(self.nested, field)
 
     def __getitem__(self, key):
         if self._prefix:

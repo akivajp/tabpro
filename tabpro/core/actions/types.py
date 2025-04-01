@@ -3,23 +3,17 @@ This module contains the dataclasses that are used to define the configuration
 for the table_converter package.
 '''
 
-import dataclasses
-
-from collections import (
-    OrderedDict,
-    defaultdict,
-)
-from dataclasses import dataclass
 from typing import (
     Any,
     Literal,
     Mapping,
 )
 
-@dataclasses.dataclass
-class Row:
-    flat: OrderedDict
-    nested: OrderedDict
+import dataclasses
+
+from collections import (
+    defaultdict,
+)
 
 @dataclasses.dataclass
 class AssignArrayElementConfig:

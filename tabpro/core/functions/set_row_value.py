@@ -11,7 +11,7 @@ from .. constants import (
 from . set_flat_field_value import set_flat_field_value
 from . set_nested_field_value import set_nested_field_value
 
-from .. types import (
+from ..actions.types import (
     Row,
 )
 

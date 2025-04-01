@@ -7,27 +7,18 @@ import json
 import re
 
 from collections import OrderedDict
-from dataclasses import dataclass
 from typing import (
     Any,
 )
 
-from icecream import ic
-
-from rich.console import Console
-
 from ...logging import logger
-
-from ..config import (
-    Config,
-)
 
 from ..constants import (
     INPUT_FIELD,
     STAGING_FIELD,
 )
 
-from ..types import (
+from .types import (
     AssignArrayConfig,
     AssignConfig,
     AssignConstantConfig,
@@ -48,287 +39,11 @@ from ..types import (
 from ..classes.row import Row
 
 from .assign_id import assign_id
+from .assign_format import assign_format
 from ..functions.search_column_value import search_column_value
-from ..functions.set_row_value import (
-    set_row_staging_value,
-)
-
-def setup_actions_with_args(
-    config: Config,
-    list_actions: list[str],
-    action_delimiter: str = ':',
-    console: Console | None = None,
-):
-    #ic(list_actions)
-    if console:
-        console.log('list_actions: ', list_actions)
-    for str_action in list_actions:
-        fields = str_action.split(action_delimiter)
-        if len(fields) >= 1:
-            action_name = fields[0].strip()
-        if action_name == 'assign-format':
-            setup_assign_format_action(config, str_action, action_delimiter)
-            continue
-        if action_name == 'filter':
-            setup_filter_action(config, str_action, action_delimiter)
-            continue
-        if len(fields) not in [2,3]:
-            raise ValueError(
-                'Action must have 2 or 3 delimiter-separated fields: ' +
-                f'delimiter:{action_delimiter!r}, action string: {str_action!r}'
-            )
-        str_fields = fields[1].strip()
-        if len(fields) == 3:
-            str_options = fields[2].strip()
-        else:
-            str_options = ''
-        options = OrderedDict()
-        if str_options:
-            for str_option in str_options.split(','):
-                if '=' in str_option:
-                    key, value = str_option.split('=')
-                    options[key.strip()] = value.strip()
-                else:
-                    options[str_option.strip()] = True
-        fields = str_fields.split(',')
-        for field in fields:
-            if '=' in field:
-                target, source = field.split('=')
-                target = target.strip()
-                source = source.strip()
-            else:
-                target = field.strip()
-                source = field.strip()
-            if action_name == 'assign':
-                assign_default = False
-                default_value = None
-                if 'default' in options:
-                    assign_default = True
-                    default_value = options['default']
-                if default_value in ['None', 'none', 'Null', 'null']:
-                    default_value = None
-                required = options.get('required', False)
-                config.actions.append(AssignConfig(
-                    target = target,
-                    source = source,
-                    assign_default = assign_default,
-                    default_value = default_value,
-                    required = required,
-                ))
-                continue
-            if action_name == 'assign-constant':
-                str_type = options.get('type', 'str')
-                if str_type in ['str', 'string']:
-                    value = source
-                elif str_type in ['int', 'integer']:
-                    value = int(source)
-                elif str_type == 'float':
-                    value = float(source)
-                elif str_type in ['bool', 'boolean']:
-                    value = bool(source)
-                else:
-                    raise ValueError(
-                        f'Unsupported type: {str_type}'
-                    )
-                config.actions.append(AssignConstantConfig(
-                    target = target,
-                    value = value,
-                ))
-                continue
-            if action_name == 'assign-id':
-                context = options.get('context', None)
-                if context:
-                    context = context.split(',')
-                reverse = options.get('reverse', False)
-                config.actions.append(AssignIdConfig(
-                    target = target,
-                    primary = [source],
-                    context = context,
-                    reverse = reverse,
-                ))
-                continue
-            if action_name == 'assign-length':
-                config.actions.append(AssignLengthConfig(
-                    target = target,
-                    source = source,
-                ))
-                continue
-            if action_name == 'cast':
-                required = options.get('required', False)
-                as_type = options.get('as', 'literal')
-                if as_type in ['boolean']:
-                    as_type = 'bool'
-                if as_type not in ['bool', 'int', 'float', 'str']:
-                    raise ValueError(
-                        f'Unsupported as type: {as_type}'
-                    )
-                assign_default = False
-                default_value = None
-                if 'default' in options:
-                    assign_default = True
-                    default_value = options['default']
-                    if default_value in ['None', 'none', 'Null', 'null']:
-                        default_value = None
-                config.actions.append(CastConfig(
-                    target = target,
-                    source = source,
-                    as_type = as_type,
-                    required = required,
-                    assign_default = assign_default,
-                    default_value = default_value,
-                ))
-                continue
-            if action_name == 'filter-empty':
-                config.actions.append(FilterConfig(
-                    field = target,
-                    operator = 'empty',
-                    value = '',
-                ))
-                continue
-            if action_name == 'filter-not-empty':
-                config.actions.append(FilterConfig(
-                    field = target,
-                    operator = 'not-empty',
-                    value = '',
-                ))
-                continue
-            if action_name == 'join':
-                delimiter = options.get('delimiter', None)
-                config.actions.append(JoinConfig(
-                    target = target,
-                    source = source,
-                    delimiter = delimiter,
-                ))
-                continue
-            if action_name == 'omit':
-                purge = options.get('purge', False)
-                config.actions.append(OmitConfig(
-                    field = target,
-                    purge = purge,
-                ))
-                continue
-            if action_name == 'parse':
-                as_type = options.get('as', 'literal')
-                required = options.get('required', False)
-                if as_type in ['boolean']:
-                    as_type = 'bool'
-                if as_type not in ['bool', 'json', 'literal']:
-                    raise ValueError(
-                        f'Unsupported as type: {as_type}'
-                    )
-                assign_default = False
-                default_value = None
-                if 'default' in options:
-                    assign_default = True
-                    default_value = options['default']
-                    if default_value in ['None', 'none', 'Null', 'null']:
-                        default_value = None
-                config.actions.append(ParseConfig(
-                    target = target,
-                    source = source,
-                    as_type = as_type,
-                    required = required,
-                    assign_default = assign_default,
-                    default_value = default_value,
-                ))
-                continue
-            if action_name == 'parse-json':
-                required = options.get('required', False)
-                config.actions.append(ParseConfig(
-                    target = target,
-                    source = source,
-                    as_type = 'json',
-                    required = required,
-                ))
-                continue
-            if action_name == 'push':
-                condition = options.get('condition', None)
-                config.actions.append(PushConfig(
-                    target = target,
-                    source = source,
-                    condition = condition,
-                ))
-                continue
-            if action_name == 'split':
-                delimiter = options.get('delimiter', None)
-                if delimiter == '\\n':
-                    delimiter = '\n'
-                config.actions.append(SplitConfig(
-                    target = target,
-                    source = source,
-                    delimiter = delimiter,
-                ))
-                continue
-            raise ValueError(
-                f'Unsupported action: {action_name}'
-            )
-    return config
-
-def setup_assign_format_action(
-    config: Config,
-    str_action: str,
-    delimiter: str = ':',
-):
-    action_fields = str_action.split(delimiter, 1)
-    if len(action_fields) != 2:
-        raise ValueError(
-            f'Expected 2 fields separated by ":": {str_action}'
-        )
-    action_name = action_fields[0].strip()
-    assert action_name == 'assign-format'
-    assignment_fields = action_fields[1].split('=')
-    if len(assignment_fields) != 2:
-        raise ValueError(
-            f'Expected 2 fields separated by "=": {action_fields[1]}'
-        )
-    target = assignment_fields[0].strip()
-    format = assignment_fields[1].strip()
-    config.actions.append(AssignFormatConfig(
-        target = target,
-        format = format,
-    ))
-    return config
-
-def setup_filter_action(
-    config: Config,
-    str_action: str,
-    delimiter: str = ':',
-):
-    action_fields = str_action.split(delimiter, 1)
-    if len(action_fields) != 2:
-        raise ValueError(
-            f'Expected 2 fields separated by ":": {str_action}'
-        )
-    action_name = action_fields[0].strip()
-    assert action_name == 'filter'
-    str_filter = action_fields[1].strip()
-    if '==' in str_filter:
-        field, value = str_filter.split('==')
-        config.actions.append(FilterConfig(
-            field = field.strip(),
-            operator = '==',
-            value = value.strip(),
-        ))
-        return config
-    if '!=' in str_filter:
-        field, value = str_filter.split('!=')
-        config.actions.append(FilterConfig(
-            field = field.strip(),
-            operator = '!=',
-            value = value.strip(),
-        ))
-        return config
-    if '=~' in str_filter:
-        field, value = str_filter.split('=~')
-        config.actions.append(FilterConfig(
-            field = field.strip(),
-            operator = '=~',
-            value = value.strip(),
-        ))
-        return config
-    raise ValueError(
-        f'Unsupported filter: {str_filter}'
-    )
+#from ..functions.set_row_value import (
+#    set_row_staging_value,
+#)
 
 def do_actions(
     status: GlobalStatus,
@@ -424,7 +139,8 @@ def assign_constant(
     row: Row,
     config: AssignConstantConfig,
 ):
-    set_row_staging_value(row, config.target, config.value)
+    #set_row_staging_value(row, config.target, config.value)
+    row.staging[config.target] = config.value
     return row
 
 def split_field(
@@ -438,7 +154,8 @@ def split_field(
             new_value = map(str.strip, new_value)
             new_value = list(filter(None, new_value))
             value = new_value
-        set_row_staging_value(row, config.target, value)
+        #set_row_staging_value(row, config.target, value)
+        row.staging[config.target] = value
     return row
 
 def remap_columns(
@@ -520,84 +237,6 @@ def assign(
             row.staging[config.target] = config.default_value
     return row
 
-def assign_format(
-    row: Row,
-    config: AssignFormatConfig,
-):
-    template = config.format
-    params = {}
-    for key, value in row.flat.items():
-        for prefix in [
-            f'{STAGING_FIELD}.{INPUT_FIELD}.',
-            f'{STAGING_FIELD}.',
-        ]:
-            if key.startswith(prefix):
-                rest = key[len(prefix):]
-                params[rest] = value
-    params.update(row.flat)
-    formatted = None
-    while formatted is None:
-        try:
-            formatted = template.format(**params)
-        except KeyError as e:
-            #ic(e)
-            #ic(e.args)
-            #ic(e.args[0])
-            key = e.args[0]
-            params[key] = f'__{key}__undefined__'
-        except:
-            #ic(params)
-            #ic(params.keys())
-            ic(row.flat)
-            raise
-    set_row_staging_value(row, config.target, formatted)
-    return row
-
-def check_empty(
-    value: Any,
-    found: str | None,
-):
-    if not found:
-        return True
-    return not bool(value)
-
-def filter_row(
-    row: Row,
-    config: list[FilterConfig],
-):
-    value, found = search_column_value(row.nested, config.field)
-    #ic(config, value, found)
-    if config.operator == '==':
-        if not found:
-            return False
-        if value != config.value and str(value) != str(config.value):
-            return False
-    elif config.operator == '!=':
-        if str(value) == str(config.value) or value == config.value:
-            return False
-    elif config.operator == '=~':
-        if not found:
-            return False
-        if not re.search(config.value, value):
-            return False
-    elif config.operator == 'not-in':
-        if isinstance(config.value, list):
-            if value in config.value:
-                return False
-            if str(value) in config.value:
-                return False
-        else:
-            raise ValueError(f'Unsupported filter value type: type{config.value}')
-    elif config.operator == 'empty':
-        if not check_empty(value, found):
-            return False
-    elif config.operator == 'not-empty':
-        if check_empty(value, found):
-            return False
-    else:
-        raise ValueError(f'Unsupported operator: {config.operator}')
-    return True
-
 def omit_field(
     row: Row,
     config: OmitConfig,
@@ -607,7 +246,8 @@ def omit_field(
         return row
     if not config.purge:
         if f'{STAGING_FIELD}.{config.field}' not in row.flat:
-            set_row_staging_value(row, config.field, value)
+            #set_row_staging_value(row, config.field, value)
+            row.staging[config.field] = value
     return row
 
 def join_field(
@@ -623,7 +263,8 @@ def join_field(
             delimiter = '\n'
         if isinstance(value, list):
             value = delimiter.join(value)
-        set_row_staging_value(row, config.target, value)
+        #set_row_staging_value(row, config.target, value)
+        row.staging[config.target] = value
     return row
 
 def parse(
@@ -679,7 +320,8 @@ def parse(
             raise ValueError(
                 f'Unsupported as type: {config.as_type}'
             )
-        set_row_staging_value(row, config.target, parsed)
+        #set_row_staging_value(row, config.target, parsed)
+        row.staging[config.target] = parsed
     return row
 
 def push_field(
@@ -700,7 +342,8 @@ def push_field(
             array = target_value
         else:
             array = []
-            set_row_staging_value(row, config.target, array)
+            #set_row_staging_value(row, config.target, array)
+            row.staging[config.target] = array
         array.append(source_value)
     return row
 
@@ -710,7 +353,8 @@ def assign_length(
 ):
     value, found = search_column_value(row.nested, config.source)
     if found:
-        set_row_staging_value(row, config.target, len(value))
+        #set_row_staging_value(row, config.target, len(value))
+        row.staging[config.target] = len(value)
     return row
 
 def cast(
@@ -744,7 +388,8 @@ def cast(
             raise ValueError(
                 f'Failed to cast: {value}'
             )
-    set_row_staging_value(row, config.target, casted)
+    #set_row_staging_value(row, config.target, casted)
+    row.staging[config.target] = casted
     return row
 
 def assign_array(
@@ -763,3 +408,11 @@ def assign_array(
     else:
         row.staging[config.target] = None
     return row
+
+#from .setup_actions import (
+#    setup_actions_with_args,
+#)
+#
+#__all__ = [
+#    'setup_actions_with_args',
+#]

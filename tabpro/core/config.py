@@ -4,7 +4,6 @@ from collections import OrderedDict
 import dataclasses
 from typing import (
     Any,
-    Literal,
     Mapping,
 )
 
@@ -14,11 +13,10 @@ from rich.console import Console
 import yaml
 
 from . functions.flatten_row import (
-    FlatFieldMap,
     flatten_row,
 )
 
-from . types import (
+from .actions.types import (
     ActionConfig,
     AssignArrayConfig,
     AssignArrayElementConfig,

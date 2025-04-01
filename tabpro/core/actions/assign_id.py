@@ -4,14 +4,10 @@
 
 # local
 
-from ..config import (
-    Config,
-)
-
 from ..functions.search_column_value import search_column_value
-from ..functions.set_row_value import set_row_staging_value
 
-from ..types import (
+from .types import (
+    AssignIdConfig,
     IdContextMap,
 )
 
@@ -101,7 +97,7 @@ def set_id(
 def assign_id(
     id_context_map: IdContextMap,
     row: Row,
-    config: Config,
+    config: AssignIdConfig,
 ):
     if config.reverse:
         value, found = search_column_value(row.nested, config.target)
@@ -124,5 +120,5 @@ def assign_id(
         primary=config.primary,
         context=config.context,
     )
-    set_row_staging_value(row, config.target, field_id)
+    row.staging[config.target] = field_id
     return row
