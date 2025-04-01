@@ -146,13 +146,10 @@ def merge(
                     if field.startswith('__staging__.'):
                         if not merge_staging:
                             continue
-                        console.log('merging staging field:', field)
+                        #console.log('merging staging field:', field)
                     merge_fields.append(field)
             for field in merge_fields:
                 value, found = search_column_value(row.nested, field)
-                #console.log('merging field:', field, value)
-                #console.log('found:', found)
-                #console.log('value:', found)
                 if found:
                     previous_row[field] = value
             set_modified_keys.add(primary_key)

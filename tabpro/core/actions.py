@@ -16,6 +16,8 @@ from icecream import ic
 
 from rich.console import Console
 
+from .. logging import logger
+
 from . config import (
     Config,
 )
@@ -41,20 +43,17 @@ from . types import (
     PickConfig,
     PushConfig,
     SplitConfig,
-    #Row,
 )
 
 from . classes.row import Row
 
 from . functions.assign_id import assign_id
-from . functions.flatten_row import flatten_row
 from . functions.nest_row import nest_row
 from . functions.search_column_value import search_column_value
 from . functions.set_flat_field_value import set_flat_field_value
 from . functions.set_row_value import (
     set_row_staging_value,
 )
-from . functions.set_nested_field_value import set_nested_field_value
 
 def setup_actions_with_args(
     config: Config,
@@ -339,7 +338,16 @@ def do_actions(
     actions: list[AssignConstantConfig],
 ):
     for action in actions:
-        row = do_action(status, row, action)
+        try:
+            row = do_action(status, row, action)
+        except Exception as e:
+            logger.error('failed with action: %s', action)
+            #logger.error('failed with row: %s', row)
+            logger.error('failed with row: %s', dict(row.items()))
+            if '__file_row_index__' in row.staging:
+                file_row_index = row.staging['__file_row_index__']
+                logger.error('failed with file row index: %s', file_row_index)
+            raise
         if row is None:
             return None
     return row
@@ -511,10 +519,10 @@ def assign(
                 f'field: {config.source}, found: {found}, value: {value}'
             )
     if found:
-        set_row_staging_value(row, config.target, value)
+        row.staging[config.target] = value
     else:
         if config.assign_default:
-            set_row_staging_value(row, config.target, config.default_value)
+            row.staging[config.target] = config.default_value
     return row
 
 def assign_format(

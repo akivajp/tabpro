@@ -11,6 +11,8 @@ from . progress import Progress
 
 # local
 
+from .. logging import logger
+
 from . config import (
     setup_config,
     setup_pick_with_args,
@@ -62,7 +64,7 @@ def convert(
     progress.start()
     #ic.enable()
     console = progress.console
-    console.log('input_files: ', input_files)
+    logger.info('input_files: %s', input_files)
     row_list_filtered_out = []
     set_ignore_file_rows = set()
     global_status = GlobalStatus()
@@ -128,7 +130,8 @@ def convert(
                 except Exception as e:
                     if verbose:
                         #ic(index)
-                        console.log('error in row index: ', index)
+                        #console.log('error in row index: ', index)
+                        logger.error('error in row index: ', index)
                         #ic(flat_row)
                         #ic(row.flat)
                     raise e
