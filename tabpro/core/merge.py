@@ -69,10 +69,14 @@ def set_staging_values(
     file_path: str,
     file_row_index: int,
 ):
-    row.staging[FILE_FIELD] = input_file
-    row.staging[FILE_ROW_INDEX_FIELD] = file_row_index
-    row.staging[ROW_INDEX_FIELD] = index
-
+    str_file_row_index = f'{file_path}:{file_row_index}'
+    for key, value in [
+        [FILE_FIELD, file_path],
+        [FILE_ROW_INDEX_FIELD, str_file_row_index],
+        [ROW_INDEX_FIELD, file_row_index],
+    ]:
+        if key not in row.staging:
+            row.staging[key] = value
 
 def merge(
     previous_files: list[str],
@@ -129,6 +133,11 @@ def merge(
             loader,
             description=f'prcessing ...',
         )):
+            set_staging_values(
+                row,
+                previous_file,
+                index,
+            )
             primary_key = get_primary_key(row, keys)
             if not allow_duplicate_conventional_keys:
                 if primary_key in dict_key_to_row:
@@ -148,6 +157,11 @@ def merge(
             loader,
             description=f'processing ...',
         )):
+            set_staging_values(
+                row,
+                modification_file,
+                index,
+            )
             primary_key = get_primary_key(row, keys)
             if primary_key not in dict_key_to_row:
                 if ignore_not_found:
