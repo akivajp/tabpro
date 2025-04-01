@@ -5,6 +5,7 @@ import os
 from collections import OrderedDict
 
 from typing import (
+    Any,
     Mapping,
 )
 
@@ -79,7 +80,7 @@ def merge(
     console.log('previous files: ', previous_files)
     console.log('modification files: ', modification_files)
     console.log('keys: ', keys)
-    dict_key_to_row = OrderedDict()
+    dict_key_to_row: dict[Any, Row] = OrderedDict()
     set_modified_keys = set()
     all_base_rows = []
     all_modified_rows = []
@@ -142,14 +143,18 @@ def merge(
             if merge_fields is None:
                 merge_fields = []
                 for field in row.flat.keys():
-                    if not merge_staging:
-                        if field.startswith('__staging__.'):
+                    if field.startswith('__staging__.'):
+                        if not merge_staging:
                             continue
+                        console.log('merging staging field:', field)
                     merge_fields.append(field)
             for field in merge_fields:
-                value, found = search_column_value(row.flat, field)
+                value, found = search_column_value(row.nested, field)
+                #console.log('merging field:', field, value)
+                #console.log('found:', found)
+                #console.log('value:', found)
                 if found:
-                    set_row_value(previous_row, field, value)
+                    previous_row[field] = value
             set_modified_keys.add(primary_key)
             num_modified += 1
     console.log('# modified rows: ', num_modified)
@@ -160,7 +165,7 @@ def merge(
         #ic('Saving to: ', output_base_data_file)
         save(all_base_rows, output_base_data_file)
     if output_modified_data_file:
-        ic('Saving to: ', output_modified_data_file)
+        #ic('Saving to: ', output_modified_data_file)
         save(all_modified_rows, output_modified_data_file)
     if output_remaining_data_file:
         remaining_rows = []
