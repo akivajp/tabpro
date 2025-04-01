@@ -141,12 +141,14 @@ def merge(
                     continue
                 logger.error('index: %s', index)
                 raise ValueError(f'key not found: {primary_key}')
-            if not allow_duplicate_modification_keys:
-                if primary_key in set_modified_keys:
+            target_row = dict_key_to_row[primary_key]
+            if primary_key in set_modified_keys:
+                if not allow_duplicate_modification_keys:
                     logger.error('index: %s', index)
                     raise ValueError(f'duplicate key: {primary_key}')
-            # NOTE: previous_row 自体を変更する
-            previous_row = dict_key_to_row[primary_key]
+                #console.log('skipped duplicate key: ', primary_key)
+            else:
+                all_modified_rows.append(target_row)
             if merge_fields is None:
                 merge_fields = []
                 for field in row.flat.keys():
@@ -163,25 +165,27 @@ def merge(
                 #logger.debug('found: %s', found)
                 #logger.debug('value: %s', value)
                 if found:
-                    previous_row[field] = value
+                    target_row[field] = value
             set_modified_keys.add(primary_key)
-            # NOTE: 修正済みデータとしてはクローンを保存しておく
-            new_row = previous_row.clone()
-            all_modified_rows.append(new_row)
-            #logger.debug('previous row: %s', list(previous_row.items()))
-            #logger.debug('new row: %s', list(new_row.items()))
-            dict_key_to_row[primary_key] = new_row
             num_modified += 1
-    console.log('# modified rows: ', num_modified)
+    console.log('# modifications: ', num_modified)
+    console.log('# modified rows: ', len(all_modified_rows))
     if ignore_not_found:
         ic(len(list_ignored_keys))
         ic(list_ignored_keys)
     if output_base_data_file:
         #ic('Saving to: ', output_base_data_file)
-        save(all_base_rows, output_base_data_file)
+        save(
+            all_base_rows,
+            output_base_data_file,
+            progress=progress,
+        )
     if output_modified_data_file:
-        #ic('Saving to: ', output_modified_data_file)
-        save(all_modified_rows, output_modified_data_file)
+        save(
+            all_modified_rows,
+            output_modified_data_file,
+            progress=progress,
+        )
     if output_remaining_data_file:
         remaining_rows = []
         for key, row in dict_key_to_row.items():
