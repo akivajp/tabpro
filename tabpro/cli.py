@@ -8,21 +8,23 @@ import sys
 from typing import Callable
 
 from icecream import ic
+from rich.console import Console
 
 from . import __version__
 
 def parse_and_run(
     parser: argparse.ArgumentParser,
 ):
+    console = None
     if os.environ.get('DEBUG', '').lower() in ['1', 'true', 'yes', 'on']:
-        pass
+        console = Console()
     else:
         ic.disable()
-    ic()
     args = parser.parse_args()
     if args.verbose:
-        ic.enable()
-    ic(args)
+        if console is None:
+            console = Console()
+        console.log('args: ', args)
     if args.handler:
         args.handler(args)
     else:

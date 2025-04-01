@@ -9,6 +9,8 @@ from typing import (
 )
 
 from icecream import ic
+from rich.console import Console
+
 import yaml
 
 from . functions.flatten_row import (
@@ -334,8 +336,11 @@ def setup_process_split_config(
 def setup_pick_with_args(
     config: Config,
     list_fields: list[str],
+    console: Console | None = None
 ):
-    ic(list_fields)
+    #ic(list_fields)
+    if console:
+        console.log('list_fields:', list_fields)
     for field in list_fields:
         if '=' in field:
             target, source = field.split('=')
