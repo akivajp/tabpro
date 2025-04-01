@@ -24,8 +24,29 @@ from . console.views import (
     Panel,
 )
 
+class ValueCounter:
+    def __init__(self):
+        self.counter = OrderedDict()
+        self.count1 = 0
+
+    def add(self, key: str):
+        if key not in self.counter:
+            self.counter[key] = 0
+        self.counter[key] += 1
+        if self.counter[key] == 1:
+            self.count1 += 1
+        if self.counter[key] == 2:
+            self.count1 -= 1
+
+    def items(self):
+        return self.counter.items()
+    
+    def __len__(self):
+        return len(self.counter)
+
 def get_sorted(
-    counter: dict,
+    #counter: dict,
+    counter: ValueCounter,
     max_items: int | None = 100,
     reverse: bool = True,
     min_count: int = 0,
@@ -48,14 +69,17 @@ def get_sorted(
 
 def aggregate_one(
     aggregated: dict,
-    dict_counters: dict,
+    dict_counters: dict[str, ValueCounter],
     key: str,
     value: str,
 ):
     aggregation = aggregated.setdefault(key, {})
-    counter = dict_counters.setdefault(key, {})
+    #counter = dict_counters.setdefault(key, {})
+    if key not in dict_counters:
+        dict_counters[key] = ValueCounter()
+    counter = dict_counters[key]
     if not isinstance(value, (list)):
-        counter[value] = counter.get(value, 0) + 1
+        counter.add(value)
     if isinstance(value, (list)):
         for list_item in value:
             if isinstance(list_item, list):
@@ -70,7 +94,7 @@ def aggregate_one(
                         dict_value,
                     )
                 continue
-            counter[list_item] = counter.get(list_item, 0) + 1
+            counter.add(list_item)
     if hasattr(value, '__len__'):
         length = len(value)
         if length > aggregation.get('max_length', -1):
@@ -83,6 +107,8 @@ def aggregate(
     output_file: str | None = None,
     verbose: bool = False,
     list_keys_to_show_duplicates: list[str] | None = None,
+    show_count_threshold: int = 50,
+    list_keys_to_show_all_count: list[str] | None = None,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -97,6 +123,10 @@ def aggregate(
     aggregated = OrderedDict()
     dict_counters = OrderedDict()
     num_input_rows = 0
+    if list_keys_to_show_duplicates is None:
+        list_keys_to_show_duplicates = []
+    if list_keys_to_show_all_count is None:
+        list_keys_to_show_all_count = []
     for input_file in input_files:
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
@@ -118,9 +148,15 @@ def aggregate(
         counter = dict_counters[key]
         if len(counter) > 0:
             aggregation['num_variations'] = len(counter)
-            threashold = 50
+            top_threshold = 50
+            count1_threshold = 30
             top_n  = 10
-            if len(counter) <= threashold:
+            show_all = False
+            if key in list_keys_to_show_all_count:
+                show_all = True
+            elif len(counter) <= top_threshold:
+                show_all = True
+            if show_all:
                 aggregation['count'] = get_sorted(counter)
             else:
                 aggregation[f'count_top{top_n}'] = get_sorted(
@@ -128,9 +164,14 @@ def aggregate(
                     max_items=top_n,
                     reverse=True,
                 )
-            if list_keys_to_show_duplicates:
+                #console.log('count1: ', counter.count1)
+                if counter.count1 <= count1_threshold:
+                    aggregation['count1'] = get_sorted(
+                        counter,
+                        max_items=counter.count1,
+                        reverse=False,
+                    )
                 if key in list_keys_to_show_duplicates:
-                    #aggregation[f'count_2_or_more'] = get_sorted(
                     aggregation[f'count_duplicates'] = get_sorted(
                         counter,
                         max_items=None,

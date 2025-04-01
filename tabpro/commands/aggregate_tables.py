@@ -12,6 +12,8 @@ def run(
         output_file=args.output_file,
         verbose=args.verbose,
         list_keys_to_show_duplicates=args.keys_to_show_duplicates,
+        list_keys_to_show_all_count=args.keys_to_show_all_count,
+        show_count_threshold=args.show_count_threshold,
     )
 
 def setup_parser(
@@ -34,5 +36,19 @@ def setup_parser(
         default=None,
         nargs='+',
         help='Keys to show duplicates',
+    )
+    parser.add_argument(
+        '--keys-to-show-all-count',
+        required=False,
+        default=None,
+        nargs='+',
+        help='Keys to show all count',
+    )
+    parser.add_argument(
+        '--show-count-threshold', '--count-threshold', '-C',
+        required=False,
+        default=50,
+        type=int,
+        help='Show count threshold',
     )
     parser.set_defaults(handler=run)
