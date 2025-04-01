@@ -13,7 +13,8 @@ def run(
         previous_files=args.previous_files,
         modification_files=args.modification_files,
         keys=args.keys,
-        allow_duplicate_keys=args.allow_duplicate_keys,
+        allow_duplicate_conventional_keys=args.allow_duplicate_conventional_keys,
+        allow_duplicate_modification_keys=args.allow_duplicate_modification_keys,
         ignore_not_found=args.ignore_not_found,
         output_base_data_file=args.output_base_data_file,
         output_modified_data_file=args.output_modified_data_file,
@@ -44,9 +45,14 @@ def setup_parser(
         help='Primary keys',
     )
     parser.add_argument(
-        '--allow-duplicate-keys', '--allow-duplicate',
+        '--allow-duplicate-conventional-keys', '--allow-duplicate-conventional',
         action='store_true',
-        help='Allow duplicate keys',
+        help='Allow duplicate conventional keys',
+    )
+    parser.add_argument(
+        '--allow-duplicate-modification-keys', '--allow-duplicate-modification',
+        action='store_true',
+        help='Allow duplicate modification keys',
     )
     parser.add_argument(
         '--ignore-not-found',

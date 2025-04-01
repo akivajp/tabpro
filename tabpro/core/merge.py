@@ -18,6 +18,8 @@ from tqdm.auto import tqdm
 
 # local
 
+from .. logging import logger
+
 from . functions.search_column_value import search_column_value
 from . functions.set_row_value import (
     set_row_value,
@@ -63,7 +65,8 @@ def merge(
     previous_files: list[str],
     modification_files: list[str],
     keys: list[str],
-    allow_duplicate_keys: bool = False,
+    allow_duplicate_conventional_keys: bool = False,
+    allow_duplicate_modification_keys: bool = False,
     ignore_not_found: bool = False,
     output_base_data_file: str | None = None,
     output_modified_data_file: str | None = None,
@@ -111,7 +114,7 @@ def merge(
             description=f'prcessing ...',
         )):
             primary_key = get_primary_key(row, keys)
-            if not allow_duplicate_keys:
+            if not allow_duplicate_conventional_keys:
                 if primary_key in dict_key_to_row:
                     ic(index)
                     raise ValueError(f'Duplicate key: {primary_key}')
@@ -136,23 +139,38 @@ def merge(
                     ic(row.flat['__staging__.__file_row_index__'])
                     list_ignored_keys.append(primary_key)
                     continue
-                ic(index)
-                raise ValueError(f'Key not found: {primary_key}')
+                logger.error('index: %s', index)
+                raise ValueError(f'key not found: {primary_key}')
+            if not allow_duplicate_modification_keys:
+                if primary_key in set_modified_keys:
+                    logger.error('index: %s', index)
+                    raise ValueError(f'duplicate key: {primary_key}')
+            # NOTE: previous_row 自体を変更する
             previous_row = dict_key_to_row[primary_key]
-            all_modified_rows.append(previous_row)
             if merge_fields is None:
                 merge_fields = []
                 for field in row.flat.keys():
                     if field.startswith('__staging__.'):
-                        if not merge_staging:
-                            continue
-                        #console.log('merging staging field:', field)
+                        continue
                     merge_fields.append(field)
+            if merge_staging:
+                if '__staging__' not in merge_fields:
+                    merge_fields.append('__staging__')
+            #logger.debug('merge fields: %s', merge_fields)
             for field in merge_fields:
                 value, found = search_column_value(row.nested, field)
+                #logger.debug('field: %s', field)
+                #logger.debug('found: %s', found)
+                #logger.debug('value: %s', value)
                 if found:
                     previous_row[field] = value
             set_modified_keys.add(primary_key)
+            # NOTE: 修正済みデータとしてはクローンを保存しておく
+            new_row = previous_row.clone()
+            all_modified_rows.append(new_row)
+            #logger.debug('previous row: %s', list(previous_row.items()))
+            #logger.debug('new row: %s', list(new_row.items()))
+            dict_key_to_row[primary_key] = new_row
             num_modified += 1
     console.log('# modified rows: ', num_modified)
     if ignore_not_found:
