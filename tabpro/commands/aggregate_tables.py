@@ -13,6 +13,7 @@ def run(
         verbose=args.verbose,
         list_keys_to_show_duplicates=args.keys_to_show_duplicates,
         list_keys_to_show_all_count=args.keys_to_show_all_count,
+        list_keys_to_expand=args.keys_to_expand,
         show_count_threshold=args.show_count_threshold,
     )
 
@@ -43,6 +44,13 @@ def setup_parser(
         default=None,
         nargs='+',
         help='Keys to show all count',
+    )
+    parser.add_argument(
+        '--keys-to-expand',
+        required=False,
+        default=None,
+        nargs='+',
+        help='Keys to expand',
     )
     parser.add_argument(
         '--show-count-threshold', '--count-threshold', '-C',

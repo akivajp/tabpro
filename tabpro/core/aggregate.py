@@ -71,6 +71,7 @@ def aggregate_one(
     dict_counters: dict[str, ValueCounter],
     key: str,
     value: str,
+    list_keys_to_expand: list[str],
 ):
     aggregation = aggregated.setdefault(key, {})
     if key not in dict_counters:
@@ -79,7 +80,7 @@ def aggregate_one(
     if not isinstance(value, (list)):
         counter.add(value)
     if isinstance(value, (list)):
-        for list_item in value:
+        for list_index, list_item in enumerate(value):
             if isinstance(list_item, list):
                 continue
             if isinstance(list_item, dict):
@@ -90,7 +91,18 @@ def aggregate_one(
                         dict_counters,
                         full_key,
                         dict_value,
+                        list_keys_to_expand,
                     )
+                    if key in list_keys_to_expand:
+                        # NOTE: expand list item
+                        full_key = f'{key}.[{list_index}].{dict_key}'
+                        aggregate_one(
+                            aggregated,
+                            dict_counters,
+                            full_key,
+                            dict_value,
+                            list_keys_to_expand,
+                        )
                 continue
             counter.add(list_item)
     if hasattr(value, '__len__'):
@@ -107,6 +119,7 @@ def aggregate(
     list_keys_to_show_duplicates: list[str] | None = None,
     show_count_threshold: int = 50,
     list_keys_to_show_all_count: list[str] | None = None,
+    list_keys_to_expand: list[str] | None = None,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -125,6 +138,8 @@ def aggregate(
         list_keys_to_show_duplicates = []
     if list_keys_to_show_all_count is None:
         list_keys_to_show_all_count = []
+    if list_keys_to_expand is None: 
+        list_keys_to_expand = []
     for input_file in input_files:
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
@@ -140,6 +155,7 @@ def aggregate(
                     dict_counters,
                     key,
                     value,
+                    list_keys_to_expand,
                 )
             num_input_rows += 1
     for key, aggregation in aggregated.items():
