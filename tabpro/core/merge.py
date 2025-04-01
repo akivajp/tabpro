@@ -68,6 +68,7 @@ def merge(
     output_modified_data_file: str | None = None,
     output_remaining_data_file: str | None = None,
     merge_fields: list[str] | None = None,
+    merge_staging: bool = False,
 ):
     progress = Progress(
         #redirect_stdout = False,
@@ -141,8 +142,9 @@ def merge(
             if merge_fields is None:
                 merge_fields = []
                 for field in row.flat.keys():
-                    if field.startswith('__staging__.'):
-                        continue
+                    if not merge_staging:
+                        if field.startswith('__staging__.'):
+                            continue
                     merge_fields.append(field)
             for field in merge_fields:
                 value, found = search_column_value(row.flat, field)
