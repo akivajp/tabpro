@@ -111,6 +111,8 @@ class PushConfig(BaseActionConfig):
     source: str
     condition: str | None = None
 
+from .replace_string import ReplaceConfig
+
 @dataclasses.dataclass
 class SplitConfig(BaseActionConfig):
     target: str
@@ -123,7 +125,6 @@ class SplitConfig(BaseActionConfig):
 #    AssignFormatConfig | \
 #    FilterConfig | \
 #    SplitConfig
-
 
 type ContextColumnTuple = tuple[str]
 type ContextValueTuple = tuple 

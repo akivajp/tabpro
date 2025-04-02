@@ -9,6 +9,9 @@ from .cast import cast
 from .assign_format import assign_format
 from .assign_id import assign_id
 from .assign_length import assign_length
+from .join_field import join_field
+from .filter_row import filter_row
+from .replace_string import replace_string
 from .split_field import split_field
 
 def do_actions(
@@ -54,12 +57,14 @@ def do_action(
         return None
     if isinstance(action, types.JoinConfig):
         return join_field(row, action)
-    if isinstance(action, types.ParseConfig):
-        return parse(row, action)
     if isinstance(action, types.OmitConfig):
         return omit_field(row, action)
+    if isinstance(action, types.ParseConfig):
+        return parse(row, action)
     if isinstance(action, types.PushConfig):
         return push_field(row, action)
+    if isinstance(action, types.ReplaceConfig):
+        return replace_string(row, action)
     if isinstance(action, types.SplitConfig):
         return split_field(row, action)
     raise ValueError(

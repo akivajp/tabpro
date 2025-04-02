@@ -13,6 +13,7 @@ from ...logging import logger
 
 from .assign_format import setup_assign_format_action
 from .filter_row import setup_filter_action
+from .replace_string import setup_replace_action
 
 from . import types
 
@@ -208,6 +209,9 @@ def setup_actions_with_args(
                     source = source,
                     condition = condition,
                 ))
+                continue
+            if action_name in ['replace', 'replace-string']:
+                setup_replace_action(config, target, source, options)
                 continue
             if action_name == 'split':
                 delimiter = options.get('delimiter', None)

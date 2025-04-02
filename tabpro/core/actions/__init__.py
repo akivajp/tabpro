@@ -149,23 +149,6 @@ def omit_field(
             row.staging[config.field] = value
     return row
 
-def join_field(
-    row: Row,
-    config: JoinConfig,
-):
-    value, found = search_column_value(row.nested, config.source)
-    if found:
-        delimiter = config.delimiter
-        if delimiter is None:
-            delimiter = ';'
-        if delimiter == '\\n':
-            delimiter = '\n'
-        if isinstance(value, list):
-            value = delimiter.join(value)
-        #set_row_staging_value(row, config.target, value)
-        row.staging[config.target] = value
-    return row
-
 def parse(
     row: Row,
     config: AssignConfig,
