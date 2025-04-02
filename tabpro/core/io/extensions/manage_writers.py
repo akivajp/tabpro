@@ -21,14 +21,20 @@ def register_writer(
         return writer
     return decorator
 
-def get_writer(
+def check_writer(
     output_file: str,
-    progress: Progress | None = None,
-) -> BaseWriter:
+):
     ext = os.path.splitext(output_file)[1]
     if ext not in dict_writers:
         raise ValueError(f'Unsupported file type: {ext}')
     writer_class = dict_writers[ext]
+    return writer_class
+
+def get_writer(
+    output_file: str,
+    progress: Progress | None = None,
+) -> BaseWriter:
+    writer_class = check_writer(output_file)
     return writer_class(
         output_file,
         progress=progress,

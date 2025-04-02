@@ -28,7 +28,7 @@ def setup_parser(
         help='Input files to aggregate',
     )
     parser.add_argument(
-        '--output-file', '--output',
+        '--output-file', '--output', '-O',
         required=False,
         help='Path to output file',
     )

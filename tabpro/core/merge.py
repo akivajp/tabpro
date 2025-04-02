@@ -40,25 +40,7 @@ from . progress import (
     Progress,
 )
 
-def get_primary_key(
-    #row: Mapping,
-    row: Row,
-    keys: list[str],
-):
-    list_keys = []
-    for key in keys:
-        #value, found = search_column_value(row, key)
-        value, found = search_column_value(row.nested, key)
-        if not found:
-            progress = Progress()
-            progress.console.print(Panel(
-                row.nested,
-            ))
-            existing_first20 = list(row.keys())[:20]
-            raise KeyError(f'Column not found: {key}, existing columns: {existing_first20}')
-        list_keys.append(value)
-    primary_key = tuple(list_keys)
-    return primary_key
+from .functions.get_primary_key import get_primary_key
 
 def set_staging_values(
     row: Row,

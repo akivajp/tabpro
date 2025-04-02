@@ -76,6 +76,17 @@ def command_merge_tables(
         'Merge tables.',
     )
 
+def command_sort_tables(
+    parser: argparse.ArgumentParser|None = None,
+):
+    from . commands.sort_tables import setup_parser
+    setup_command(
+        parser,
+        setup_parser,
+        'sort',
+        'Sort tables.',
+    )
+
 def setup_common_args(
     parser: argparse.ArgumentParser,
 ):
@@ -101,6 +112,7 @@ def main():
     command_aggregate_tables(subparsers)
     command_convert_tables(subparsers)
     command_merge_tables(subparsers)
+    command_sort_tables(subparsers)
 
     parse_and_run(parser)
 

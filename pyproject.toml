@@ -22,6 +22,8 @@ tabpro-convert= "tabpro.cli:command_convert_tables"
 convert-tables = "tabpro.cli:command_convert_tables"
 tabpro-merge= "tabpro.cli:command_merge_tables"
 merge-tables = "tabpro.cli:command_merge_tables"
+tabpro-sort= "tabpro.cli:command_sort_tables"
+sort-tables = "tabpro.cli:command_sort_tables"
 
 [tool.poetry.dependencies]
 python = "^3.10"

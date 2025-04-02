@@ -33,7 +33,7 @@ def setup_parser(
         help='Path to the input file.'
     )
     parser.add_argument(
-        '--output-file', '--output', '-o',
+        '--output-file', '--output', '-O',
         metavar='OUTPUT_FILE',
         required=False,
         help='Path to the output file.'
