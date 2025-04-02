@@ -206,29 +206,6 @@ def parse(
         row.staging[config.target] = parsed
     return row
 
-def push_field(
-    row: Row,
-    config: PushConfig,
-):
-    source_value, found = search_column_value(row.nested, config.source)
-    do_append = False
-    if config.condition is None:
-        do_append = True
-    else:
-        condition_value, found = search_column_value(row.nested, config.condition)
-        if condition_value:
-            do_append = True
-    if do_append:
-        target_value, found = search_column_value(row.nested, config.target)
-        if found:
-            array = target_value
-        else:
-            array = []
-            #set_row_staging_value(row, config.target, array)
-            row.staging[config.target] = array
-        array.append(source_value)
-    return row
-
 def assign_array(
     row: Row,
     config: AssignArrayConfig,
