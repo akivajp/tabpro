@@ -175,19 +175,20 @@ def aggregate(
                     show_all = True
             if show_all:
                 aggregation['count'] = get_sorted(counter)
-            elif counter.max_count > 1:
+            else:
                 aggregation[f'count_top{top_n}'] = get_sorted(
                     counter,
                     max_items=top_n,
                     reverse=True,
                 )
                 #console.log('count1: ', counter.count1)
-                if counter.count1 <= count1_threshold:
-                    aggregation['count1'] = get_sorted(
-                        counter,
-                        max_items=counter.count1,
-                        reverse=False,
-                    )
+                if counter.max_count > 1:
+                    if counter.count1 <= count1_threshold:
+                        aggregation['count1'] = get_sorted(
+                            counter,
+                            max_items=counter.count1,
+                            reverse=False,
+                        )
                 if key in list_keys_to_show_duplicates:
                     aggregation[f'count_duplicates'] = get_sorted(
                         counter,
