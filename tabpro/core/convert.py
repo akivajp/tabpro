@@ -156,7 +156,7 @@ def convert(
             else:
                 pass
             num_stacked_rows += 1
-    console.log('Total input rows: ', num_stacked_rows)
+    console.log('total processed input rows: ', num_stacked_rows)
     if writer:
         writer.close()
     #else:

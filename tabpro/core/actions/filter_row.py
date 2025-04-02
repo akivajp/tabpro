@@ -7,11 +7,14 @@ if TYPE_CHECKING:
     from ..classes.row import Row
     from ..config import Config
 
+import math
 import re
 
 from .types import (
     FilterConfig,
 )
+
+from ...logging import logger
 
 def filter_row(
     row: Row,
@@ -19,6 +22,9 @@ def filter_row(
 ):
     value, found = row.search(config.field)
     #ic(config, value, found)
+    if config.value in ['NaN', 'nan']:
+        config.value = math.nan
+        #logger.debug('config.value: %s', config.value)
     if config.operator == '==':
         if not found:
             return False
