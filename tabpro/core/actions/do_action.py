@@ -6,6 +6,7 @@ from ...logging import logger
 
 from .assign import assign
 from .cast import cast
+from .assign_constant import assign_constant
 from .assign_format import assign_format
 from .assign_id import assign_id
 from .assign_length import assign_length

@@ -67,14 +67,6 @@ def pop_row_staging(
 ):
     return pop_row_value(row, STAGING_FIELD, default)
 
-def assign_constant(
-    row: Row,
-    config: AssignConstantConfig,
-):
-    #set_row_staging_value(row, config.target, config.value)
-    row.staging[config.target] = config.value
-    return row
-
 def remap_columns(
     row: Row,
     list_config: list[PickConfig],
