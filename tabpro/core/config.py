@@ -17,7 +17,7 @@ from . functions.flatten_row import (
 )
 
 from .actions.types import (
-    ActionConfig,
+    BaseActionConfig,
     AssignArrayConfig,
     AssignArrayElementConfig,
     AssignFormatConfig,
@@ -31,7 +31,7 @@ from .actions.types import (
 
 @dataclasses.dataclass
 class Config:
-    actions: list[ActionConfig] = dataclasses.field(default_factory=list)
+    actions: list[BaseActionConfig] = dataclasses.field(default_factory=list)
     pick: list[PickConfig] = dataclasses.field(default_factory=list)
 
 def setup_config(

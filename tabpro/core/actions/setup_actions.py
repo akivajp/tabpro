@@ -1,14 +1,15 @@
+from __future__ import annotations
+from typing import (
+    TYPE_CHECKING,
+)
+if TYPE_CHECKING:
+    from ..config import (
+        Config,
+    )
+
 from collections import OrderedDict
 
 from ...logging import logger
-
-from ..config import (
-    Config,
-)
-
-#from .types import (
-#    AssignFormatConfig,
-#)
 
 from .assign_format import setup_assign_format_action
 from .filter_row import setup_filter_action

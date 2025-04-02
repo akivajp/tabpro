@@ -16,16 +16,20 @@ from collections import (
 )
 
 @dataclasses.dataclass
-class AssignArrayElementConfig:
+class BaseActionConfig:
+    pass
+
+@dataclasses.dataclass
+class AssignArrayElementConfig(BaseActionConfig):
     source: list[str]
     optional: bool = True
 @dataclasses.dataclass
-class AssignArrayConfig:
+class AssignArrayConfig(BaseActionConfig):
     target: str
     items: list[AssignArrayElementConfig]
 
 @dataclasses.dataclass
-class AssignConfig:
+class AssignConfig(BaseActionConfig):
     target: str
     source: str
     assign_default: bool = False
@@ -33,29 +37,29 @@ class AssignConfig:
     required: bool = False
 
 @dataclasses.dataclass
-class AssignConstantConfig:
+class AssignConstantConfig(BaseActionConfig):
     target: str
     value: Any
 
 @dataclasses.dataclass
-class AssignFormatConfig:
+class AssignFormatConfig(BaseActionConfig):
     target: str
     format: str
 
 @dataclasses.dataclass
-class AssignIdConfig:
+class AssignIdConfig(BaseActionConfig):
     target: str
     primary: list[str]
     context: list[str] | None = None
     reverse: bool = False
 
 @dataclasses.dataclass
-class AssignLengthConfig:
+class AssignLengthConfig(BaseActionConfig):
     target: str
     source: str
 
 @dataclasses.dataclass
-class CastConfig:
+class CastConfig(BaseActionConfig):
     target: str
     source: str
     as_type: Literal[
@@ -66,7 +70,7 @@ class CastConfig:
     default_value: Any = None
 
 @dataclasses.dataclass
-class FilterConfig:
+class FilterConfig(BaseActionConfig):
     field: str
     operator: Literal[
         '==', '!=', '>', '>=', '<', '<=', '=~', 'not-in',
@@ -75,18 +79,18 @@ class FilterConfig:
     value: str | list[str]
 
 @dataclasses.dataclass
-class JoinConfig:
+class JoinConfig(BaseActionConfig):
     target: str
     source: str
     delimiter: str | None = None
 
 @dataclasses.dataclass
-class OmitConfig:
+class OmitConfig(BaseActionConfig):
     field: str
     purge: bool = False
 
 @dataclasses.dataclass
-class ParseConfig:
+class ParseConfig(BaseActionConfig):
     target: str
     source: str
     as_type: Literal[
@@ -97,28 +101,28 @@ class ParseConfig:
     default_value: Any = None
 
 @dataclasses.dataclass
-class PickConfig:
+class PickConfig(BaseActionConfig):
     target: str
     source: str
 
 @dataclasses.dataclass
-class PushConfig:
+class PushConfig(BaseActionConfig):
     target: str
     source: str
     condition: str | None = None
 
 @dataclasses.dataclass
-class SplitConfig:
+class SplitConfig(BaseActionConfig):
     target: str
     source: str
     delimiter: str | None = None
 
-ActionConfig = \
-    AssignIdConfig | \
-    AssignConstantConfig | \
-    AssignFormatConfig | \
-    FilterConfig | \
-    SplitConfig
+#ActionConfig = \
+#    AssignIdConfig | \
+#    AssignConstantConfig | \
+#    AssignFormatConfig | \
+#    FilterConfig | \
+#    SplitConfig
 
 
 type ContextColumnTuple = tuple[str]

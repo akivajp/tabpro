@@ -18,88 +18,19 @@ from ..constants import (
     STAGING_FIELD,
 )
 
+from ..classes.row import Row
+
 from .types import (
     AssignArrayConfig,
     AssignConfig,
     AssignConstantConfig,
-    AssignFormatConfig,
-    AssignIdConfig,
-    AssignLengthConfig,
-    CastConfig,
-    FilterConfig,
-    GlobalStatus,
     JoinConfig,
     OmitConfig,
-    ParseConfig,
     PickConfig,
     PushConfig,
-    SplitConfig,
 )
 
-from ..classes.row import Row
-
-from .assign_id import assign_id
-from .assign_format import assign_format
-from .filter_row import filter_row
 from ..functions.search_column_value import search_column_value
-#from ..functions.set_row_value import (
-#    set_row_staging_value,
-#)
-
-def do_actions(
-    status: GlobalStatus,
-    row: Row,
-    actions: list[AssignConstantConfig],
-):
-    for action in actions:
-        try:
-            row = do_action(status, row, action)
-        except Exception as e:
-            logger.error('failed with action: %s', action)
-            #logger.error('failed with row: %s', row)
-            logger.error('failed with row: %s', dict(row.items()))
-            if '__file_row_index__' in row.staging:
-                file_row_index = row.staging['__file_row_index__']
-                logger.error('failed with file row index: %s', file_row_index)
-            raise
-        if row is None:
-            return None
-    return row
-
-def do_action(
-    status: GlobalStatus,
-    row: Row,
-    action: AssignConstantConfig,
-):
-    if isinstance(action, AssignConfig):
-        return assign(row, action)
-    if isinstance(action, AssignConstantConfig):
-        return assign_constant(row, action)
-    if isinstance(action, AssignFormatConfig):
-        return assign_format(row, action)
-    if isinstance(action, AssignIdConfig):
-        return assign_id(status.id_context_map, row, action)
-    if isinstance(action, AssignLengthConfig):
-        return assign_length(row, action)
-    if isinstance(action, CastConfig):
-        return cast(row, action)
-    if isinstance(action, FilterConfig):
-        if filter_row(row, action):
-            return row
-        return None
-    if isinstance(action, JoinConfig):
-        return join_field(row, action)
-    if isinstance(action, ParseConfig):
-        return parse(row, action)
-    if isinstance(action, OmitConfig):
-        return omit_field(row, action)
-    if isinstance(action, PushConfig):
-        return push_field(row, action)
-    if isinstance(action, SplitConfig):
-        return split_field(row, action)
-    raise ValueError(
-        f'Unsupported action: {action}'
-    )
 
 def delete_flat_row_value(
     flat_row: OrderedDict,
@@ -142,21 +73,6 @@ def assign_constant(
 ):
     #set_row_staging_value(row, config.target, config.value)
     row.staging[config.target] = config.value
-    return row
-
-def split_field(
-    row: Row,
-    config: SplitConfig,
-):
-    value, found = search_column_value(row.flat, config.source)
-    if found:
-        if isinstance(value, str):
-            new_value = value.split(config.delimiter)
-            new_value = map(str.strip, new_value)
-            new_value = list(filter(None, new_value))
-            value = new_value
-        #set_row_staging_value(row, config.target, value)
-        row.staging[config.target] = value
     return row
 
 def remap_columns(
@@ -219,24 +135,6 @@ def search_with_operator(
         if found and value is not None:
             return value, found
     return search_with_operator(row, rest)
-
-def assign(
-    row: Row,
-    config: AssignConfig,
-):
-    value, found = search_with_operator(row, config.source)
-    if config.required:
-        if not found or bool(value) == False:
-            raise ValueError(
-                'Required field not found or empty, ' +
-                f'field: {config.source}, found: {found}, value: {value}'
-            )
-    if found:
-        row.staging[config.target] = value
-    else:
-        if config.assign_default:
-            row.staging[config.target] = config.default_value
-    return row
 
 def omit_field(
     row: Row,
@@ -348,51 +246,6 @@ def push_field(
         array.append(source_value)
     return row
 
-def assign_length(
-    row: Row,
-    config: AssignLengthConfig,
-):
-    value, found = search_column_value(row.nested, config.source)
-    if found:
-        #set_row_staging_value(row, config.target, len(value))
-        row.staging[config.target] = len(value)
-    return row
-
-def cast(
-    row: Row,
-    config: CastConfig,
-):
-    value, found = search_column_value(row.nested, config.source)
-    if config.required:
-        if not found:
-            raise ValueError(
-                f'Required field not found, field: {config.source}'
-            )
-    if config.as_type == 'bool':
-        cast_func = bool
-    elif config.as_type == 'int':
-        cast_func = int
-    elif config.as_type == 'float':
-        cast_func = float
-    elif config.as_type == 'str':
-        cast_func = str
-    else:
-        raise ValueError(
-            f'Unsupported as type: {config.as_type}'
-        )
-    try:
-        casted = cast_func(value)
-    except:
-        if config.assign_default:
-            casted = config.default_value
-        else:
-            raise ValueError(
-                f'Failed to cast: {value}'
-            )
-    #set_row_staging_value(row, config.target, casted)
-    row.staging[config.target] = casted
-    return row
-
 def assign_array(
     row: Row,
     config: AssignArrayConfig,
@@ -410,10 +263,13 @@ def assign_array(
         row.staging[config.target] = None
     return row
 
-#from .setup_actions import (
-#    setup_actions_with_args,
-#)
-#
-#__all__ = [
-#    'setup_actions_with_args',
-#]
+from .setup_actions import (
+    setup_actions_with_args,
+)
+from .do_action import (
+    do_actions,
+)
+__all__ = [
+    'do_actions',
+    'setup_actions_with_args',
+]
