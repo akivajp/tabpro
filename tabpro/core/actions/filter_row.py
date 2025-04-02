@@ -1,11 +1,13 @@
+from __future__ import annotations
 from typing import (
+    TYPE_CHECKING,
     Any,
 )
+if TYPE_CHECKING:
+    from ..classes.row import Row
+    from ..config import Config
 
 import re
-
-from ..classes.row import Row
-from ..config import Config
 
 from .types import (
     FilterConfig,

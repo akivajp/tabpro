@@ -40,6 +40,7 @@ from ..classes.row import Row
 
 from .assign_id import assign_id
 from .assign_format import assign_format
+from .filter_row import filter_row
 from ..functions.search_column_value import search_column_value
 #from ..functions.set_row_value import (
 #    set_row_staging_value,
