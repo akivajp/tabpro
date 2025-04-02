@@ -207,3 +207,4 @@ def merge(
             output_remaining_data_file,
             progress=progress,
         )
+    progress.stop()

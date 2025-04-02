@@ -162,3 +162,4 @@ def convert(
         #ic('Saving filtered out to: ', output_file_filtered_out)
         console.log('saving filtered out to: ', output_file_filtered_out)
         writer(df_filtered_out, output_file_filtered_out)
+    progress.stop()

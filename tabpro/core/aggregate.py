@@ -231,3 +231,4 @@ def aggregate(
         else:
             # NOTE: output redirection
             print(json_output)
+    progress.stop()

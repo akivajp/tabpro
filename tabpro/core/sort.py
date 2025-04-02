@@ -78,3 +78,4 @@ def sort(
         for key, row in all_input_row_items:
             writer.push_row(row)
         writer.close()
+    progress.stop()
