@@ -44,8 +44,8 @@ class ValueCounter:
         return len(self.counter)
 
 def get_sorted(
-    #counter: dict,
     counter: ValueCounter,
+    show_count_max_length: int,
     max_items: int | None = 100,
     reverse: bool = True,
     min_count: int = 0,
@@ -60,7 +60,11 @@ def get_sorted(
             if reverse:
                 break
             continue
-        dict_sorted[key] = value
+        show_key = key
+        if isinstance(key, str):
+            if len(key) > show_count_max_length:
+                show_key = key[:show_count_max_length] + '...'
+        dict_sorted[show_key] = value
         if max_items is not None:
             if len(dict_sorted) >= max_items:
                 break
@@ -120,6 +124,7 @@ def aggregate(
     show_count_threshold: int = 50,
     list_keys_to_show_all_count: list[str] | None = None,
     list_keys_to_expand: list[str] | None = None,
+    show_count_max_length: int = 100,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -174,10 +179,14 @@ def aggregate(
                     # NOTE: show all only if max_count > 1
                     show_all = True
             if show_all:
-                aggregation['count'] = get_sorted(counter)
+                aggregation['count'] = get_sorted(
+                    counter,
+                    show_count_max_length,
+                )
             else:
                 aggregation[f'count_top{top_n}'] = get_sorted(
                     counter,
+                    show_count_max_length,
                     max_items=top_n,
                     reverse=True,
                 )
@@ -186,12 +195,14 @@ def aggregate(
                     if counter.count1 <= count1_threshold:
                         aggregation['count1'] = get_sorted(
                             counter,
+                            show_count_max_length,
                             max_items=counter.count1,
                             reverse=False,
                         )
                 if key in list_keys_to_show_duplicates:
                     aggregation[f'count_duplicates'] = get_sorted(
                         counter,
+                        show_count_max_length,
                         max_items=None,
                         reverse=True,
                         min_count=2,

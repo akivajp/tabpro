@@ -15,6 +15,7 @@ def run(
         list_keys_to_show_all_count=args.keys_to_show_all_count,
         list_keys_to_expand=args.keys_to_expand,
         show_count_threshold=args.show_count_threshold,
+        show_count_max_length=args.show_count_max_length,
     )
 
 def setup_parser(
@@ -58,5 +59,12 @@ def setup_parser(
         default=50,
         type=int,
         help='Show count threshold',
+    )
+    parser.add_argument(
+        '--show-count-max-length', '--count-max-length', '-L',
+        required=False,
+        default=100,
+        type=int,
+        help='Show count max length',
     )
     parser.set_defaults(handler=run)
