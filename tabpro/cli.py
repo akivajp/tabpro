@@ -54,6 +54,17 @@ def command_aggregate_tables(
         'Aggregate tables.',
     )
 
+def command_compare_tables(
+    parser: argparse.ArgumentParser|None = None,
+):
+    from . commands.compare_tables import setup_parser
+    setup_command(
+        parser,
+        setup_parser,
+        'compare',
+        'Compare tables.',
+    )
+
 def command_convert_tables(
     parser: argparse.ArgumentParser|None = None,
 ):
@@ -110,6 +121,7 @@ def main():
     subparsers = parser.add_subparsers(title='command')
 
     command_aggregate_tables(subparsers)
+    command_compare_tables(subparsers)
     command_convert_tables(subparsers)
     command_merge_tables(subparsers)
     command_sort_tables(subparsers)
