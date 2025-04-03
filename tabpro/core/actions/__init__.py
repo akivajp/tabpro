@@ -81,11 +81,11 @@ def remap_columns(
     new_row = Row()
     picked = []
     for config in list_config:
-        value, key = search_column_value(row.nested, config.source)
-        if key:
+        value, found = row.search(config.source)
+        if found:
             new_row[config.target] = value
-            picked.append(key)
-    for key in row.keys():
+            picked.append(found)
+    for key in row.keys(include_staging=True):
         if key in picked:
             if not key.startswith(f'{STAGING_FIELD}.{INPUT_FIELD}.'):
                 continue
