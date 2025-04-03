@@ -43,7 +43,24 @@ from .progress import (
 
 from .functions.get_primary_key import get_primary_key
 
-import difflib
+def set_diff(
+    row: Row,
+    field: str,
+    value: Any,
+    added: bool = True,
+):
+    if '.' in field:
+        head, last = field.rsplit('.', 1)
+        if added:
+            row[f'diff.{head}.+{last}'] = value
+        else:
+            row[f'diff.{head}.-{last}'] = value
+    else:
+        if added:
+            row[f'diff.+{field}'] = value
+        else:
+            row[f'diff.-{field}'] = value
+    return row
 
 def compare(
     path1: str,
@@ -111,23 +128,24 @@ def compare(
             for key in list_compare_keys:
                 if key in row1:
                     value = row1[key]
-                    diff_row[f'diff.-{key}'] = value
+                    set_diff(diff_row, key, value, added=False)
         elif row1 is None:
             diff_row[f'+{key_field}'] = f'{key_value}'
             for key in list_compare_keys:
                 if key in row2:
                     value = row2[key]
+                    set_diff(diff_row, key, value, added=True)
                     diff_row[f'diff.+{key}'] = value
         else:
             diff_row[key_field] = key_value
             for key in list_compare_keys:
                 if key not in row1:
-                    diff_row[f'diff.-{key}'] = row1[key]
+                    set_diff(diff_row, key, row2[key], added=False)
                 elif key not in row2:
-                    diff_row[f'diff.+{key}'] = row2[key]
+                    set_diff(diff_row, key, row1[key], added=True)
                 elif row1[key] != row2[key]:
-                    diff_row[f'diff.-{key}'] = row1[key]
-                    diff_row[f'diff.+{key}'] = row2[key]
+                    set_diff(diff_row, key, row1[key], added=False)
+                    set_diff(diff_row, key, row2[key], added=True)
         if len(diff_row) > 1:
             diff_rows.append(diff_row)
     console.log('# diff rows: ', len(diff_rows))
