@@ -91,6 +91,15 @@ def compare(
         row1 = list_dict_key_to_row[0].get(primary_key)
         row2 = list_dict_key_to_row[1].get(primary_key)
         diff_row = Row()
+        list_compare_keys = []
+        if compare_keys is not None:
+            list_compare_keys = compare_keys
+        else:
+            for row in [row1, row2]:
+                if row is not None:
+                    for key in row.keys():
+                        if key not in list_compare_keys:
+                            list_compare_keys.append(key)
         if len(primary_key) == 1:
             key_field = 'key'
             key_value = primary_key[0]
@@ -99,23 +108,19 @@ def compare(
             key_value = primary_key
         if row2 is None:
             diff_row[f'-{key_field}'] = f'{key_value}'
-            for key, value in row1.items():
-                diff_row[f'diff.-{key}'] = value
+            for key in list_compare_keys:
+                if key in row1:
+                    value = row1[key]
+                    diff_row[f'diff.-{key}'] = value
         elif row1 is None:
             diff_row[f'+{key_field}'] = f'{key_value}'
-            for key, value in row2.items():
-                diff_row[f'diff.+{key}'] = value
+            for key in list_compare_keys:
+                if key in row2:
+                    value = row2[key]
+                    diff_row[f'diff.+{key}'] = value
         else:
             diff_row[key_field] = key_value
-            set_compare_keys = set()
-            if compare_keys is not None:
-                set_compare_keys = set(compare_keys)
-            else:
-                for row in [row1, row2]:
-                    for key in row.keys():
-                        if key not in set_compare_keys:
-                            set_compare_keys.add(key)
-            for key in set_compare_keys:
+            for key in list_compare_keys:
                 if key not in row1:
                     diff_row[f'diff.-{key}'] = row1[key]
                 elif key not in row2:

@@ -67,6 +67,12 @@ class Row(Mapping):
                     continue
             yield key, value
 
+    def keys(
+        self,
+        include_staging: bool = False,
+    ):
+        return self.iter(include_staging=include_staging)
+
     def search(
         self,
         field: str,
