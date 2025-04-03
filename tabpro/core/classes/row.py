@@ -53,8 +53,9 @@ class Row(Mapping):
     ):
         for key in self.flat:
             if not include_staging:
-                if key == '__staging__' or key.startswith('__staging__.'):
-                    continue
+                if isinstance(key, str):
+                    if key == '__staging__' or key.startswith('__staging__.'):
+                        continue
             yield key
 
     def items(
@@ -63,8 +64,9 @@ class Row(Mapping):
     ):
         for key, value in self.flat.items():
             if not include_staging:
-                if key == '__staging__' or key.startswith('__staging__.'):
-                    continue
+                if isinstance(key, str):
+                    if key == '__staging__' or key.startswith('__staging__.'):
+                        continue
             yield key, value
 
     def keys(
