@@ -11,6 +11,7 @@ from collections import OrderedDict
 
 from ...logging import logger
 
+from .assign import setup_assign_action
 from .assign_format import setup_assign_format_action
 from .filter_row import setup_filter_action
 from .replace_string import setup_replace_action
@@ -61,21 +62,7 @@ def setup_actions_with_args(
                 target = field.strip()
                 source = field.strip()
             if action_name == 'assign':
-                assign_default = False
-                default_value = None
-                if 'default' in options:
-                    assign_default = True
-                    default_value = options['default']
-                if default_value in ['None', 'none', 'Null', 'null']:
-                    default_value = None
-                required = options.get('required', False)
-                config.actions.append(types.AssignConfig(
-                    target = target,
-                    source = source,
-                    assign_default = assign_default,
-                    default_value = default_value,
-                    required = required,
-                ))
+                setup_assign_action(config, target, source, options)
                 continue
             if action_name == 'assign-constant':
                 str_type = options.get('type', 'str')

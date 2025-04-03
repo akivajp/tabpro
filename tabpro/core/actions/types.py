@@ -19,6 +19,8 @@ from collections import (
 class BaseActionConfig:
     pass
 
+from .assign import AssignConfig
+
 @dataclasses.dataclass
 class AssignArrayElementConfig(BaseActionConfig):
     source: list[str]
@@ -27,14 +29,6 @@ class AssignArrayElementConfig(BaseActionConfig):
 class AssignArrayConfig(BaseActionConfig):
     target: str
     items: list[AssignArrayElementConfig]
-
-@dataclasses.dataclass
-class AssignConfig(BaseActionConfig):
-    target: str
-    source: str
-    assign_default: bool = False
-    default_value: Any = None
-    required: bool = False
 
 @dataclasses.dataclass
 class AssignConstantConfig(BaseActionConfig):
@@ -118,13 +112,6 @@ class SplitConfig(BaseActionConfig):
     target: str
     source: str
     delimiter: str | None = None
-
-#ActionConfig = \
-#    AssignIdConfig | \
-#    AssignConstantConfig | \
-#    AssignFormatConfig | \
-#    FilterConfig | \
-#    SplitConfig
 
 type ContextColumnTuple = tuple[str]
 type ContextValueTuple = tuple 
