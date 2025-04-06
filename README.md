@@ -1,5 +1,41 @@
 # TabPro - Table Data Converter
 
-This is a python-based tool that processes table (tabular) data.
-It can convert tables from CSV, TSV, Excel, JSON, and JSON Lines to any of these formats, concatenate multiple tables, and merge tables based on common columns.
-Additionally, it can also manipulate any fields in the table data, such as filtering, sorting, and transforming.
+TabPro is a Python-based tool for efficient processing of tabular data.
+
+## Main Features
+
+### Data Format Conversion
+- Supported Formats:
+  - CSV
+  - TSV
+  - Excel
+  - JSON
+  - JSON Lines
+- Bidirectional conversion between all supported formats
+
+### Table Operations
+1. **Table Conversion** (`convert_tables.py`)
+   - Convert table data between different formats
+   - Customize output format settings
+
+2. **Table Merging** (`merge_tables.py`)
+   - Merge tables based on common columns
+   - Efficient handling of multiple table merging
+
+3. **Table Aggregation** (`aggregate_tables.py`)
+   - Data aggregation based on grouping
+   - Statistical calculations
+
+4. **Table Sorting** (`sort_tables.py`)
+   - Sort data based on specified columns
+   - Multi-column sorting with custom order
+
+5. **Table Comparison** (`compare_tables.py`)
+   - Detect differences between multiple tables
+   - Data consistency checking
+
+## Features
+- Simple and user-friendly command-line interface
+- Flexible data processing options
+- Handles large datasets efficiently
+- Extensible design
