@@ -13,7 +13,7 @@ def run(
         path1=args.path1,
         path2=args.path2,
         output_path=args.output_path,
-        primary_keys=args.primary_keys,
+        query_keys=args.query_keys,
         compare_keys=args.compare_keys,
         verbose=args.verbose,
     )
@@ -39,11 +39,11 @@ def setup_parser(
         help="Path to the output table",
     )
     parser.add_argument(
-        "--primary-keys", "--primary", '--key', '-P', '-K',
+        "--query-keys", "--query", '-Q',
         required=True,
         type=str,
         nargs="+",
-        help="primary keys for comparison",
+        help="primary keys for query",
     )
     parser.add_argument(
         "--compare-keys", "--compare", '-C',

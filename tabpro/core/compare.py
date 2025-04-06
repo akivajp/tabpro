@@ -66,7 +66,7 @@ def compare(
     path1: str,
     path2: str,
     output_path: str,
-    primary_keys: list[str],
+    query_keys: list[str],
     compare_keys: list[str] | None = None,
     verbose: bool = False,
 ):
@@ -80,13 +80,10 @@ def compare(
     #console.log('modification files: ', modification_files)
     console.log('file1: ', path1)
     console.log('file2: ', path2)
-    console.log('keys: ', primary_keys)
+    console.log('query keys: ', query_keys)
+    console.log('compare keys: ', compare_keys)
     list_dict_key_to_row: list[dict[Any, Row]] = [{},{}]
-    set_primary_keys = set()
-    #set_modified_keys = set()
-    #all_base_rows = []
-    #all_modified_rows = []
-    #list_ignored_keys = []
+    set_query_values = set()
     num_modified = 0
     if output_path:
         check_writer(output_path)
@@ -96,17 +93,17 @@ def compare(
         console.log('# rows: ', len(loader))
         dict_key_to_row = list_dict_key_to_row[loader_index] = {}
         for row_index, row in enumerate(loader):
-            primary_key = get_primary_key(row, primary_keys)
-            if primary_key in dict_key_to_row:
+            query_value = get_primary_key(row, query_keys)
+            if query_value in dict_key_to_row:
                 raise ValueError(
-                    f'Key {primary_key} already exists in file: {path1 if loader_index == 0 else path2}'
+                    f'Key {query_value} already exists in file: {path1 if loader_index == 0 else path2}'
                 )
-            dict_key_to_row[primary_key] = row
-            set_primary_keys.add(primary_key)
+            dict_key_to_row[query_value] = row
+            set_query_values.add(query_value)
     diff_rows: list[Row] = []
-    for primary_key in sorted(set_primary_keys):
-        row1 = list_dict_key_to_row[0].get(primary_key)
-        row2 = list_dict_key_to_row[1].get(primary_key)
+    for query_value in sorted(set_query_values):
+        row1 = list_dict_key_to_row[0].get(query_value)
+        row2 = list_dict_key_to_row[1].get(query_value)
         diff_row = Row()
         list_compare_keys = []
         if compare_keys is not None:
@@ -117,12 +114,12 @@ def compare(
                     for key in row.keys():
                         if key not in list_compare_keys:
                             list_compare_keys.append(key)
-        if len(primary_key) == 1:
+        if len(query_value) == 1:
             key_field = 'key'
-            key_value = primary_key[0]
+            key_value = query_value[0]
         else:
             key_field = 'keys'
-            key_value = primary_key
+            key_value = query_value
         if row2 is None:
             diff_row[f'-{key_field}'] = f'{key_value}'
             for key in list_compare_keys:
@@ -135,16 +132,17 @@ def compare(
                 if key in row2:
                     value = row2[key]
                     set_diff(diff_row, key, value, added=True)
-                    diff_row[f'diff.+{key}'] = value
         else:
             diff_row[key_field] = key_value
             for key in list_compare_keys:
-                if key not in row1:
-                    set_diff(diff_row, key, row2[key], added=False)
-                elif key not in row2:
-                    set_diff(diff_row, key, row1[key], added=True)
-                elif row1[key] != row2[key]:
-                    set_diff(diff_row, key, row1[key], added=False)
+                if key in row1:
+                    if key in row2:
+                        if row1[key] != row2[key]:
+                            set_diff(diff_row, key, row1[key], added=False)
+                            set_diff(diff_row, key, row2[key], added=True)
+                    else:
+                        set_diff(diff_row, key, row1[key], added=False)
+                elif key in row2:
                     set_diff(diff_row, key, row2[key], added=True)
         if len(diff_row) > 1:
             diff_rows.append(diff_row)
