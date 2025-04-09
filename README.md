@@ -1,4 +1,4 @@
-# TabPro - Table Data Converter
+# TabPro - Table Data Processor
 
 TabPro is a Python-based tool for efficient processing of tabular data.
 
@@ -33,6 +33,17 @@ TabPro is a Python-based tool for efficient processing of tabular data.
 5. **Table Comparison** (`compare_tables.py`)
    - Detect differences between multiple tables
    - Data consistency checking
+
+## Installation
+
+### Prerequisites
+- Python 3.10 or higher
+- pip (Python package installer)
+
+### Installation
+```bash
+pip install tabpro
+```
 
 ## Features
 - Simple and user-friendly command-line interface
