@@ -59,13 +59,13 @@ tabpro [command] [options]
 
 #### Table Conversion (convert)
 ```bash
-tabpro convert [options] <input_file> <output_file>
+tabpro convert [options] <input_file1> [<input_file2>...] --output <output_file>
 # or
-convert-tables [options] <input_file> <output_file>
+tabpro-convert ...
+convert-tables ...
 ```
 
 Options:
-- `--output-file`, `--output`, `-O`: Path to the output file
 - `--output-file-filtered-out`, `--output-filtered-out`, `-f`: Path to the output file for filtered out rows
 - `--config`, `-c`: Path to the configuration file
 - `--pick-columns`, `--pick`: Pick specific columns
@@ -75,15 +75,13 @@ Options:
 
 #### Table Merging (merge)
 ```bash
-tabpro merge [options] <input_file1> <input_file2> [<input_file3> ...]
-# or
-merge-tables [options] <input_file1> <input_file2> [<input_file3> ...]
+tabpro merge [options] --previous <previous_file1> [<previous_file2> ...] --new <modification_file1> [<modification_file2> ...] --keys <key1> [<key2> ...]
+# or 
+tabpro-merge ...
+merge-tables ...
 ```
 
 Options:
-- `--previous-files`, `--previous`, `--old`, `-P`: Previous files to merge
-- `--modification-files`, `--modification`, `--new`, `-M`: Modification files to merge
-- `--keys`, `-K`: Primary keys for merging
 - `--allow-duplicate-conventional-keys`: Allow duplicate keys in previous files
 - `--allow-duplicate-modification-keys`: Allow duplicate keys in modification files
 - `--output-base-data-file`: Path to output base data file
@@ -95,13 +93,13 @@ Options:
 
 #### Table Aggregation (aggregate)
 ```bash
-tabpro aggregate [options] <input_file>
+tabpro aggregate [options] <input_file> --output <aggregated_json_path>
 # or
-aggregate-tables [options] <input_file>
+tabpro-aggregate ...
+aggregate-tables ...
 ```
 
 Options:
-- `--output-file`, `--output`, `-O`: Path to output file
 - `--keys-to-show-duplicates`: Keys to show duplicates
 - `--keys-to-show-all-count`: Keys to show all count
 - `--keys-to-expand`: Keys to expand
@@ -110,28 +108,26 @@ Options:
 
 #### Table Sorting (sort)
 ```bash
-tabpro sort [options] <input_file>
+tabpro sort [options] <input_file1> [<input_file2> ...] --sort-keys <key1> [<key2> ...] --output <output_file>
 # or
-sort-tables [options] <input_file>
-# or
-tabpro-diff [options] <input_file>
+tabpro-sort ...
+sort-tables ...
 ```
 
 Options:
-- `--sort-keys`, `--sort-key`, `-K`: Keys to sort by
 - `--output-file`, `--output`, `-O`: Path to output file
 - `--reverse`, `-R`: Reverse the sort order
 
 #### Table Comparison (compare)
 ```bash
-tabpro compare [options] <input_file1> <input_file2>
+tabpro compare [options] <input_file1> <input_file2> --query <query_key1> [<query_key2> ...] --output <output_file>
 # or
-compare-tables [options] <input_file1> <input_file2>
+tabpro-compare ...
+tabpro-diff ...
+compare-tables ...
 ```
 
 Options:
-- `--output-path`, `--output-file`, `--output`, `-O`: Path to the output table
-- `--query-keys`, `--query`, `-Q`: Primary keys for query
 - `--compare-keys`, `--compare`, `-C`: Keys for comparison
 
 ### Common Options
