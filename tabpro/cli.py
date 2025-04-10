@@ -27,7 +27,7 @@ def parse_and_run(
         sys.exit(1)
 
 def setup_command(
-    subparsers: argparse._SubParsersAction,
+    subparsers: argparse._SubParsersAction | None,
     setup_parser: Callable[[argparse.ArgumentParser], None],
     command_name: str,
     description: str,
@@ -44,55 +44,55 @@ def setup_command(
         parse_and_run(command_parser)
 
 def command_aggregate_tables(
-    parser: argparse.ArgumentParser|None = None,
+    subparsers: argparse._SubParsersAction | None,
 ):
     from . commands.aggregate_tables import setup_parser
     setup_command(
-        parser,
+        subparsers,
         setup_parser,
         'aggregate',
         'Aggregate tables.',
     )
 
 def command_compare_tables(
-    parser: argparse.ArgumentParser|None = None,
+    subparsers: argparse._SubParsersAction | None,
 ):
     from . commands.compare_tables import setup_parser
     setup_command(
-        parser,
+        subparsers,
         setup_parser,
         'compare',
         'Compare tables.',
     )
 
 def command_convert_tables(
-    parser: argparse.ArgumentParser|None = None,
+    subparsers: argparse._SubParsersAction | None,
 ):
     from . commands.convert_tables import setup_parser
     setup_command(
-        parser,
+        subparsers,
         setup_parser,
         'convert',
         'Convert a table to a different format.',
     )
 
 def command_merge_tables(
-    parser: argparse.ArgumentParser|None = None,
+    subparsers: argparse._SubParsersAction | None,
 ):
     from . commands.merge_tables import setup_parser
     setup_command(
-        parser,
+        subparsers,
         setup_parser,
         'merge',
         'Merge tables.',
     )
 
 def command_sort_tables(
-    parser: argparse.ArgumentParser|None = None,
+    subparsers: argparse._SubParsersAction | None,
 ):
     from . commands.sort_tables import setup_parser
     setup_command(
-        parser,
+        subparsers,
         setup_parser,
         'sort',
         'Sort tables.',
@@ -109,8 +109,8 @@ def setup_common_args(
         '--version', '-V',
         action='store_true',
     )
-    args, _ = parser.parse_known_args()
-    if args.version:
+    # Only check for version flag without processing other arguments
+    if '--version' in sys.argv or '-V' in sys.argv:
         print(f'tabpro v{__version__}')
         sys.exit(0)
 

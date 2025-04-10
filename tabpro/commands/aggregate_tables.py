@@ -47,7 +47,7 @@ def setup_parser(
         help='Keys to show all count',
     )
     parser.add_argument(
-        '--keys-to-expand',
+        '--keys-to-expand', '--expand',
         required=False,
         default=None,
         nargs='+',

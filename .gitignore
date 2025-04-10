@@ -4,5 +4,8 @@ __pycache__
 # temp files
 /tmp
 
+# editor's files
+.vscode
+
 # build files
 /dist
