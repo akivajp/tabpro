@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 import dataclasses
 
+from ..functions.as_boolean import as_boolean
 from .types import BaseActionConfig
 
 @dataclasses.dataclass
@@ -41,7 +42,7 @@ def setup_assign_action(
     config: Config,
     target: str,
     source: str,
-    options: dict[str, str],
+    options: dict[str, str|bool],
 ):
     assign_default = False
     default_value = None
@@ -50,7 +51,7 @@ def setup_assign_action(
         default_value = options['default']
     if default_value in ['None', 'none', 'Null', 'null']:
         default_value = None
-    required = options.get('required', False)
+    required = as_boolean(options.get('required', False))
     config.actions.append(AssignConfig(
         target = target,
         source = source,

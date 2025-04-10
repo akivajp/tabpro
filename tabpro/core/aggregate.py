@@ -89,7 +89,7 @@ def aggregate_one(
                 continue
             if isinstance(list_item, dict):
                 for dict_key, dict_value in list_item.items():
-                    full_key = f'{key}.[].{dict_key}'
+                    full_key = f'{key}[].{dict_key}'
                     aggregate_one(
                         aggregated,
                         dict_counters,
@@ -99,7 +99,7 @@ def aggregate_one(
                     )
                     if key in list_keys_to_expand:
                         # NOTE: expand list item
-                        full_key = f'{key}.[{list_index}].{dict_key}'
+                        full_key = f'{key}[{list_index}].{dict_key}'
                         aggregate_one(
                             aggregated,
                             dict_counters,

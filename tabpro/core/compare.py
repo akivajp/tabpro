@@ -121,6 +121,7 @@ def compare(
             key_field = 'keys'
             key_value = query_value
         if row2 is None:
+            assert row1 is not None
             diff_row[f'-{key_field}'] = f'{key_value}'
             for key in list_compare_keys:
                 if key in row1:

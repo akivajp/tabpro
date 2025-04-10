@@ -26,6 +26,7 @@ from .types import (
     AssignConstantConfig,
     JoinConfig,
     OmitConfig,
+    ParseConfig,
     PickConfig,
     PushConfig,
 )
@@ -143,7 +144,7 @@ def omit_field(
 
 def parse(
     row: Row,
-    config: AssignConfig,
+    config: ParseConfig,
 ):
     value, found = search_column_value(row.nested, config.source)
     if config.required:
@@ -204,7 +205,7 @@ def assign_array(
 ):
     array = []
     for item in config.items:
-        value, found = search_column_value(row, item.source)
+        value, found = row.search(item.source)
         if found and value is not None:
             array.append(value)
         elif item.optional:

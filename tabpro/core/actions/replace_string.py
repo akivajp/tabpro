@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
+    Any,
 )
 if TYPE_CHECKING:
     from ..config import Config
@@ -21,7 +22,7 @@ class ReplaceConfig(BaseActionConfig):
     recursive: bool = False
 
 def _replace_value(
-    value: str,
+    value: Any,
     config: ReplaceConfig,
 ):
     if isinstance(value, str):

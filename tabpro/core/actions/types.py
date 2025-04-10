@@ -23,7 +23,7 @@ from .assign import AssignConfig
 
 @dataclasses.dataclass
 class AssignArrayElementConfig(BaseActionConfig):
-    source: list[str]
+    source: str
     optional: bool = True
 @dataclasses.dataclass
 class AssignArrayConfig(BaseActionConfig):
@@ -127,11 +127,11 @@ class IdMap:
         dataclasses.field(default_factory=defaultdict)
 
 type IdContextMap = Mapping[
-    (
+    tuple[
         ContextColumnTuple,
         ContextValueTuple,
         PrimaryColumnTuple,
-    ),
+    ],
     IdMap
 ]
 
