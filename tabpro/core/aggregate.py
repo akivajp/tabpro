@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from typing import (
+    Any,
+)
+
 import json
 import os
 import sys
@@ -74,7 +78,7 @@ def aggregate_one(
     aggregated: dict,
     dict_counters: dict[str, ValueCounter],
     key: str,
-    value: str,
+    value: Any,
     list_keys_to_expand: list[str],
 ):
     aggregation = aggregated.setdefault(key, {})
