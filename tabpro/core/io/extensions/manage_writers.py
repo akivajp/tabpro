@@ -11,12 +11,14 @@ from ..writer import BaseWriter
 
 type Saver = Callable[[pd.DataFrame, str], None]
 
-dict_writers: dict[str, BaseWriter] = {}
+dict_writers: dict[str, type[BaseWriter]] = {}
+
+from ...classes.row import Row
 
 def register_writer(
     ext: str,
 ):
-    def decorator(writer: BaseWriter):
+    def decorator(writer: type[BaseWriter]):
         dict_writers[ext] = writer
         return writer
     return decorator
@@ -41,7 +43,7 @@ def get_writer(
     )
 
 def save(
-    rows: list[dict],
+    rows: list[Row],
     output_file: str,
     progress: Progress | None = None,
 ):

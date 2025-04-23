@@ -18,6 +18,8 @@ from ... progress import (
     track,
 )
 
+from . io_json import escape_json
+
 @register_loader('.jsonl')
 def load_jsonl(
     input_file: str,
@@ -38,7 +40,8 @@ def load_jsonl(
             disable=quiet,
             progress=progress,
         ):
-            #logger.debug(line
+            line = escape_json(line)
+            #logger.debug(line)
             row = json.loads(line)
             yield Row.from_dict(row)
 
@@ -55,10 +58,13 @@ class JsonLinesWriter(BaseWriter):
         return True
 
     def _write_row(self, row: Row):
-        self.fobj.write(json.dumps(row.flat, ensure_ascii=False))
-        self.fobj.write('\n')
+        if self.fobj:
+            self.fobj.write(json.dumps(row.flat, ensure_ascii=False))
+            self.fobj.write('\n')
 
     def _write_all_rows(self):
-        for row in self.rows:
-            self._write_row(row)
-        self.fobj.close()
+        if self.rows:
+            for row in self.rows:
+                self._write_row(row)
+        if self.fobj:
+            self.fobj.close()
