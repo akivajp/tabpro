@@ -143,8 +143,7 @@ def merge(
             primary_key = get_primary_key(row, keys)
             if primary_key not in dict_key_to_row:
                 if ignore_not_found:
-                    ic(primary_key)
-                    ic(row.flat['__staging__.__file_row_index__'])
+                    logger.debug('primary_key not found in previous files: %s', primary_key)
                     list_ignored_keys.append(primary_key)
                     continue
                 logger.error('index: %s', index)
@@ -179,8 +178,7 @@ def merge(
     console.log('# modifications: ', num_modified)
     console.log('# modified rows: ', len(all_modified_rows))
     if ignore_not_found:
-        ic(len(list_ignored_keys))
-        ic(list_ignored_keys)
+        logger.debug('# ignored keys: %s', len(list_ignored_keys))
     if output_base_data_file:
         #ic('Saving to: ', output_base_data_file)
         save(
