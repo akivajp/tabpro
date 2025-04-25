@@ -14,10 +14,35 @@ from . manage_writers import (
 
 from ... progress import Progress
 
+from .... logging import logger
+
+# 除外対象: 改行、二重引用符のエスケープ、バックスラッシュのエスケープ
+# 半角円記号や除外対象以外を追加エスケープ
+# 取り急ぎはその他の制御文字については対応なし
+#regex_escape = re.compile(r'(\\[^n"\\])')
+#regex_replace = r'\\\\\1'
 def escape_json(str_json: str) -> str:
-    # 改行と二重引用符のエスケープ以外や円記号を追加エスケープ
-    # 取り急ぎはその他の制御文字については対応なし
-    str_json = re.sub(r'(\\[^n"])', '\\\\\\1', str_json)
+    # NOTE: 正規表現で全てカバーするのは厳しそう
+    #str_json = re.sub(r'(\\[^n"\\])', '\\\\\\1', str_json)
+    # NOTE: 文字単位処理
+    chars = list(str_json)
+    changed = False
+    i = 0
+    while i < len(chars):
+        char = chars[i]
+        if i == len(chars) - 1:
+            break
+        next_char = chars[i+1]
+        if char == '\\':
+            if next_char in ['n', '"', '\\']:
+                i = i + 2
+                continue
+            else:
+                chars[i] = '\\\\'
+                changed = True
+        i = i + 1
+    if changed:
+        str_json = ''.join(chars)
     return str_json
 
 @register_loader('.json')
