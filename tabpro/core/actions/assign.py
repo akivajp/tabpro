@@ -19,6 +19,7 @@ class AssignConfig(BaseActionConfig):
     assign_default: bool = False
     default_value: Any = None
     required: bool = False
+    ignore_empty: bool = False
 
 def assign(
     row: Row,
@@ -32,6 +33,11 @@ def assign(
                 f'field: {config.source}, found: {found}, value: {value}'
             )
     if found:
+        if config.ignore_empty:
+            if value is None or (hasattr(value, '__len__') and len(value) == 0):
+                if config.assign_default:
+                    row.staging[config.target] = config.default_value
+                return row
         row.staging[config.target] = value
     else:
         if config.assign_default:
@@ -51,6 +57,7 @@ def setup_assign_action(
         default_value = options['default']
     if default_value in ['None', 'none', 'Null', 'null']:
         default_value = None
+    ignore_empty = as_boolean(options.get('ignore-empty', False))
     required = as_boolean(options.get('required', False))
     config.actions.append(AssignConfig(
         target = target,
@@ -58,4 +65,5 @@ def setup_assign_action(
         assign_default = assign_default,
         default_value = default_value,
         required = required,
+        ignore_empty = ignore_empty,
     ))
