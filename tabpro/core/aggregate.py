@@ -26,35 +26,59 @@ from . console.views import (
 
 class ValueCounter:
     def __init__(self):
-        self.counter = OrderedDict()
-        self.count1 = 0
+        self.main_counter = OrderedDict()
+        self.type_counter = OrderedDict()
+        self.num_count1 = 0
         self.max_count = 0
 
-    def add(self, key: str):
-        if key not in self.counter:
-            self.counter[key] = 0
-        self.counter[key] += 1
-        if self.counter[key] == 1:
-            self.count1 += 1
-        if self.counter[key] == 2:
-            self.count1 -= 1
-        if self.counter[key] > self.max_count:
-            self.max_count = self.counter[key]
+    def add_value(self, value: Any):
+        if value not in self.main_counter:
+            self.main_counter[value] = 0
+        self.main_counter[value] += 1
+        if self.main_counter[value] == 1:
+            self.num_count1 += 1
+        if self.main_counter[value] == 2:
+            self.num_count1 -= 1
+        if self.main_counter[value] > self.max_count:
+            self.max_count = self.main_counter[value]
+
+    def add_type(self, value: Any):
+        if type(value) == str:
+            str_type = 'string'
+        elif type(value) == int:
+            str_type = 'integer'
+        elif type(value) == float:
+            str_type = 'float'
+        elif type(value) == bool:
+            str_type = 'boolean'
+        elif type(value) == list:
+            str_type = 'array'
+        elif type(value) == dict:
+            str_type = 'object'
+        elif value is None:
+            str_type = 'null'
+        else:
+            raise ValueError(f'Unsupported type: {type(value)}')
+        if str_type not in self.type_counter:
+            self.type_counter[str_type] = 0
+        self.type_counter[str_type] += 1
 
     def items(self):
-        return self.counter.items()
+        return self.main_counter.items()
     
     def __len__(self):
-        return len(self.counter)
+        return len(self.main_counter)
 
 def get_sorted(
-    counter: ValueCounter,
+    counter: dict[str, Any],
     show_count_max_length: int,
     max_items: int | None = 100,
     reverse: bool = True,
     min_count: int = 0,
 ):
     dict_sorted = OrderedDict()
+    if max_items == 0:
+        return dict_sorted
     for key, value in sorted(
         counter.items(),
         key=lambda item: item[1],
@@ -85,8 +109,9 @@ def aggregate_one(
     if key not in dict_counters:
         dict_counters[key] = ValueCounter()
     counter = dict_counters[key]
+    counter.add_type(value)
     if not isinstance(value, (list)):
-        counter.add(value)
+        counter.add_value(value)
     if isinstance(value, (list)):
         for list_index, list_item in enumerate(value):
             if isinstance(list_item, list):
@@ -112,7 +137,7 @@ def aggregate_one(
                             list_keys_to_expand,
                         )
                 continue
-            counter.add(list_item)
+            counter.add_value(list_item)
     if hasattr(value, '__len__'):
         length = len(value)
         if length > aggregation.get('max_length', -1):
@@ -172,6 +197,11 @@ def aggregate(
         if len(counter) > 0:
             aggregation['num_variations'] = len(counter)
             aggregation['max_count'] = counter.max_count
+            aggregation['type_count'] = get_sorted(
+                counter.type_counter,
+                show_count_max_length,
+                reverse=True,
+            )
             top_threshold = 50
             count1_threshold = 30
             top_n  = 10
@@ -184,28 +214,28 @@ def aggregate(
                     show_all = True
             if show_all:
                 aggregation['count'] = get_sorted(
-                    counter,
+                    counter.main_counter,
                     show_count_max_length,
                 )
             else:
                 aggregation[f'count_top{top_n}'] = get_sorted(
-                    counter,
+                    counter.main_counter,
                     show_count_max_length,
                     max_items=top_n,
                     reverse=True,
                 )
                 #console.log('count1: ', counter.count1)
                 if counter.max_count > 1:
-                    if counter.count1 <= count1_threshold:
+                    if counter.num_count1 <= count1_threshold:
                         aggregation['count1'] = get_sorted(
-                            counter,
+                            counter.main_counter,
                             show_count_max_length,
-                            max_items=counter.count1,
+                            max_items=counter.num_count1,
                             reverse=False,
                         )
                 if key in list_keys_to_show_duplicates:
                     aggregation[f'count_duplicates'] = get_sorted(
-                        counter,
+                        counter.main_counter,
                         show_count_max_length,
                         max_items=None,
                         reverse=True,
