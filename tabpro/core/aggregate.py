@@ -197,6 +197,7 @@ def aggregate(
         if len(counter) > 0:
             aggregation['num_variations'] = len(counter)
             aggregation['max_count'] = counter.max_count
+            aggregation['min_count'] = sorted(counter.main_counter.values())[0]
             aggregation['type_count'] = get_sorted(
                 counter.type_counter,
                 show_count_max_length,
