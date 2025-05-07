@@ -1,7 +1,8 @@
 from icecream import ic
-from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
+
+import openpyxl
 
 from rich.console import Console
 
@@ -28,20 +29,40 @@ def load_excel(
         if console is None:
             console = Console()
         console.log('Loading excel data from: ', input_file)
-    # NOTE: Excelで勝手に日時データなどに変換されてしまうことを防ぐため
+    # シートの選択
+    wb = openpyxl.load_workbook(input_file)
+    sheet_names = wb.sheetnames
+    logger.debug(f'Sheet names: {sheet_names}')
+    target_sheet_name = None
+    if len(sheet_names) == 1:
+        target_sheet_name = sheet_names[0]
+    else:
+        for sheet in wb.worksheets:
+            if sheet.sheet_state == 'visible':
+                target_sheet_name = sheet.title
+                break
+    if target_sheet_name is None:
+        raise ValueError('No visible sheet found')
+    # NOTE:
+    #   Excelで勝手に日時データなどに変換されてしまうことを防ぐため
+    #   (To prevent Excel from automatically converting data like dates and times)
     dtype = str
     if no_header:
         df = pd.read_excel(
             input_file,
             header=None,
-            dtype=dtype
+            dtype=dtype,
+            sheet_name=target_sheet_name,
         )
     else:
         df = pd.read_excel(
             input_file,
-            dtype=str
+            dtype=str,
+            sheet_name=target_sheet_name,
         )
-    # NOTE: NaN を None に変換しておかないと厄介
+    # NOTE:
+    #   NaN を None に変換しておかないと厄介
+    #   (Need to convert NaN to None to avoid complications)
     df = df.replace([np.nan], [None])
     #return df
     for i, row in df.iterrows():
