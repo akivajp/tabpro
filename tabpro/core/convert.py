@@ -27,7 +27,6 @@ from . constants import (
 
 from .actions import (
     do_actions,
-    pop_row_staging,
     remap_columns,
     setup_actions_with_args,
 )
@@ -118,7 +117,7 @@ def convert(
                     new_row = do_actions(global_status, row, config.actions)
                     if new_row is None:
                         if not output_debug:
-                            pop_row_staging(row)
+                            row.pop_staging()
                         if verbose:
                             #ic('Filtered out: ', row.flat)
                             console.log('filtered out: ', row.flat)
@@ -146,7 +145,7 @@ def convert(
                             )
                         )
             if not output_debug:
-                pop_row_staging(row)
+                row.pop_staging()
             if writer:
                 writer.push_row(row)
             else:
@@ -158,8 +157,14 @@ def convert(
     #else:
     #    ic(all_df)
     if row_list_filtered_out:
-        df_filtered_out = pd.DataFrame(row_list_filtered_out)
+        #df_filtered_out = pd.DataFrame(row_list_filtered_out)
         #ic('Saving filtered out to: ', output_file_filtered_out)
-        console.log('saving filtered out to: ', output_file_filtered_out)
-        writer(df_filtered_out, output_file_filtered_out)
+        if output_file_filtered_out:
+            console.log('saving filtered out to: ', output_file_filtered_out)
+            writer = get_writer(
+                output_file_filtered_out,
+                progress=progress,
+            )
+            writer.push_rows(row_list_filtered_out)
+            writer.close()
     progress.stop()

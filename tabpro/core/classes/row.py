@@ -11,6 +11,10 @@ from typing import (
     Mapping,
 )
 
+from ..constants import (
+    STAGING_FIELD,
+)
+
 from ..functions.get_nested_field_value import get_nested_field_value
 from ..functions.search_column_value import search_column_value
 from ..functions.set_nested_field_value import set_nested_field_value
@@ -32,7 +36,7 @@ class Row(Mapping):
             row = Row()
             row.flat = self.flat
             row.nested = self.nested
-            row._prefix = '__staging__'
+            row._prefix = STAGING_FIELD
             self._staging = row
         return self._staging
 
@@ -56,7 +60,7 @@ class Row(Mapping):
         for key in self.flat:
             if not include_staging:
                 if isinstance(key, str):
-                    if key == '__staging__' or key.startswith('__staging__.'):
+                    if key == STAGING_FIELD or key.startswith(STAGING_FIELD + '.'):
                         continue
             yield key
 
@@ -67,7 +71,7 @@ class Row(Mapping):
         for key, value in self.flat.items():
             if not include_staging:
                 if isinstance(key, str):
-                    if key == '__staging__' or key.startswith('__staging__.'):
+                    if key == STAGING_FIELD or key.startswith(STAGING_FIELD + '.'):
                         continue
             yield key, value
 
@@ -88,8 +92,15 @@ class Row(Mapping):
             if key not in last_nested:
                 return default, False
             last_nested = last_nested[key]
-        self.flat.pop(key, default)
+        # delete flat keys
+        prefix = key
+        for flat_key in list(self.flat.keys()):
+            if flat_key == prefix or flat_key.startswith(prefix):
+                del self.flat[flat_key]
         return last_nested.pop(keys[-1], default), True
+    
+    def pop_staging(self):
+        return self.pop(STAGING_FIELD)
 
     def search(
         self,

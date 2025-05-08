@@ -22,20 +22,6 @@ from .types import (
 
 from ..functions.search_column_value import search_column_value
 
-def pop_row_value(
-    row: Row,
-    key: str,
-    default: Any = None,
-):
-    delete_flat_row_value(row.flat, key)
-    return pop_nested_row_value(row.nested, key, default)
-
-def pop_row_staging(
-    row: Row,
-    default: Any = None,
-):
-    return pop_row_value(row, STAGING_FIELD, default)
-
 def remap_columns(
     row: Row,
     list_config: list[PickConfig],
