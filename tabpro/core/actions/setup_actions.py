@@ -15,6 +15,7 @@ from .assign import setup_assign_action
 from .assign_constant import setup_assign_constant_action
 from .assign_format import setup_assign_format_action
 from .filter_row import setup_filter_action
+from .parse import setup_parse_action
 from .replace_string import setup_replace_action
 
 from . import types
@@ -141,29 +142,7 @@ def setup_actions_with_args(
                 ))
                 continue
             if action_name == 'parse':
-                as_type = options.get('as', 'literal')
-                required = options.get('required', False)
-                if as_type in ['boolean']:
-                    as_type = 'bool'
-                if as_type not in ['bool', 'json', 'literal']:
-                    raise ValueError(
-                        f'Unsupported as type: {as_type}'
-                    )
-                assign_default = False
-                default_value = None
-                if 'default' in options:
-                    assign_default = True
-                    default_value = options['default']
-                    if default_value in ['None', 'none', 'Null', 'null']:
-                        default_value = None
-                config.actions.append(types.ParseConfig(
-                    target = target,
-                    source = source,
-                    as_type = as_type,
-                    required = required,
-                    assign_default = assign_default,
-                    default_value = default_value,
-                ))
+                setup_parse_action(config, target, source, options)
                 continue
             if action_name == 'parse-json':
                 required = options.get('required', False)

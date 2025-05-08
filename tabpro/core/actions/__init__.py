@@ -2,8 +2,6 @@
 Actions are used to transform the data in the table.
 '''
 
-import ast
-import json
 import re
 
 from collections import OrderedDict
@@ -22,13 +20,8 @@ from ..classes.row import Row
 
 from .types import (
     AssignArrayConfig,
-    AssignConfig,
-    AssignConstantConfig,
-    JoinConfig,
     OmitConfig,
-    ParseConfig,
     PickConfig,
-    PushConfig,
 )
 
 from ..functions.search_column_value import search_column_value
@@ -140,63 +133,6 @@ def omit_field(
         if f'{STAGING_FIELD}.{config.field}' not in row.flat:
             #set_row_staging_value(row, config.field, value)
             row.staging[config.field] = value
-    return row
-
-def parse(
-    row: Row,
-    config: ParseConfig,
-):
-    value, found = search_column_value(row.nested, config.source)
-    if config.required:
-        if not found:
-            raise ValueError(
-                f'Required field not found, field: {config.source}'
-            )
-    if found:
-        if config.as_type == 'literal':
-            try:
-                if type(value) is str:
-                    parsed = ast.literal_eval(value)
-                else:
-                    parsed = value
-            except:
-                raise ValueError(
-                    f'Failed to parse literal: {value}'
-                )
-        elif config.as_type == 'json':
-            try:
-                if type(value) is str:
-                    parsed = json.loads(value)
-                else:
-                    parsed = value
-            except:
-                raise ValueError(
-                    f'Failed to parse JSON: {value}'
-                )
-        elif config.as_type == 'bool':
-            if config.assign_default and value in [None, '']:
-                value = config.default_value
-            if type(value) is bool:
-                parsed = value
-            elif type(value) is str:
-                if value.lower() in ['true', 'yes', 'on', '1']:
-                    parsed = True
-                elif value.lower() in ['false', 'no', 'off', '0']:
-                    parsed = False
-                else:
-                    raise ValueError(
-                        f'Failed to parse bool: {value}'
-                    )
-            else:
-                raise ValueError(
-                    f'Failed to parse bool: {value}'
-                )
-        else:
-            raise ValueError(
-                f'Unsupported as type: {config.as_type}'
-            )
-        #set_row_staging_value(row, config.target, parsed)
-        row.staging[config.target] = parsed
     return row
 
 def assign_array(
