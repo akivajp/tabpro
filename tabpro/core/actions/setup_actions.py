@@ -12,6 +12,7 @@ from collections import OrderedDict
 from ...logging import logger
 
 from .assign import setup_assign_action
+from .assign_constant import setup_assign_constant_action
 from .assign_format import setup_assign_format_action
 from .filter_row import setup_filter_action
 from .replace_string import setup_replace_action
@@ -65,23 +66,7 @@ def setup_actions_with_args(
                 setup_assign_action(config, target, source, options)
                 continue
             if action_name == 'assign-constant':
-                str_type = options.get('type', 'str')
-                if str_type in ['str', 'string']:
-                    value = source
-                elif str_type in ['int', 'integer']:
-                    value = int(source)
-                elif str_type == 'float':
-                    value = float(source)
-                elif str_type in ['bool', 'boolean']:
-                    value = bool(source)
-                else:
-                    raise ValueError(
-                        f'Unsupported type: {str_type}'
-                    )
-                config.actions.append(types.AssignConstantConfig(
-                    target = target,
-                    value = value,
-                ))
+                setup_assign_constant_action(config, target, source, options)
                 continue
             if action_name == 'assign-id':
                 context = options.get('context', None)

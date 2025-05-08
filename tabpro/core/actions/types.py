@@ -70,7 +70,7 @@ class FilterConfig(BaseActionConfig):
         '==', '!=', '>', '>=', '<', '<=', '=~', 'not-in',
         'empty', 'not-empty',
     ]
-    value: str | list[str]
+    value: str | float | list[str]
 
 @dataclasses.dataclass
 class JoinConfig(BaseActionConfig):

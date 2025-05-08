@@ -18,7 +18,7 @@ from ...logging import logger
 
 def filter_row(
     row: Row,
-    config: list[FilterConfig],
+    config: FilterConfig,
 ):
     value, found = row.search(config.field)
     #ic(config, value, found)
@@ -36,7 +36,7 @@ def filter_row(
     elif config.operator == '=~':
         if not found:
             return False
-        if not re.search(config.value, value):
+        if not re.search(str(config.value), str(value)):
             return False
     elif config.operator == 'not-in':
         if isinstance(config.value, list):
