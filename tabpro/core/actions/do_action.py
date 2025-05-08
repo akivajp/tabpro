@@ -11,6 +11,7 @@ from .assign_format import assign_format
 from .assign_id import assign_id
 from .assign_length import assign_length
 from .join_field import join_field
+from .omit_field import omit_field
 from .filter_row import filter_row
 from .parse import parse
 from .push_field import push_field
@@ -22,9 +23,10 @@ def do_actions(
     row: Row,
     actions: list[types.BaseActionConfig],
 ):
+    last_row = row
     for action in actions:
         try:
-            row = do_action(status, row, action)
+            last_row = do_action(status, last_row, action)
         except Exception as e:
             logger.error('failed with action: %s', action)
             #logger.error('failed with row: %s', row)
@@ -33,9 +35,9 @@ def do_actions(
                 file_row_index = row.staging['__file_row_index__']
                 logger.error('failed with file row index: %s', file_row_index)
             raise
-        if row is None:
+        if last_row is None:
             return None
-    return row
+    return last_row
 
 def do_action(
     status: types.GlobalStatus,

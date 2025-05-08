@@ -15,6 +15,7 @@ from .assign import setup_assign_action
 from .assign_constant import setup_assign_constant_action
 from .assign_format import setup_assign_format_action
 from .filter_row import setup_filter_action
+from .omit_field import setup_omit_field_action
 from .parse import setup_parse_action
 from .replace_string import setup_replace_action
 
@@ -135,11 +136,7 @@ def setup_actions_with_args(
                 ))
                 continue
             if action_name == 'omit':
-                purge = options.get('purge', False)
-                config.actions.append(types.OmitConfig(
-                    field = target,
-                    purge = purge,
-                ))
+                setup_omit_field_action(config, target, options)
                 continue
             if action_name == 'parse':
                 setup_parse_action(config, target, source, options)

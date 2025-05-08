@@ -4,12 +4,9 @@ Actions are used to transform the data in the table.
 
 import re
 
-from collections import OrderedDict
 from typing import (
     Any,
 )
-
-from ...logging import logger
 
 from ..constants import (
     INPUT_FIELD,
@@ -20,32 +17,10 @@ from ..classes.row import Row
 
 from .types import (
     AssignArrayConfig,
-    OmitConfig,
     PickConfig,
 )
 
 from ..functions.search_column_value import search_column_value
-
-def delete_flat_row_value(
-    flat_row: OrderedDict,
-    target: str,
-):
-    prefix = f'{target}.'
-    for key in list(flat_row.keys()):
-        if key == target or key.startswith(prefix):
-            del flat_row[key]
-
-def pop_nested_row_value(
-    nested_row: OrderedDict,
-    key: str,
-    default: Any = None,
-):
-    keys = key.split('.')
-    for key in keys[:-1]:
-        if key not in nested_row:
-            return default, False
-        nested_row = nested_row[key]
-    return nested_row.pop(keys[-1], default), True
 
 def pop_row_value(
     row: Row,
@@ -121,19 +96,6 @@ def search_with_operator(
         if found and value is not None:
             return value, found
     return search_with_operator(row, rest)
-
-def omit_field(
-    row: Row,
-    config: OmitConfig,
-):
-    value, found = pop_row_value(row, config.field)
-    if not found:
-        return row
-    if not config.purge:
-        if f'{STAGING_FIELD}.{config.field}' not in row.flat:
-            #set_row_staging_value(row, config.field, value)
-            row.staging[config.field] = value
-    return row
 
 def assign_array(
     row: Row,

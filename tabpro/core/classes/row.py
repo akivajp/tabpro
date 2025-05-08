@@ -7,6 +7,7 @@ from collections import (
 )
 
 from typing import (
+    Any,
     Mapping,
 )
 
@@ -14,6 +15,7 @@ from ..functions.get_nested_field_value import get_nested_field_value
 from ..functions.search_column_value import search_column_value
 from ..functions.set_nested_field_value import set_nested_field_value
 from ..functions.set_flat_field_value import set_flat_field_value
+
 
 class Row(Mapping):
     def __init__(
@@ -74,6 +76,20 @@ class Row(Mapping):
         include_staging: bool = False,
     ):
         return self.iter(include_staging=include_staging)
+    
+    def pop(
+        self,
+        key: str,
+        default: Any = None,
+    ):
+        last_nested = self.nested
+        keys = key.split('.')
+        for key in keys[:-1]:
+            if key not in last_nested:
+                return default, False
+            last_nested = last_nested[key]
+        self.flat.pop(key, default)
+        return last_nested.pop(keys[-1], default), True
 
     def search(
         self,
