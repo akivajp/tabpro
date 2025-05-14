@@ -48,7 +48,7 @@ class Loader:
             self.console = Console()
         return self.console
     
-    def _yield_data(self, quiet: bool = False):
+    def _yield_data(self):
         if self.rows:
             for row in self.rows:
                 yield row
@@ -56,7 +56,7 @@ class Loader:
             self.rows = []
             for row in self.fn_load(
                 self.source,
-                quiet=quiet,
+                quiet=self.quiet,
                 no_header=self.no_header,
                 progress=self.progress,
             ):
