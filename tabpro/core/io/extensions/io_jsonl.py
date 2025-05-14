@@ -1,8 +1,5 @@
 import json
 
-from logzero import logger
-from tqdm.auto import tqdm
-
 from . manage_loaders import (
     Row,
     register_loader,
@@ -15,8 +12,9 @@ from . manage_writers import (
 from ... progress import (
     Console,
     Progress,
-    track,
 )
+
+from rich.progress import open as rich_open
 
 from . io_json import escape_json
 
@@ -33,15 +31,27 @@ def load_jsonl(
         console = progress.console
     if not quiet:
         console.log('Loading from: ', input_file)
-    with open(input_file, 'r') as f:
-        for line in track(
-            f,
-            description=f'Loading JSON rows',
-            disable=quiet,
-            progress=progress,
-        ):
+        def fn_open(file, *args, **kwargs):
+            description = 'Loading JSON rows'
+            if progress:
+                return progress.open(
+                    file,
+                    *args,
+                    description=description,
+                    **kwargs,
+                )
+            else:
+                return rich_open(
+                    file,
+                    *args,
+                    description=description,
+                    **kwargs,
+                )
+    else:
+        fn_open = open
+    with fn_open(input_file, 'r') as f:
+        for line in f:
             line = escape_json(line)
-            #logger.debug(line)
             row = json.loads(line)
             yield Row.from_dict(row)
 
