@@ -7,8 +7,13 @@ from . core.io import (
     save,
 )
 
+from . core.progress import (
+    Progress,
+)
+
 __all__ = [
     'get_loader',
     'get_writer',
     'save',
+    'Progress',
 ]

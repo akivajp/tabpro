@@ -22,11 +22,13 @@ class Loader:
         source: str,
         quiet: bool = False,
         no_header: bool = False,
+        limit: int | None = None,
         progress: Progress | None = None,
     ):
         self.source = source
         self.quiet = quiet
         self.no_header = no_header
+        self.limit = limit
         self.rows: list[Row] | None = None
         self.progress = progress
         self.fn_load = get_loader(
@@ -39,10 +41,12 @@ class Loader:
     
     def __len__(self):
         if self.rows is None:
-            for _ in self._yield_data(quiet=self.quiet):
+            for _ in self._yield_data():
                 pass
+        if self.rows is None:
+            raise ValueError('No rows loaded')
         return len(self.rows)
-    
+
     def _get_console(self):
         if self.console is None:
             self.console = Console()
@@ -59,6 +63,7 @@ class Loader:
                 quiet=self.quiet,
                 no_header=self.no_header,
                 progress=self.progress,
+                limit=self.limit,
             ):
                 self.rows.append(row)
                 yield row

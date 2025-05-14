@@ -10,11 +10,8 @@ from . manage_writers import (
 )
 
 from ... progress import (
-    Console,
     Progress,
 )
-
-from rich.progress import open as rich_open
 
 from . io_json import escape_json
 
@@ -22,38 +19,49 @@ from . io_json import escape_json
 def load_jsonl(
     input_file: str,
     progress: Progress | None = None,
+    limit: int | None = None,
     **kwargs,
 ):
+    orig_progress = progress
     quiet = kwargs.get('quiet', False)
     if progress is None:
-        console = Console()
-    else:
-        console = progress.console
+        progress = Progress()
+        progress.start()
+    open_task_id = None
     if not quiet:
-        console.log('Loading from: ', input_file)
+        progress.console.log('Loading from: ', input_file)
+        description = 'Reading JSONL file'
+        open_task_id = progress.add_task(
+            description = description,
+        )
         def fn_open(file, *args, **kwargs):
-            description = 'Loading JSON rows'
-            if progress:
-                return progress.open(
-                    file,
-                    *args,
-                    description=description,
-                    **kwargs,
-                )
-            else:
-                return rich_open(
-                    file,
-                    *args,
-                    description=description,
-                    **kwargs,
-                )
+            return progress.open(
+                file,
+                *args,
+                task_id = open_task_id,
+                **kwargs,
+            )
     else:
         fn_open = open
+    count_task_id = progress.add_task(
+        description = 'Loaded JSON rows',
+        total = limit,
+        disable = quiet,
+    )
     with fn_open(input_file, 'r') as f:
-        for line in f:
+        for i, line in enumerate(f):
+            if limit and i >= limit:
+                break
             line = escape_json(line)
             row = json.loads(line)
+            progress.update(count_task_id, advance=1)
             yield Row.from_dict(row)
+        f.close()
+        if open_task_id is not None:
+            progress.stop_task(open_task_id)
+        progress.stop_task(count_task_id)
+    if orig_progress is None:
+        progress.stop()
 
 @register_writer('.jsonl')
 class JsonLinesWriter(BaseWriter):

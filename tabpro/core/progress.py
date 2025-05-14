@@ -36,13 +36,14 @@ class Progress(progress.Progress):
             **kwargs
         )
 
-    def add_task(self, *args, **kwargs):
+    def add_task(self,
+        description: str,
+        **kwargs
+    ):
         indent = " " * 10
-        first = args[0]
         total = kwargs.pop('total', None)
         task = super().add_task(
-            f'{indent} [cyan]{first}',
-            *args[1:],
+            f'{indent} [cyan]{description}',
             total = total,
             **kwargs
         )
