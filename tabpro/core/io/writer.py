@@ -6,13 +6,14 @@ from typing import (
     IO,
 )
 
+import pandas as pd
 from rich.console import Console
 
 from ..classes.row import Row
 
 from ..progress import (
     Progress,
-    Task,
+    TaskID,
 )
 
 from tqdm.auto import tqdm
@@ -36,7 +37,7 @@ class BaseWriter:
         self.fobj: IO | None = None
         self.finished: bool = False
         self.progress: Progress | None = progress
-        self.task: Task | None = None
+        self.task_id: TaskID | None = None
         if not self.support_streaming():
             self.streaming = False
         if self.streaming:
@@ -48,28 +49,37 @@ class BaseWriter:
         self.fobj = open(self.target, 'w', encoding=self.encoding)
         if self.streaming:
             if self.progress:
-                if self.task is None:
+                if self.task_id is None:
                     console = self._get_console()
                     console.log('Writing into: ', self.target)
-                    self.task = self.progress.add_task(
+                    self.task_id = self.progress.add_task(
                         f'Writing rows...',
                     )
 
     def support_streaming(self):
         return False
 
-    def push_row(self, row: Row):
+    def push_row(self, row: Row | pd.Series):
         if self.rows is None:
             self.rows = []
+        if isinstance(row, pd.Series):
+            new_row = Row()
+            for key in row.keys():
+                new_row[key] = row[key]
+            row = new_row
         self.rows.append(row)
         if self.streaming:
             self._write_row(row)
-            if self.task is not None:
-                self.progress.update(self.task, advance=1)
+            if self.progress and self.task_id is not None:
+                self.progress.update(self.task_id, advance=1)
 
-    def push_rows(self, rows: list[Row]):
-        for row in rows:
-            self.push_row(row)
+    def push_rows(self, rows: list[Row] | pd.DataFrame):
+        if isinstance(rows, pd.DataFrame):
+            for _, row in rows.iterrows():
+                self.push_row(row)
+        else:
+            for row in rows:
+                self.push_row(row)
 
     def _get_console(self):
         if self.progress:

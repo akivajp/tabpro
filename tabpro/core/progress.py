@@ -2,13 +2,14 @@ import sys
 
 from typing import (
     Iterable,
+    Sized,
     TypeVar,
 )
 
 from rich import progress
 from rich.console import Console
 from rich.progress import (
-    Task,
+    TaskID,
     track as base_track,
 )
 
@@ -68,6 +69,7 @@ class Progress(progress.Progress):
     ):
         if total is None:
             if hasattr(sequence, '__len__'):
+                assert isinstance(sequence, Sized)
                 total = len(sequence)
         if disable:
             return sequence
@@ -104,7 +106,7 @@ def track(
 
 __all__ = [
     'Console',
-    'Task',
+    'TaskID',
     'Progress',
     'track',
 ]

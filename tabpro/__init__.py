@@ -7,6 +7,10 @@ from . core.io import (
     save,
 )
 
+from . core.classes.row import (
+    Row,
+)
+
 from . core.progress import (
     Progress,
 )
@@ -16,4 +20,5 @@ __all__ = [
     'get_writer',
     'save',
     'Progress',
+    'Row',
 ]
