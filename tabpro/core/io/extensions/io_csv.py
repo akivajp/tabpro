@@ -1,5 +1,9 @@
 #import pandas as pd
 
+from typing import (
+    Iterable,
+)
+
 import csv
 
 from collections import OrderedDict
@@ -47,12 +51,15 @@ def load_csv(
     reader = csv.reader(open(input_file, 'r', encoding=encoding))
     if no_header:
         for i, row in enumerate(get_iter(reader)):
+            assert isinstance(row, Iterable)
             d = {}
             for j, field in enumerate(row):
                 d[f'{j}'] = field
             yield Row.from_dict(d)
     else:
         for i, row in enumerate(get_iter(reader)):
+            assert isinstance(row, Iterable)
+            row = list(row)
             if i == 0:
                 header = row
                 continue
@@ -80,6 +87,7 @@ class CsvWriter(BaseWriter):
         return True
 
     def _write_row(self, row: Row):
+        assert self.fobj is not None
         if self.writer is None:
             # NOTE: 最初の行を取得するまでヘッダーを決定できない
             self.writer = csv.DictWriter(self.fobj, fieldnames=row.flat.keys())
@@ -90,13 +98,14 @@ class CsvWriter(BaseWriter):
         if self.rows is None:
             return
         self._open()
-        self.writer = csv.DictWriter(self.fobj)
+        assert self.fobj is not None
         header = []
         for row in self.rows:
             for key in row.keys():
                 if key not in header:
                     header.append(key)
-        self.writer.writeheader(header)
+        self.writer = csv.DictWriter(self.fobj, fieldnames=header)
+        self.writer.writeheader()
         for row in self.rows:
             self._write_row(row)
         self.writer = None

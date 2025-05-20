@@ -83,6 +83,7 @@ class ExcelWriter(BaseWriter):
     def _write_all_rows(
         self,
     ):
-        df = pd.DataFrame([row.flat for row in self.rows])
-        df.to_excel(self.target, index=False)
+        if self.rows:
+            df = pd.DataFrame([row.flat for row in self.rows])
+            df.to_excel(self.target, index=False)
         self.finished = True
