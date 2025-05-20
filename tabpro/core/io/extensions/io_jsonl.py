@@ -76,9 +76,11 @@ class JsonLinesWriter(BaseWriter):
         return True
 
     def _write_row(self, row: Row):
-        if self.fobj:
-            self.fobj.write(json.dumps(row.flat, ensure_ascii=False))
-            self.fobj.write('\n')
+        if not self.fobj:
+            self._open()
+            assert self.fobj is not None
+        self.fobj.write(json.dumps(row.nested, ensure_ascii=False))
+        self.fobj.write('\n')
 
     def _write_all_rows(self):
         if self.rows:

@@ -87,7 +87,9 @@ class CsvWriter(BaseWriter):
         return True
 
     def _write_row(self, row: Row):
-        assert self.fobj is not None
+        if not self.fobj:
+            self._open()
+            assert self.fobj is not None
         if self.writer is None:
             # NOTE: 最初の行を取得するまでヘッダーを決定できない
             self.writer = csv.DictWriter(self.fobj, fieldnames=row.flat.keys())
@@ -95,19 +97,8 @@ class CsvWriter(BaseWriter):
         self.writer.writerow(row.flat)
 
     def _write_all_rows(self):
-        if self.rows is None:
-            return
-        self._open()
-        assert self.fobj is not None
-        header = []
-        for row in self.rows:
-            for key in row.keys():
-                if key not in header:
-                    header.append(key)
-        self.writer = csv.DictWriter(self.fobj, fieldnames=header)
-        self.writer.writeheader()
-        for row in self.rows:
-            self._write_row(row)
-        self.writer = None
-        self.fobj.close()
-        self.fobj = None
+        if self.rows:
+            for row in self.rows:
+                self._write_row(row)
+        if self.fobj:
+            self.fobj.close()
