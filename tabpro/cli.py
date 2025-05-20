@@ -44,7 +44,7 @@ def setup_command(
         parse_and_run(command_parser)
 
 def command_aggregate_tables(
-    subparsers: argparse._SubParsersAction | None,
+    subparsers: argparse._SubParsersAction | None = None,
 ):
     from . commands.aggregate_tables import setup_parser
     setup_command(
@@ -55,7 +55,7 @@ def command_aggregate_tables(
     )
 
 def command_compare_tables(
-    subparsers: argparse._SubParsersAction | None,
+    subparsers: argparse._SubParsersAction | None = None,
 ):
     from . commands.compare_tables import setup_parser
     setup_command(
@@ -66,7 +66,7 @@ def command_compare_tables(
     )
 
 def command_convert_tables(
-    subparsers: argparse._SubParsersAction | None,
+    subparsers: argparse._SubParsersAction | None = None,
 ):
     from . commands.convert_tables import setup_parser
     setup_command(
@@ -77,7 +77,7 @@ def command_convert_tables(
     )
 
 def command_merge_tables(
-    subparsers: argparse._SubParsersAction | None,
+    subparsers: argparse._SubParsersAction | None = None,
 ):
     from . commands.merge_tables import setup_parser
     setup_command(
@@ -88,7 +88,7 @@ def command_merge_tables(
     )
 
 def command_sort_tables(
-    subparsers: argparse._SubParsersAction | None,
+    subparsers: argparse._SubParsersAction | None = None,
 ):
     from . commands.sort_tables import setup_parser
     setup_command(
