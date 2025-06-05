@@ -43,23 +43,26 @@ def load_jsonl(
             )
     else:
         fn_open = open
-    count_task_id = progress.add_task(
-        description = 'Loaded JSON rows',
-        total = limit,
-        disable = quiet,
-    )
+    if not quiet:
+        count_task_id = progress.add_task(
+            description = 'Loaded JSON rows',
+            total = limit,
+            disable = quiet,
+        )
     with fn_open(input_file, 'r') as f:
         for i, line in enumerate(f):
             if limit and i >= limit:
                 break
             line = escape_json(line)
             row = json.loads(line)
-            progress.update(count_task_id, advance=1)
+            if not quiet:
+                progress.update(count_task_id, advance=1)
             yield Row.from_dict(row)
         f.close()
         if open_task_id is not None:
             progress.stop_task(open_task_id)
-        progress.stop_task(count_task_id)
+        if not quiet:
+            progress.stop_task(count_task_id)
     if orig_progress is None:
         progress.stop()
 
