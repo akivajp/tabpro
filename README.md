@@ -1,141 +1,326 @@
-# TabPro - Table Data Processor
+# TabPro — Table Data Processor
 
-TabPro is a Python-based tool for efficient processing of tabular data.
+TabPro is a command-line toolkit for reshaping tabular data, built for a
+specific situation: **data that people produced by hand.** Spreadsheets come
+back with columns renamed or added on a whim, rows that do not follow the
+spec, and values typed in the wrong format. TabPro is designed to detect
+those anomalies, separate them from the rest, transform what is left, and
+deliver it as JSON or JSON Lines.
 
-## Features
-
-### Data Format Support
-- CSV
-- TSV
-- Excel
-- JSON
-- JSON Lines
-- Bidirectional conversion between all supported formats
-
-### Table Operations
-1. **Table Conversion**
-   - Convert between different formats
-   - Customize output format settings
-   - Filter and transform data
-
-2. **Table Merging**
-   - Merge tables based on common columns
-   - Handle multiple table merging
-   - Support for staging and version control
-
-3. **Table Aggregation**
-   - Data aggregation based on grouping
-   - Statistical calculations
-   - Duplicate detection
-
-4. **Table Sorting**
-   - Sort by multiple columns
-   - Custom sort order
-
-5. **Table Comparison**
-   - Detect differences between tables
-   - Data consistency checking
-   - Detailed comparison reports
+If your input is already clean and machine-generated, tools like
+[Miller](https://github.com/johnkerl/miller), [csvkit](https://csvkit.readthedocs.io/)
+or [DuckDB](https://duckdb.org/) will serve you better and faster. TabPro
+does not try to compete with them on throughput or on breadth of features.
 
 ## Installation
 
-### Prerequisites
-- Python 3.10 or higher
-- pip (Python package installer)
-
-### Installation
 ```bash
 pip install tabpro
 ```
 
-## CLI Usage
+Requires Python 3.10 or later.
 
-### Basic Command
+## Supported formats
+
+| Format | Extension | Read | Write |
+|---|---|:-:|:-:|
+| CSV | `.csv` | ✓ | ✓ |
+| TSV | `.tsv` | ✓ | ✓ |
+| Excel | `.xlsx` | ✓ | ✓ |
+| JSON | `.json` | ✓ | ✓ |
+| JSON Lines | `.jsonl` | ✓ | ✓ |
+
+The format is chosen from the file extension, so conversion is just a matter
+of naming the output file:
+
 ```bash
-tabpro [command] [options]
+tabpro convert annotations.xlsx --output delivery.jsonl
 ```
 
-### Available Commands
+Excel cells are read as text so that dates and long numbers are not silently
+reinterpreted. Nested JSON values are flattened to dot-separated columns when
+written to CSV/TSV/Excel (`user.name`), and rebuilt into nested objects when
+written back to JSON/JSON Lines.
 
-#### Table Conversion (convert)
+## The staging area
+
+This is the one concept worth reading before anything else, because it
+explains why an action may appear to do nothing.
+
+Every row carries a hidden namespace called `__staging__`. **Actions write
+their results into staging rather than into the row itself, and staging is
+discarded just before the row is written out.**
+
+So this command produces output identical to its input:
+
 ```bash
-tabpro convert [options] <input_file1> [<input_file2>...] --output <output_file>
-# or
-tabpro-convert ...
-convert-tables ...
+# The cast happens, but its result is discarded with the staging area.
+tabpro convert input.csv --do 'cast:score=score:as=int' --output out.jsonl
 ```
 
-Options:
-- `--output-file-filtered-out`, `--output-filtered-out`, `-f`: Path to the output file for filtered out rows
-- `--config`, `-c`: Path to the configuration file
-- `--pick-columns`, `--pick`: Pick specific columns
-- `--do-actions`, `--actions`, `--do`: Actions to perform on the data
-- `--ignore-file-rows`, `--ignore-rows`, `--ignore`: Ignore specific rows
-- `--no-header`: Treat CSV/TSV data as having no header row
+You promote staged values into the output with `--pick`, which also declares
+the output schema and its column order:
 
-#### Table Merging (merge)
 ```bash
-tabpro merge [options] --previous <previous_file1> [<previous_file2> ...] --new <modification_file1> [<modification_file2> ...] --keys <key1> [<key2> ...]
-# or 
-tabpro-merge ...
-merge-tables ...
+tabpro convert input.csv \
+  --do 'cast:score=score:as=int' \
+  --pick id score \
+  --output out.jsonl
 ```
 
-Options:
-- `--allow-duplicate-conventional-keys`: Allow duplicate keys in previous files
-- `--allow-duplicate-modification-keys`: Allow duplicate keys in modification files
-- `--output-base-data-file`: Path to output base data file
-- `--output-modified-data-file`: Path to output modified data file
-- `--output-remaining-data-file`: Path to output remaining data file
-- `--merge-fields`: Fields to merge
-- `--merge-staging`: Merge staging fields from modification files
-- `--use-staging`: Use staging fields files
-
-#### Table Aggregation (aggregate)
-```bash
-tabpro aggregate [options] <input_file> --output <aggregated_json_path>
-# or
-tabpro-aggregate ...
-aggregate-tables ...
+```json
+{"id": "1", "score": 10}
 ```
 
-Options:
-- `--keys-to-show-duplicates`: Keys to show duplicates
-- `--keys-to-show-all-count`: Keys to show all count
-- `--keys-to-expand`: Keys to expand
-- `--show-count-threshold`, `--count-threshold`, `-C`: Show count threshold (default: 50)
-- `--show-count-max-length`, `--count-max-length`, `-L`: Show count max length (default: 100)
+The point is that intermediate values never pollute what you deliver. You
+can build up as many working values as a transformation needs and then state
+exactly which of them are part of the result.
 
-#### Table Sorting (sort)
+`--pick` can also rename columns, with the new name on the left:
+
 ```bash
-tabpro sort [options] <input_file1> [<input_file2> ...] --sort-keys <key1> [<key2> ...] --output <output_file>
-# or
-tabpro-sort ...
-sort-tables ...
+tabpro convert input.csv --pick 'user_id=id' 'display_name=name' --output out.jsonl
 ```
 
-Options:
-- `--output-file`, `--output`, `-O`: Path to output file
-- `--reverse`, `-R`: Reverse the sort order
+When an action looks up a field, it searches three places in order:
 
-#### Table Comparison (compare)
+1. `__staging__.<name>` — a value produced by an earlier action
+2. `<name>` — a column of the row itself
+3. `__staging__.__input__.<name>` — the original input value, before any action
+
+That ordering is what lets actions be chained: each one sees what the
+previous one produced.
+
+To see the staging area instead of discarding it, pass `--output-debug`.
+
+## Commands
+
+Every command is available both as a subcommand and as a standalone
+executable (`tabpro convert` = `tabpro-convert` = `convert-tables`).
+All of them accept `--help`, `--verbose` / `-v` and `--version` / `-V`.
+
+### convert — transform and change format
+
 ```bash
-tabpro compare [options] <input_file1> <input_file2> --query <query_key1> [<query_key2> ...] --output <output_file>
-# or
-tabpro-compare ...
-tabpro-diff ...
-compare-tables ...
+tabpro convert [options] <input_file>... --output <output_file>
 ```
 
-Options:
-- `--compare-keys`, `--compare`, `-C`: Keys for comparison
+| Option | Description |
+|---|---|
+| `--output-file`, `--output`, `-O` | Output file path |
+| `--output-file-filtered-out`, `-f` | Write rows removed by filters here, instead of dropping them |
+| `--config`, `-c` | YAML configuration file |
+| `--do-actions`, `--actions`, `--do` | Actions to apply (see below) |
+| `--pick-columns`, `--pick` | Columns to emit, optionally renamed as `new=old` |
+| `--action-delimiter` | Separator inside action strings (default `:`) |
+| `--ignore-file-rows`, `--ignore` | Skip specific rows, given as `file:index` |
+| `--no-header` | Treat CSV/TSV input as having no header row; columns become `0`, `1`, … |
+| `--output-debug` | Keep the staging area in the output |
 
-### Common Options
-- `--verbose`, `-v`: Enable verbose logging
-- `--version`, `-V`: Show version information
+Multiple input files are concatenated. `--output-file-filtered-out` is the
+one to reach for when triaging bad data: the rows a filter rejects are
+written to a separate file for inspection rather than quietly disappearing.
 
-## Features
-- Simple and user-friendly command-line interface
-- Flexible data processing options
-- Handles large datasets efficiently
-- Extensible design
+### merge — apply hand-made corrections to a base table
+
+```bash
+tabpro merge --previous <base>... --new <corrections>... --keys <key>... [options]
+```
+
+Rows are matched on `--keys`. Every field present in a correction file
+overwrites the corresponding field of the matching base row.
+
+| Option | Description |
+|---|---|
+| `--previous-files`, `--previous`, `--old`, `-P` | Base files |
+| `--modification-files`, `--new`, `-M` | Files holding the corrections |
+| `--keys`, `-K` | Primary key columns |
+| `--merge-fields` | Limit the merge to these fields (default: every field of the correction file) |
+| `--output-base-data-file`, `--output-base` | All base rows, with corrections applied |
+| `--output-modified-data-file`, `--output-modified` | Only the rows that were corrected |
+| `--output-remaining-data-file`, `--output-remaining` | Only the rows that were **not** corrected |
+| `--ignore-not-found` | Skip correction rows whose key is absent from the base, instead of failing |
+| `--allow-duplicate-conventional-keys` | Permit duplicate keys in the base files |
+| `--allow-duplicate-modification-keys` | Permit duplicate keys in the correction files |
+| `--merge-staging`, `--use-staging` | Carry the staging area across the merge |
+
+`--output-remaining-data-file` is what tells you which rows are still
+waiting for someone to look at them.
+
+### aggregate — profile a table before trusting it
+
+```bash
+tabpro aggregate [options] <input_file>... --output <report.json>
+```
+
+Reports, per column: how many distinct values there are, which types
+appeared, the minimum and maximum length, and a value/count breakdown.
+Useful as a first pass over a batch of submissions, to see which columns
+hold something unexpected.
+
+| Option | Description |
+|---|---|
+| `--output-file`, `--output`, `-O` | Report path (`.json`), printed to the terminal when omitted |
+| `--keys-to-show-duplicates` | List every duplicated value for these columns |
+| `--keys-to-show-all-count` | List all value counts for these columns, not just the top ones |
+| `--keys-to-expand`, `--expand` | Also aggregate array elements individually, by index |
+| `--show-count-threshold`, `-C` | Above this many distinct values, show only a summary (default 50) |
+| `--show-count-max-length`, `-L` | Truncate displayed values to this length (default 100) |
+
+### sort
+
+```bash
+tabpro sort [options] <input_file>... --sort-keys <key>... --output <output_file>
+```
+
+| Option | Description |
+|---|---|
+| `--sort-keys`, `--sort-key`, `-K` | Columns to sort by |
+| `--output-file`, `--output`, `-O` | Output file path |
+| `--reverse`, `-R` | Descending order |
+
+Values are compared as they are read, so numeric columns coming from CSV
+sort as strings. Use `convert` with `cast` first if that matters.
+
+### compare
+
+```bash
+tabpro compare [options] <file1> <file2> --query <key>... --output <diff_file>
+```
+
+Reports rows present in only one of the files, and per-field differences for
+rows present in both. Removed values are prefixed with `-`, added ones
+with `+`.
+
+| Option | Description |
+|---|---|
+| `--query-keys`, `--query`, `-Q` | Columns identifying a row (required) |
+| `--compare-keys`, `--compare`, `-C` | Columns to compare (default: all) |
+| `--output-path`, `--output`, `-O` | Output file path |
+
+## Actions
+
+Actions are given to `convert` via `--do`, one string per action:
+
+```
+<action-name>:<fields>[:<options>]
+```
+
+`<fields>` is a comma-separated list of `target=source` pairs — a bare name
+means target and source are the same. `<options>` is a comma-separated list
+of `key=value` pairs or bare flags. Remember that results land in staging,
+so `--pick` decides what actually reaches the output.
+
+| Action | Form | Options | Description |
+|---|---|---|---|
+| `assign` | `assign:t=s` | `default`, `required`, `ignore-empty` | Copy a value |
+| `assign-constant` | `assign-constant:t=value` | `type` (`str`/`int`/`float`/`bool`) | Set a fixed value |
+| `assign-format` | `assign-format:t={a}-{b}` | — | Build a string from other fields |
+| `assign-id` | `assign-id:t=s` | `context`, `reverse` | Assign sequential integer ids per distinct value |
+| `assign-length` | `assign-length:t=s` | — | Length of the value |
+| `cast` | `cast:t=s` | `as` (`bool`/`int`/`float`/`str`), `required`, `default` | Convert the type |
+| `filter` | `filter:field==value` | — | Keep matching rows (`==`, `!=`, `=~`) |
+| `filter-empty` | `filter-empty:field` | — | Keep rows where the field is empty or absent |
+| `filter-not-empty` | `filter-not-empty:field` | — | Keep rows where the field has a value |
+| `join` | `join:t=s` | `delimiter` (default `;`) | Join an array into a string |
+| `omit` | `omit:field` | `purge` | Remove a column; `purge` discards it instead of staging it |
+| `parse` | `parse:t=s` | `as` (`bool`/`json`/`literal`), `required`, `default` | Parse a string into a value |
+| `parse-json` | `parse-json:t=s` | `required` | Shorthand for `parse` with `as=json` |
+| `push` | `push:t=s` | `condition` | Append a value to an array |
+| `replace` | `replace:t=s` | `old`, `new`, `count`, `recursive` | Replace a substring |
+| `split` | `split:t=s` | `delimiter` | Split a string into an array |
+
+Rows rejected by a filter are dropped unless `--output-file-filtered-out`
+is given.
+
+```bash
+# Separate rows whose id does not look like a 4-digit number,
+# rather than losing them.
+tabpro convert submissions.xlsx \
+  --do 'filter:id=~^[0-9]{4}$' \
+  --output valid.jsonl \
+  --output-filtered-out rejected.jsonl
+```
+
+## Configuration file
+
+Anything repeated often belongs in a YAML file passed with `--config`.
+Command-line `--do` and `--pick` are applied in addition to it.
+
+```yaml
+# Columns to emit, in this order.
+# Use a list to keep the names as they are...
+pick:
+  - id
+  - name
+
+# ...or a mapping to rename them, with the new name as the key.
+# (a list and a mapping cannot be mixed in one `pick` block)
+#
+# pick:
+#   id: id
+#   score: raw_score
+
+process:
+  # Fixed values
+  assign_constants:
+    source_batch: 2026-04
+
+  # Strings built from other fields
+  assign_formats:
+    label: '{name} ({id})'
+
+  # Length of a field
+  assign_length:
+    name_length: name
+
+  # Sequential ids per distinct value.
+  # A list uses several columns as the key; `context` numbers
+  # independently within each group.
+  assign_ids:
+    speaker_id: speaker_name
+    utterance_id:
+      primary: [speaker_name, utterance]
+      context: [document_id]
+
+  # Collect several fields into an array
+  assign_array:
+    choices:
+      - choice_a
+      - field: choice_b
+        optional: true
+
+  # Keep only matching rows.
+  # operator: == != =~ not-in empty not-empty
+  filter:
+    - field: status
+      operator: '=='
+      value: done
+
+  # Append to an array, optionally only when another field is truthy
+  push:
+    - target: notes
+      source: comment
+      condition: has_comment
+
+  # Split a string into an array
+  split:
+    tags:
+      field: raw_tags
+      delimiter: ';'
+```
+
+## Known limitations
+
+- **Memory.** The whole input is held in memory; a 30 MB JSON Lines file
+  needs roughly 500 MB. Fine for spreadsheets, not for very large exports.
+- **Almost no stdout.** Only `aggregate` writes its report to standard
+  output when `--output` is omitted. The other commands write to the file
+  named by `--output` and cannot be used in the middle of a shell pipeline.
+- **Action options cannot contain a comma**, because options are themselves
+  comma-separated. `split:t=s:delimiter=,` does not work.
+- **`sort` compares values as they are read**, so CSV columns sort as text.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
