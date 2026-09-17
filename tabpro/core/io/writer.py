@@ -16,7 +16,6 @@ from ..progress import (
     TaskID,
 )
 
-from tqdm.auto import tqdm
 
 class BaseWriter:
     def __init__(

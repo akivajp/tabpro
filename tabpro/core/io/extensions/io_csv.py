@@ -10,7 +10,6 @@ from collections import OrderedDict
 
 from rich.console import Console
 
-from tqdm.auto import tqdm
 
 from . manage_loaders import (
     Row,

@@ -14,7 +14,6 @@ from .. progress import (
     track,
 )
 
-from tqdm.auto import tqdm
 
 class Loader:
     def __init__(

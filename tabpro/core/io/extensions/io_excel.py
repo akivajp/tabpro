@@ -6,7 +6,7 @@ import openpyxl
 
 from rich.console import Console
 
-from logzero import logger
+from .... logging import logger
 
 from . manage_loaders import (
     Row,
