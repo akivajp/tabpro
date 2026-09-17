@@ -1,7 +1,7 @@
 import os.path
 import pandas as pd
 
-from typing import Callable
+from typing import Callable, TypeAlias
 
 from rich.console import Console
 
@@ -9,7 +9,10 @@ from ... progress import Progress
 
 from ..writer import BaseWriter
 
-type Saver = Callable[[pd.DataFrame, str], None]
+# NOTE:
+#   PEP 695 の `type` 文は Python 3.12 以降でしか使えないため、
+#   3.10 以降をサポートするために TypeAlias による定義を用いる。
+Saver: TypeAlias = Callable[[pd.DataFrame, str], None]
 
 dict_writers: dict[str, type[BaseWriter]] = {}
 

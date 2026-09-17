@@ -7,6 +7,7 @@ from typing import (
     Any,
     Literal,
     Mapping,
+    TypeAlias,
 )
 
 import dataclasses
@@ -113,10 +114,13 @@ class SplitConfig(BaseActionConfig):
     source: str
     delimiter: str | None = None
 
-type ContextColumnTuple = tuple[str]
-type ContextValueTuple = tuple 
-type PrimaryColumnTuple = tuple[str]
-type PrimaryValueTuple = tuple
+# NOTE:
+#   PEP 695 の `type` 文は Python 3.12 以降でしか使えないため、
+#   3.10 以降をサポートするために TypeAlias による定義を用いる。
+ContextColumnTuple: TypeAlias = tuple[str, ...]
+ContextValueTuple: TypeAlias = tuple
+PrimaryColumnTuple: TypeAlias = tuple[str, ...]
+PrimaryValueTuple: TypeAlias = tuple
 
 @dataclasses.dataclass
 class IdMap:
@@ -126,7 +130,7 @@ class IdMap:
     dict_id_to_value: Mapping[int, PrimaryValueTuple] = \
         dataclasses.field(default_factory=defaultdict)
 
-type IdContextMap = Mapping[
+IdContextMap: TypeAlias = Mapping[
     tuple[
         ContextColumnTuple,
         ContextValueTuple,
