@@ -22,6 +22,7 @@ from .actions.types import (
     AssignArrayElementConfig,
     AssignFormatConfig,
     AssignIdConfig,
+    AssignLengthConfig,
     AssignConstantConfig,
     FilterConfig,
     SplitConfig,
@@ -81,12 +82,16 @@ def setup_process_config(
 ):
     dict_process = loaded.get('process')
     if isinstance(dict_process, Mapping):
-        for process_key in [
-            'assign_length',
-        ]:
-            dict_subprocess = dict_process.get(process_key)
-            if isinstance(dict_subprocess, Mapping):
-                config.process[process_key] = flatten_row(loaded['process'][process_key])
+        # NOTE:
+        #   以前は存在しない config.process に代入しており AttributeError になっていた。
+        #   他の process 項目と同様、actions として登録する。
+        dict_subprocess = dict_process.get('assign_length')
+        if isinstance(dict_subprocess, Mapping):
+            for key, value in flatten_row(dict_subprocess).items():
+                config.actions.append(AssignLengthConfig(
+                    target = key,
+                    source = value,
+                ))
         for process_key in [
             'assign_constants',
             'assign_formats',
@@ -197,13 +202,16 @@ def setup_process_assign_array_config(
                         raise ValueError(
                             'Field is required for assign_array.'
                         )
+                    # NOTE:
+                    #   YAML 上のキー名は 'field' だが、
+                    #   dataclass 側の引数名は 'source' である。
                     items.append(AssignArrayElementConfig(
-                        field = field,
+                        source = field,
                         optional = optional,
                     ))
                 elif isinstance(item, str):
                     items.append(AssignArrayElementConfig(
-                        field = item,
+                        source = item,
                         optional = True,
                     ))
                 else:

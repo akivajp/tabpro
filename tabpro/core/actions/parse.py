@@ -73,27 +73,40 @@ def setup_parse_action(
     target: str,
     source: str,
     options: dict[str, str|bool],
-):
+) -> None:
+    '''
+    parse アクションの設定を組み立てて config に登録する。
+
+    Args:
+        config: 登録先の設定オブジェクト。
+        target: 変換結果の格納先フィールド名。
+        source: 変換元のフィールド名。
+        options: アクションのオプション (as, required, default)。
+    '''
     as_type = options.get('as', 'literal')
     required = as_boolean(options.get('required', False))
+    # NOTE: 'boolean' は 'bool' の別名として受け付ける
     if as_type in ['boolean']:
         as_type = 'bool'
-        if as_type not in ['bool', 'json', 'literal']:
-            raise ValueError(
-                f'Unsupported as type: {as_type}'
-            )
-        assign_default = False
-        default_value = None
-        if 'default' in options:
-            assign_default = True
-            default_value = options['default']
-            if default_value in ['None', 'none', 'Null', 'null']:
-                default_value = None
-        config.actions.append(ParseConfig(
-            target = target,
-            source = source,
-            as_type = as_type,
-            required = required,
-            assign_default = assign_default,
-            default_value = default_value,
-        ))
+    # NOTE:
+    #   以前はこれ以降の処理が上の if ブロック内にインデントされており、
+    #   as=json / as=literal の指定がエラーも出さずに無視されていた。
+    if as_type not in ['bool', 'json', 'literal']:
+        raise ValueError(
+            f'Unsupported as type: {as_type}'
+        )
+    assign_default = False
+    default_value = None
+    if 'default' in options:
+        assign_default = True
+        default_value = options['default']
+        if default_value in ['None', 'none', 'Null', 'null']:
+            default_value = None
+    config.actions.append(ParseConfig(
+        target = target,
+        source = source,
+        as_type = as_type,
+        required = required,
+        assign_default = assign_default,
+        default_value = default_value,
+    ))

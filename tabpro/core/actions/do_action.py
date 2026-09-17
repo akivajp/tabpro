@@ -46,6 +46,14 @@ def do_action(
 ):
     if isinstance(action, types.AssignConfig):
         return assign(row, action)
+    if isinstance(action, types.AssignArrayConfig):
+        # NOTE:
+        #   assign_array は actions パッケージの __init__.py で定義されており、
+        #   その __init__.py の末尾で本モジュールを import しているため、
+        #   モジュール先頭での import は循環参照になる。
+        #   そのため関数内で import している。
+        from . import assign_array
+        return assign_array(row, action)
     if isinstance(action, types.AssignConstantConfig):
         return assign_constant(row, action)
     if isinstance(action, types.AssignFormatConfig):
