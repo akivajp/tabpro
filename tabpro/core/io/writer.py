@@ -18,6 +18,11 @@ from ..progress import (
 
 
 class BaseWriter:
+    # NOTE:
+    #   csv モジュールは書き込み先を newline='' で開くことを要求するため、
+    #   サブクラスから上書きできるようにしている。
+    newline: str | None = None
+
     def __init__(
         self,
         target: str,
@@ -45,7 +50,9 @@ class BaseWriter:
     def _open(self):
         if self.fobj:
             return
-        self.fobj = open(self.target, 'w', encoding=self.encoding)
+        self.fobj = open(
+            self.target, 'w', encoding=self.encoding, newline=self.newline,
+        )
         if self.streaming:
             if self.progress:
                 if self.task_id is None:

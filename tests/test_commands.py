@@ -55,6 +55,11 @@ def read_csv(path: Path) -> list[dict]:
     with open(path, 'r', encoding='utf-8-sig') as f:
         return list(csv.DictReader(f))
 
+def read_tsv(path: Path) -> list[dict]:
+    '''TSV ファイルを辞書のリストとして読み込む。'''
+    with open(path, 'r', encoding='utf-8-sig') as f:
+        return list(csv.DictReader(f, delimiter='\t'))
+
 @pytest.fixture
 def csv_file(tmp_path: Path) -> Path:
     '''標準的な CSV 入力ファイル。'''
@@ -93,6 +98,47 @@ def test_convert_pick_columns(csv_file: Path, tmp_path: Path):
         list_pick_columns=['id', 'name'],
     )
     assert read_jsonl(output)[0] == {'id': '1', 'name': 'alice'}
+
+def test_convert_tsv_input(tmp_path: Path):
+    """TSV を入力として読み込める。"""
+    source = write_file(
+        tmp_path / 'input.tsv',
+        'id\tname\n1\talice\n2\tbob\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output) == [
+        {'id': '1', 'name': 'alice'},
+        {'id': '2', 'name': 'bob'},
+    ]
+
+def test_convert_tsv_output(csv_file: Path, tmp_path: Path):
+    """TSV を出力先として書き出せる。"""
+    output = tmp_path / 'out.tsv'
+    convert(input_files=[str(csv_file)], output_file=str(output))
+    rows = read_tsv(output)
+    assert len(rows) == 3
+    # NOTE: カンマを含む値がタブ区切りではそのまま保持される
+    assert rows[0]['note'] == 'hello, world'
+
+def test_convert_tsv_round_trip(tmp_path: Path):
+    """CSV -> TSV -> CSV で内容が保たれる。"""
+    source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)
+    intermediate = tmp_path / 'mid.tsv'
+    output = tmp_path / 'out.csv'
+    convert(input_files=[str(source)], output_file=str(intermediate))
+    convert(input_files=[str(intermediate)], output_file=str(output))
+    assert read_csv(output) == read_csv(source)
+
+def test_convert_preserves_newline_in_quoted_field(tmp_path: Path):
+    """引用符で囲まれたフィールド内の改行が保持される。"""
+    source = write_file(
+        tmp_path / 'input.csv',
+        'id,note\n1,"line1\nline2"\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output)[0]['note'] == 'line1\nline2'
 
 # --- parse アクション ---------------------------------------------------
 

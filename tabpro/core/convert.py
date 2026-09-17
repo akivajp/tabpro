@@ -109,7 +109,7 @@ def convert(
                 row.staging[FILE_ROW_INDEX_FIELD] = file_row_index
                 row.staging[ROW_INDEX_FIELD] = index
                 row.staging[INPUT_FIELD] = orig_row.nested
-                if loader.extension in ['.csv', '.xlsx'] and not no_header:
+                if loader.extension in ['.csv', '.tsv', '.xlsx'] and not no_header:
                     for key_index, (key, value) in enumerate(orig_row.flat.items()):
                         row.staging[f'{INPUT_FIELD}.__values__.{key_index}'] = value
             if config.actions:
