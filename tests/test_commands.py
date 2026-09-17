@@ -172,6 +172,47 @@ def test_parse_action_rejects_unknown_type(csv_file: Path, tmp_path: Path):
             list_actions=['parse:x=note:as=unknown'],
         )
 
+# --- フィルタと除外行の書き出し -----------------------------------------
+
+def test_filter_writes_filtered_out_rows(csv_file: Path, tmp_path: Path):
+    """
+    回帰テスト: --output-file-filtered-out が機能すること。
+
+    以前は Row ではなく row.flat (OrderedDict) を蓄積していたため、
+    書き出し時に AttributeError で必ず落ちていた。
+    """
+    output = tmp_path / 'out.jsonl'
+    rejected = tmp_path / 'rejected.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        output_file_filtered_out=str(rejected),
+        list_actions=['filter:name==bob'],
+    )
+    assert [row['name'] for row in read_jsonl(output)] == ['bob']
+    assert [row['name'] for row in read_jsonl(rejected)] == ['alice', 'carol']
+
+def test_filter_writes_filtered_out_rows_to_csv(csv_file: Path, tmp_path: Path):
+    """除外行の書き出しは CSV でも機能する。"""
+    rejected = tmp_path / 'rejected.csv'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(tmp_path / 'out.csv'),
+        output_file_filtered_out=str(rejected),
+        list_actions=['filter:name==bob'],
+    )
+    assert [row['name'] for row in read_csv(rejected)] == ['alice', 'carol']
+
+def test_filter_by_regex(csv_file: Path, tmp_path: Path):
+    """正規表現によるフィルタが機能する。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_actions=['filter:name=~^a'],
+    )
+    assert [row['name'] for row in read_jsonl(output)] == ['alice']
+
 # --- cast アクション ----------------------------------------------------
 
 def test_cast_existing_field(csv_file: Path, tmp_path: Path):

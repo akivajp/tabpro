@@ -122,7 +122,12 @@ def convert(
                             #ic('Filtered out: ', row.flat)
                             console.log('filtered out: ', row.flat)
                         if output_file_filtered_out:
-                            row_list_filtered_out.append(row.flat)
+                            # NOTE:
+                            #   以前は row.flat (単なる OrderedDict) を
+                            #   追加していたため、書き出し時に Writer が
+                            #   期待する Row の属性が無く AttributeError に
+                            #   なっていた。Row のまま渡す。
+                            row_list_filtered_out.append(row)
                         continue
                     row = new_row
                 except Exception as e:
