@@ -1,0 +1,51 @@
+# サポート対象の全 Python バージョンでテストを実行する。
+#
+# NOTE:
+#   宣言している下限バージョン (pyproject.toml の python = "^3.10") で
+#   実際に動作することを保証するためのマトリクス。
+#   これが無いと、新しい構文を使った時点で下限が黙って壊れる
+#   (実際に PEP 695 の `type` 文で 3.10 / 3.11 が動かなくなっていた)。
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Create virtual environment
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install package
+        run: uv pip install -e . pytest
+
+      # NOTE:
+      #   環境変数はステップ間で引き継がれないため、
+      #   仮想環境の実行ファイルを直接指定して曖昧さを避ける。
+      - name: Run tests
+        run: .venv/bin/python -m pytest tests -v
+
+      - name: Smoke test for console scripts
+        run: |
+          printf 'id,name\n1,alice\n2,bob\n' > smoke.csv
+          .venv/bin/tabpro convert smoke.csv --output smoke.jsonl
+          .venv/bin/tabpro aggregate smoke.csv --output smoke.agg.json
+          .venv/bin/tabpro sort smoke.csv --sort-keys id --output smoke.sorted.csv
+          test -s smoke.jsonl
+          test -s smoke.agg.json
+          test -s smoke.sorted.csv
+          cat smoke.jsonl
