@@ -13,7 +13,7 @@ from ... progress import (
     Progress,
 )
 
-from . io_json import escape_json
+from . io_json import loads_json
 
 @register_loader('.jsonl')
 def load_jsonl(
@@ -53,8 +53,7 @@ def load_jsonl(
         for i, line in enumerate(f):
             if limit and i >= limit:
                 break
-            line = escape_json(line)
-            row = json.loads(line)
+            row = loads_json(line)
             if not quiet:
                 progress.update(count_task_id, advance=1)
             yield Row.from_dict(row)

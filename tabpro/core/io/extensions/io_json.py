@@ -1,5 +1,6 @@
 import json
-import re
+
+from typing import Any
 
 from rich.console import Console
 
@@ -16,34 +17,103 @@ from ... progress import Progress
 
 from .... logging import logger
 
-# 除外対象: 改行、二重引用符のエスケープ、バックスラッシュのエスケープ
-# 半角円記号や除外対象以外を追加エスケープ
-# 取り急ぎはその他の制御文字については対応なし
-#regex_escape = re.compile(r'(\\[^n"\\])')
-#regex_replace = r'\\\\\1'
-def escape_json(str_json: str) -> str:
-    # NOTE: 正規表現で全てカバーするのは厳しそう
-    #str_json = re.sub(r'(\\[^n"\\])', '\\\\\\1', str_json)
-    # NOTE: 文字単位処理
-    chars = list(str_json)
+# JSON で意味を持つエスケープ文字 (\uXXXX は別途判定する)
+VALID_ESCAPE_CHARS = set('"\\/bfnrt')
+HEX_DIGITS = set('0123456789abcdefABCDEF')
+
+def is_valid_escape(
+    text: str,
+    index: int,
+) -> bool:
+    '''
+    text[index] のバックスラッシュが、正しいエスケープの開始かを判定する。
+
+    Args:
+        text: 判定対象の文字列。
+        index: バックスラッシュの位置。
+
+    Returns:
+        正しいエスケープであれば True。
+    '''
+    if index + 1 >= len(text):
+        return False
+    following = text[index + 1]
+    if following in VALID_ESCAPE_CHARS:
+        return True
+    if following == 'u':
+        digits = text[index + 2:index + 6]
+        return len(digits) == 4 and all(c in HEX_DIGITS for c in digits)
+    return False
+
+def escape_json(
+    str_json: str,
+) -> str:
+    r'''
+    エスケープとして無効なバックスラッシュのみを二重化する。
+
+    エスケープせずに書かれた Windows のパスなど、そのままでは読めない
+    JSON を救済するための関数。正しい JSON には適用してはならない。
+
+    NOTE:
+        以前は \n, \", \\ 以外を全て無効とみなして二重化していたため、
+        \t や \uXXXX といった正しいエスケープまで壊していた。
+        json.dumps は既定 (ensure_ascii=True) で非 ASCII を \uXXXX に
+        するため、日本語を含む JSON がことごとく壊れていた。
+
+    Args:
+        str_json: 対象の JSON 文字列。
+
+    Returns:
+        救済を施した JSON 文字列。
+    '''
+    chars = []
+    index = 0
     changed = False
-    i = 0
-    while i < len(chars):
-        char = chars[i]
-        if i == len(chars) - 1:
-            break
-        next_char = chars[i+1]
+    while index < len(str_json):
+        char = str_json[index]
         if char == '\\':
-            if next_char in ['n', '"', '\\']:
-                i = i + 2
+            if is_valid_escape(str_json, index):
+                # NOTE: 正しいエスケープはエスケープ対象ごとそのまま写す
+                chars.append(str_json[index:index + 2])
+                index += 2
                 continue
-            else:
-                chars[i] = '\\\\'
-                changed = True
-        i = i + 1
-    if changed:
-        str_json = ''.join(chars)
-    return str_json
+            chars.append('\\\\')
+            changed = True
+            index += 1
+            continue
+        chars.append(char)
+        index += 1
+    if not changed:
+        return str_json
+    return ''.join(chars)
+
+def loads_json(
+    text: str,
+) -> Any:
+    r'''
+    JSON を読み込む。読めない場合に限り、救済を試みる。
+
+    NOTE:
+        以前は読み込みの前に無条件で escape_json() を適用していたため、
+        正しい JSON まで壊していた。救済は最後の手段として使う。
+
+    Args:
+        text: JSON 文字列。
+
+    Returns:
+        読み込まれた値。
+
+    Raises:
+        json.JSONDecodeError: 救済しても読み込めない場合。
+    '''
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        repaired = escape_json(text)
+        if repaired == text:
+            raise
+        logger.debug('recovering malformed json by escaping backslashes')
+        return json.loads(repaired)
 
 @register_loader('.json')
 def load_json(
@@ -59,9 +129,7 @@ def load_json(
             console = Console()
         console.log('loading json data from: ', input_file)
     with open(input_file, 'r') as f:
-        str_json = f.read()
-        str_json = escape_json(str_json)
-        data = json.loads(str_json)
+        data = loads_json(f.read())
     if not isinstance(data, list):
         raise ValueError(f'invalid json array data: {input_file}')
     for row in data:
