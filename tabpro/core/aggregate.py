@@ -317,6 +317,8 @@ def aggregate(
     list_keys_to_expand: list[str] | None = None,
     show_count_max_length: int = 100,
     compare_columns: bool = False,
+    sheet: str | None = None,
+    all_sheets: bool = False,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -345,6 +347,8 @@ def aggregate(
         loader = get_loader(
             input_file,
             progress=progress,
+            sheet=sheet,
+            all_sheets=all_sheets,
         )
         console.log('# rows: ', len(loader))
         if compare_columns:

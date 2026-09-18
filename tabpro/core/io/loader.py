@@ -23,11 +23,16 @@ class Loader:
         no_header: bool = False,
         limit: int | None = None,
         progress: Progress | None = None,
+        sheet: str | None = None,
+        all_sheets: bool = False,
     ):
         self.source = source
         self.quiet = quiet
         self.no_header = no_header
         self.limit = limit
+        # NOTE: Excel 以外のローダーは **kwargs でこれらを読み捨てる
+        self.sheet = sheet
+        self.all_sheets = all_sheets
         self.rows: list[Row] | None = None
         self.progress = progress
         self.fn_load = get_loader(
@@ -63,6 +68,8 @@ class Loader:
                 no_header=self.no_header,
                 progress=self.progress,
                 limit=self.limit,
+                sheet=self.sheet,
+                all_sheets=self.all_sheets,
             ):
                 self.rows.append(row)
                 yield row

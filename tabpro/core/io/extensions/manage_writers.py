@@ -31,6 +31,15 @@ def check_writer(
 ):
     ext = os.path.splitext(output_file)[1]
     if ext not in dict_writers:
+        # NOTE:
+        #   読み込めるのに書き出せない形式 (.xls など) は、
+        #   単に未対応と言われるより理由が分かるほうがよい。
+        from . manage_loaders import dict_loaders
+        if ext in dict_loaders:
+            raise ValueError(
+                f'{ext} files can be read but not written. '
+                f'Supported output types: {sorted(dict_writers)}'
+            )
         raise ValueError(f'Unsupported file type: {ext}')
     writer_class = dict_writers[ext]
     return writer_class

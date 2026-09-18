@@ -17,6 +17,8 @@ def run(
         show_count_threshold=args.show_count_threshold,
         show_count_max_length=args.show_count_max_length,
         compare_columns=args.compare_columns,
+        sheet=args.sheet,
+        all_sheets=args.all_sheets,
     )
 
 def setup_parser(
@@ -87,5 +89,16 @@ def setup_parser(
         '--compare-columns', '--compare-column', '--compare',
         action='store_true',
         help='Compare the column sets of the input files with each other',
+    )
+    parser.add_argument(
+        '--sheet',
+        type=str,
+        default=None,
+        help='Name of the Excel sheet to read (default: the first visible one)',
+    )
+    parser.add_argument(
+        '--all-sheets',
+        action='store_true',
+        help='Read every visible sheet of an Excel workbook',
     )
     parser.set_defaults(handler=run)

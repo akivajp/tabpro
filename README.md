@@ -27,6 +27,7 @@ Requires Python 3.10 or later.
 | CSV | `.csv` | ✓ | ✓ |
 | TSV | `.tsv` | ✓ | ✓ |
 | Excel | `.xlsx` | ✓ | ✓ |
+| Excel (legacy) | `.xls` | ✓ | |
 | JSON | `.json` | ✓ | ✓ |
 | JSON Lines | `.jsonl` | ✓ | ✓ |
 
@@ -38,7 +39,20 @@ tabpro convert annotations.xlsx --output delivery.jsonl
 ```
 
 Excel cells are read as text so that dates and long numbers are not silently
-reinterpreted. Nested JSON values are flattened to dot-separated columns when
+reinterpreted. `.xls` can be read but not written, because no maintained
+library still writes the legacy format; write `.xlsx` instead.
+
+A workbook with several sheets reads only the first visible one. It says so
+rather than dropping the rest in silence:
+
+```
+warning: book.xlsx has 3 sheets; reading only 'first' and skipping
+['second', 'third']. Use --sheet to choose one, or --all-sheets to read them all.
+```
+
+`--sheet NAME` picks one, and `--all-sheets` reads every visible sheet in
+order, recording which sheet each row came from in the staging area. Both are
+accepted by `convert`, `aggregate` and `validate`. Nested JSON values are flattened to dot-separated columns when
 written to CSV/TSV/Excel (`user.name`), and rebuilt into nested objects when
 written back to JSON/JSON Lines.
 
@@ -93,6 +107,29 @@ previous one produced.
 
 To see the staging area instead of discarding it, pass `--output-debug`.
 
+### Tracing a row back to where it came from
+
+Every command records, in the staging area, the file and row index a row came
+from. Crucially, **a row that already carries that information keeps it**: it
+is not overwritten with the name of whatever intermediate file it passed
+through. So a pipeline can carry the origin all the way to the end and drop it
+only at the last step.
+
+```bash
+tabpro merge --previous base.xlsx --new corrections.xlsx --keys id \
+  --use-staging --output-base merged.jsonl        # origin recorded
+
+tabpro convert merged.jsonl --output-debug \
+  --do 'cast:score=score:as=int' --output checked.jsonl   # origin survives
+
+tabpro convert checked.jsonl --output delivery.jsonl      # origin dropped
+```
+
+`merge` records the base row's origin by default, and with `--use-staging`
+a corrected row instead points at the correction it came from. `validate`
+carries the origin through too, so a rejected row states both where it came
+from and what was wrong with it.
+
 ## Commands
 
 Every command is available both as a subcommand and as a standalone
@@ -115,6 +152,8 @@ tabpro convert [options] <input_file>... --output <output_file>
 | `--action-delimiter` | Separator inside action strings (default `:`) |
 | `--ignore-file-rows`, `--ignore` | Skip specific rows, given as `file:index` |
 | `--no-header` | Treat CSV/TSV input as having no header row; columns become `0`, `1`, … |
+| `--sheet` | Excel sheet to read (default: the first visible one) |
+| `--all-sheets` | Read every visible sheet of an Excel workbook |
 | `--output-debug` | Keep the staging area in the output |
 
 Multiple input files are concatenated. `--output-file-filtered-out` is the

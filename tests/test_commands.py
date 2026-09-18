@@ -160,6 +160,176 @@ def test_convert_preserves_newline_in_quoted_field(tmp_path: Path):
     convert(input_files=[str(source)], output_file=str(output))
     assert read_jsonl(output)[0]['note'] == 'line1\nline2'
 
+# --- Excel: シート選択と旧形式 -------------------------------------------
+
+DATA_DIR = Path(__file__).parent / 'data'
+
+def write_workbook(path: Path, sheets: dict[str, list[dict]]) -> Path:
+    """複数シートを持つ .xlsx を作成する。"""
+    import pandas as pd
+    with pd.ExcelWriter(path) as writer:
+        for name, records in sheets.items():
+            pd.DataFrame(records).to_excel(writer, sheet_name=name, index=False)
+    return path
+
+@pytest.fixture
+def workbook(tmp_path: Path) -> Path:
+    """3枚のシートを持つブック。"""
+    return write_workbook(tmp_path / 'book.xlsx', {
+        'first': [{'id': 1, 'name': 'alice'}, {'id': 2, 'name': 'bob'}],
+        'second': [{'id': 3, 'name': 'carol'}],
+        'third': [{'id': 4, 'name': 'dave'}],
+    })
+
+def test_excel_reads_the_first_sheet_by_default(
+    workbook: Path, tmp_path: Path,
+):
+    """既定では最初の可視シートのみを読む (従来どおり)。"""
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(workbook)], output_file=str(output))
+    assert [row['name'] for row in read_jsonl(output)] == ['alice', 'bob']
+
+def test_excel_warns_when_sheets_are_skipped(
+    workbook: Path, tmp_path: Path, capsys,
+):
+    """
+    回帰テスト: 読み飛ばすシートがあることが利用者に伝わること。
+
+    以前は複数シートがあっても最初の1枚だけを黙って読み、
+    残りのデータが何の表示も無く欠落していた。
+    """
+    convert(
+        input_files=[str(workbook)],
+        output_file=str(tmp_path / 'out.jsonl'),
+    )
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'second' in (captured.out + captured.err)
+
+def test_excel_sheet_can_be_chosen(workbook: Path, tmp_path: Path):
+    """--sheet で読むシートを指定できる。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(workbook)],
+        output_file=str(output),
+        sheet='second',
+    )
+    assert [row['name'] for row in read_jsonl(output)] == ['carol']
+
+def test_excel_unknown_sheet_is_rejected(workbook: Path, tmp_path: Path):
+    """存在しないシート名は、名前と候補を添えて拒否される。"""
+    with pytest.raises(ValueError, match='Sheet not found'):
+        convert(
+            input_files=[str(workbook)],
+            output_file=str(tmp_path / 'out.jsonl'),
+            sheet='nosuch',
+        )
+
+def test_excel_all_sheets(workbook: Path, tmp_path: Path):
+    """--all-sheets で全ての可視シートが読まれる。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(workbook)],
+        output_file=str(output),
+        all_sheets=True,
+    )
+    assert [row['name'] for row in read_jsonl(output)] == \
+        ['alice', 'bob', 'carol', 'dave']
+
+def test_excel_all_sheets_records_the_sheet_name(
+    workbook: Path, tmp_path: Path,
+):
+    """--all-sheets では、どのシート由来かが staging に残る。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(workbook)],
+        output_file=str(output),
+        all_sheets=True,
+        output_debug=True,
+    )
+    rows = read_jsonl(output)
+    assert rows[0]['__staging__']['__sheet__'] == 'first'
+    assert rows[2]['__staging__']['__sheet__'] == 'second'
+
+def test_excel_all_sheets_keeps_the_input_record_clean(
+    workbook: Path, tmp_path: Path,
+):
+    """シート名が、入力値の記録 (__input__) に混入しない。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(workbook)],
+        output_file=str(output),
+        all_sheets=True,
+        output_debug=True,
+    )
+    recorded = read_jsonl(output)[0]['__staging__']['__input__']
+    assert '__staging__' not in recorded
+    assert list(recorded['__values__'].values()) == ['1', 'alice']
+
+def test_legacy_xls_can_be_read(tmp_path: Path):
+    """旧形式 (.xls) を読み込める。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(DATA_DIR / 'legacy.xls')],
+        output_file=str(output),
+    )
+    assert [row['name'] for row in read_jsonl(output)] == ['alice', 'bob']
+
+def test_legacy_xls_all_sheets(tmp_path: Path):
+    """旧形式でも --all-sheets が効く。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(DATA_DIR / 'legacy.xls')],
+        output_file=str(output),
+        all_sheets=True,
+    )
+    assert [row['name'] for row in read_jsonl(output)] == \
+        ['alice', 'bob', 'carol']
+
+def test_legacy_xls_cannot_be_written(tmp_path: Path):
+    """.xls は読めるが書けないことが、そう明示される。"""
+    with pytest.raises(ValueError, match='read but not written'):
+        convert(
+            input_files=[str(DATA_DIR / 'legacy.xls')],
+            output_file=str(tmp_path / 'out.xls'),
+        )
+
+# --- 由来情報 (staging) の引き継ぎ ---------------------------------------
+
+def test_existing_provenance_is_not_overwritten(tmp_path: Path):
+    """
+    既に由来情報を持つ行は、中間ファイルを経由しても上書きされない。
+
+    納品物に問題があったとき、最初の入力ファイルの何行目が元だったかを
+    辿れることに依存した運用があるため、この性質を固定する。
+    """
+    source = write_file(
+        tmp_path / 'mid.jsonl',
+        '{"id": "1", "name": "alice", '
+        '"__staging__": {"__file__": "original.csv", "__row_index__": 7}}\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(source)],
+        output_file=str(output),
+        output_debug=True,
+        list_actions=['cast:id=id:as=int'],
+        list_pick_columns=['id', 'name'],
+    )
+    staging = read_jsonl(output)[0]['__staging__']
+    assert staging['__file__'] == 'original.csv'
+    assert staging['__row_index__'] == 7
+
+def test_provenance_is_dropped_for_delivery(tmp_path: Path):
+    """既定では、納品用に由来情報が落とされる。"""
+    source = write_file(
+        tmp_path / 'mid.jsonl',
+        '{"id": "1", "__staging__": {"__file__": "original.csv"}}\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output)[0] == {'id': '1'}
+
 # --- parse アクション ---------------------------------------------------
 
 def test_parse_action_as_json_is_applied(tmp_path: Path):

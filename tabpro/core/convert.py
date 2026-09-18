@@ -42,6 +42,8 @@ from . io import (
 
 from . console.views import Panel
 
+from . classes.row import Row
+
 def convert(
     input_files: list[str],
     output_file: str | None = None,
@@ -54,6 +56,8 @@ def convert(
     verbose: bool = False,
     ignore_file_rows: list[str] | None = None,
     no_header: bool = False,
+    sheet: str | None = None,
+    all_sheets: bool = False,
 ):
     #console = Console()
     progress = Progress(
@@ -94,6 +98,8 @@ def convert(
             input_file,
             no_header=no_header,
             progress=progress,
+            sheet=sheet,
+            all_sheets=all_sheets,
         )
         console.log('# rows: ', len(loader))
         for index, row in enumerate(loader):
@@ -103,13 +109,24 @@ def convert(
             short_file_row_index = f'{base_name}:{index}'
             if short_file_row_index in set_ignore_file_rows:
                 continue
-            orig_row = row.clone()
-            if STAGING_FIELD not in row:
+            # NOTE:
+            #   入力値の記録には、ローダーが付与した由来情報 (__sheet__ など) を
+            #   含めない。clone() では staging ごと複製されてしまい、
+            #   __input__ や __values__ にシート名が混入する。
+            orig_row = Row()
+            for column in row.keys():
+                orig_row[column] = row[column]
+            # NOTE:
+            #   既に由来情報を持つ行は上書きしない (中間ファイルを何段経由しても
+            #   最初の入力ファイルの何行目かを保つため)。
+            #   判定には __file__ の有無を用いる。__staging__ 全体の有無で見ると、
+            #   ローダーが付与した __sheet__ だけで由来情報が設定されなくなる。
+            if FILE_FIELD not in row.staging:
                 row.staging[FILE_FIELD] = input_file
                 row.staging[FILE_ROW_INDEX_FIELD] = file_row_index
                 row.staging[ROW_INDEX_FIELD] = index
                 row.staging[INPUT_FIELD] = orig_row.nested
-                if loader.extension in ['.csv', '.tsv', '.xlsx'] and not no_header:
+                if loader.extension in ['.csv', '.tsv', '.xls', '.xlsx'] and not no_header:
                     for key_index, (key, value) in enumerate(orig_row.flat.items()):
                         row.staging[f'{INPUT_FIELD}.__values__.{key_index}'] = value
             if config.actions:

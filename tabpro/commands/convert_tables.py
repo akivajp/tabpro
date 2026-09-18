@@ -21,6 +21,8 @@ def run(
         verbose = args.verbose,
         ignore_file_rows = args.ignore_file_rows,
         no_header = args.no_header,
+        sheet = args.sheet,
+        all_sheets = args.all_sheets,
     )
 
 def setup_parser(
@@ -97,5 +99,16 @@ def setup_parser(
         '--no-header',
         action='store_true',
         help='CSV/TSV like data without header row',
+    )
+    parser.add_argument(
+        '--sheet',
+        type=str,
+        default=None,
+        help='Name of the Excel sheet to read (default: the first visible one)',
+    )
+    parser.add_argument(
+        '--all-sheets',
+        action='store_true',
+        help='Read every visible sheet of an Excel workbook',
     )
     parser.set_defaults(handler=run)

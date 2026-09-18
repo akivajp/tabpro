@@ -24,6 +24,8 @@ def run(
             output_invalid=args.output_invalid,
             report_file=args.report,
             verbose=args.verbose,
+            sheet=args.sheet,
+            all_sheets=args.all_sheets,
         )
     except (SchemaError, FileNotFoundError, ValueError) as e:
         # NOTE:
@@ -63,5 +65,16 @@ def setup_parser(
         '--report', '--report-file',
         required=False,
         help='Path to write the list of violations',
+    )
+    parser.add_argument(
+        '--sheet',
+        type=str,
+        default=None,
+        help='Name of the Excel sheet to read (default: the first visible one)',
+    )
+    parser.add_argument(
+        '--all-sheets',
+        action='store_true',
+        help='Read every visible sheet of an Excel workbook',
     )
     parser.set_defaults(handler=run)

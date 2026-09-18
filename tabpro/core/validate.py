@@ -473,6 +473,8 @@ def validate(
     output_invalid: str | None = None,
     report_file: str | None = None,
     verbose: bool = False,
+    sheet: str | None = None,
+    all_sheets: bool = False,
 ) -> ValidationResult:
     '''
     入力ファイルがスキーマを満たしているかを検査する。
@@ -519,6 +521,8 @@ def validate(
             loader = get_loader(
                 input_file,
                 progress=progress,
+                sheet=sheet,
+                all_sheets=all_sheets,
             )
             console.log('# rows: ', len(loader))
             for index, row in enumerate(loader):
