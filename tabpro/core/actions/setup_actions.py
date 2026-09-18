@@ -31,8 +31,7 @@ def setup_actions_with_args(
     logger.debug('list_actions: %s', list_actions)
     for str_action in list_actions:
         fields = str_action.split(action_delimiter)
-        if len(fields) >= 1:
-            action_name = fields[0].strip()
+        action_name = fields[0].strip()
         if action_name == 'assign-format':
             setup_assign_format_action(config, str_action, action_delimiter)
             continue

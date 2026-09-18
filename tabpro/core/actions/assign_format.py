@@ -38,9 +38,6 @@ def assign_format(
         except KeyError as e:
             key = e.args[0]
             params[key] = f'__{key}__undefined__'
-        except:
-            raise
-    #set_row_staging_value(row, config.target, formatted)
     row.staging[config.target] = formatted
     return row
 

@@ -55,7 +55,7 @@ class Progress(progress.Progress):
         return [
             *default_columns,
             progress.MofNCompleteColumn(),
-            "[yellow]Elasped:",
+            "[yellow]Elapsed:",
             progress.TimeElapsedColumn(),
         ]
     

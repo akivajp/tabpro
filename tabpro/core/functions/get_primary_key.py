@@ -13,10 +13,6 @@ def get_primary_key(
     for key in keys:
         value, found = row.search(key)
         if not found:
-            #progress = Progress()
-            #progress.console.print(Panel(
-            #    row.nested,
-            #))
             logger.debug('row: ')
             logger.debug(pretty_repr(row.flat))
             existing_first20 = list(row.keys())[:20]

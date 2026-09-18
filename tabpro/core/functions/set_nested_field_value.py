@@ -4,10 +4,12 @@ Set the value of a field in a nested dictionary.
 
 from collections import OrderedDict
 
+from typing import Any
+
 def set_nested_field_value(
     data: OrderedDict | list,
     field: str,
-    value: any,
+    value: Any,
 ):
     if isinstance(field, str) and  '.' in field:
         field, rest = field.split('.', 1)

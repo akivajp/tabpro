@@ -1,5 +1,11 @@
 '''
-This function is used to search for a column value in a row. It will first search in the '__debug__' field, then in the '__debug__.__original__' field, and finally in the row itself. If the value is found, it will be set in the row and returned.
+行の中から列の値を探す。
+
+優先順位は次のとおり。
+
+1. staging (__staging__.<column>) — アクションが書き込んだ値
+2. row 本体 (<column>)
+3. staging の入力値記録 (__staging__.__input__.<column>) — 変換前の値
 '''
 
 from .. constants import (
