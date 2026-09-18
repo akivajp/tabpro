@@ -253,7 +253,7 @@ def load_dbq(
         for index, values in enumerate(rows):
             if limit is not None and index >= limit:
                 break
-            # NOTE: strict で列数と値数の不一致を검出させる
+            # NOTE: strict で列数と値数の不一致を検出させる
             record = OrderedDict(zip(columns, values, strict=True))
             if task_id is not None and progress is not None:
                 progress.update(task_id, advance=1)
