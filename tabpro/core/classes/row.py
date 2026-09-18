@@ -95,16 +95,37 @@ class Row(Mapping):
         key: str,
         default: Any = None,
     ):
+        '''
+        指定したキーを取り除き、(値, 見つかったか) の組を返す。
+
+        NOTE:
+            以前はフラット表現の削除条件が壊れていた。
+            ループ変数を使い回していたため対象がパスの手前の要素になり、
+            さらに startswith による前方一致だったため、
+            omit:x が xx や xyz まで巻き込んで削除していた
+            (フラット表現を使う CSV / TSV / Excel の出力でのみ現れる)。
+
+        Args:
+            key: 取り除くキー。ドット区切りでネストを辿る。
+            default: 見つからなかった場合に返す値。
+
+        Returns:
+            (取り除いた値, 見つかったか) の組。
+        '''
         last_nested = self.nested
         keys = key.split('.')
-        for key in keys[:-1]:
-            if key not in last_nested:
+        for part in keys[:-1]:
+            if part not in last_nested:
                 return default, False
-            last_nested = last_nested[key]
-        # delete flat keys
-        prefix = key
+            last_nested = last_nested[part]
+        # NOTE:
+        #   フラット表現からは、そのキー自身とその子孫だけを削除する。
+        #   子孫の判定には区切り文字まで含めて一致を見る。
+        prefix = f'{key}.'
         for flat_key in list(self.flat.keys()):
-            if flat_key == prefix or flat_key.startswith(prefix):
+            if flat_key == key or (
+                isinstance(flat_key, str) and flat_key.startswith(prefix)
+            ):
                 del self.flat[flat_key]
         return last_nested.pop(keys[-1], default), True
     
