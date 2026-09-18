@@ -88,7 +88,17 @@ def compare(
             dict_key_to_row[query_value] = row
             set_query_values.add(query_value)
     diff_rows: list[Row] = []
-    for query_value in sorted(set_query_values):
+    try:
+        ordered_query_values = sorted(set_query_values)
+    except TypeError:
+        # NOTE:
+        #   JSON 由来のデータではキーに数値と文字列が混ざりうるため、
+        #   混在時に TypeError で停止する代わりに文字列に揃えて並べる。
+        ordered_query_values = sorted(
+            set_query_values,
+            key=lambda value: tuple(str(item) for item in value),
+        )
+    for query_value in ordered_query_values:
         row1 = list_dict_key_to_row[0].get(query_value)
         row2 = list_dict_key_to_row[1].get(query_value)
         diff_row = Row()

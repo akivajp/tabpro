@@ -624,6 +624,33 @@ def test_compare(csv_file: Path, tmp_path: Path):
     assert len(diff) == 3
     assert diff[0]['diff'] == {'-score': '20', '+score': '25'}
 
+def test_compare_tolerates_mixed_type_keys(tmp_path: Path):
+    """キーに数値と文字列が混ざっても差分を取れる。
+
+    回帰テスト: JSON 由来のデータでキーの型が混ざると
+    sorted() が TypeError を出して処理全体が停止していた。
+    """
+    file1 = write_file(
+        tmp_path / 'one.jsonl',
+        '{"id": 1, "v": "a"}\n'
+        '{"id": "x", "v": "b"}\n',
+    )
+    file2 = write_file(
+        tmp_path / 'two.jsonl',
+        '{"id": "x", "v": "b2"}\n'
+        '{"id": 1, "v": "a"}\n',
+    )
+    output = tmp_path / 'diff.jsonl'
+    compare(
+        path1=str(file1),
+        path2=str(file2),
+        output_path=str(output),
+        query_keys=['id'],
+    )
+    rows = read_jsonl(output)
+    assert len(rows) == 1
+    assert rows[0]['diff'] == {'-v': 'b', '+v': 'b2'}
+
 def test_merge(csv_file: Path, tmp_path: Path):
     '''主キーが一致する行の値が修正ファイルの内容で更新される。'''
     modified = write_file(tmp_path / 'modified.csv', CSV_MODIFIED)
