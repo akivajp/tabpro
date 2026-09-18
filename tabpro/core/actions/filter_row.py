@@ -20,22 +20,29 @@ def filter_row(
     config: FilterConfig,
 ):
     value, found = row.search(config.field)
-    #ic(config, value, found)
-    if config.value in ['NaN', 'nan']:
-        config.value = math.nan
-        #logger.debug('config.value: %s', config.value)
+    # NOTE:
+    #   config.value は行ごとに書き換えず、ローカル変数に落として扱う。
+    #   以前は dataclass の値そのものを NaN に書き換えていた。
+    filter_value = config.value
+    if filter_value in ['NaN', 'nan']:
+        filter_value = math.nan
     if config.operator == '==':
         if not found:
             return False
-        if value != config.value and str(value) != str(config.value):
+        if value != filter_value and str(value) != str(filter_value):
             return False
     elif config.operator == '!=':
-        if str(value) == str(config.value) or value == config.value:
+        if str(value) == str(filter_value) or value == filter_value:
             return False
     elif config.operator == '=~':
         if not found:
             return False
-        if not re.search(str(config.value), str(value)):
+        if not re.search(str(filter_value), str(value)):
+            return False
+    elif config.operator in ['>', '>=', '<', '<=']:
+        if not found:
+            return False
+        if not compare_ordered(value, filter_value, config.operator):
             return False
     elif config.operator == 'not-in':
         if isinstance(config.value, list):
@@ -54,6 +61,45 @@ def filter_row(
     else:
         raise ValueError(f'Unsupported operator: {config.operator}')
     return True
+
+def compare_ordered(
+    value: Any,
+    filter_value: Any,
+    operator: str,
+):
+    '''
+    大小比較 (> >= < <=) を数値として行う。
+
+    どちらか一方でも数値に変換できない場合は、
+    黙って文字列比較など別の基準に切り替えるのではなく、
+    明確なエラーにして処理を止める (異常データの検知が目的のため)。
+
+    Args:
+        value: 行から取得した値。
+        filter_value: フィルタ設定の比較値。
+        operator: 比較演算子 (> >= < <= のいずれか)。
+
+    Returns:
+        比較結果 (行を残すかどうか)。
+
+    Raises:
+        ValueError: いずれかの値が数値として解釈できない場合。
+    '''
+    try:
+        left = float(value)
+        right = float(filter_value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            f'filter operator {operator} requires numeric values, '
+            f'but got field value: {value!r} and filter value: {filter_value!r}'
+        ) from e
+    if operator == '>':
+        return left > right
+    if operator == '>=':
+        return left >= right
+    if operator == '<':
+        return left < right
+    return left <= right
 
 def check_empty(
     value: Any,
@@ -92,6 +138,18 @@ def setup_filter_action(
             value = value.strip(),
         ))
         return config
+    # NOTE:
+    #   '>' よりも先に '>=' を判定する (1文字の区切りが先だと
+    #   '>=' が '>' と残り '=...' に誤って分解されるため)。
+    for operator in ['>=', '<=']:
+        if operator in str_filter:
+            field, value = str_filter.split(operator)
+            config.actions.append(FilterConfig(
+                field = field.strip(),
+                operator = operator,
+                value = value.strip(),
+            ))
+            return config
     if '=~' in str_filter:
         field, value = str_filter.split('=~')
         config.actions.append(FilterConfig(
@@ -100,6 +158,15 @@ def setup_filter_action(
             value = value.strip(),
         ))
         return config
+    for operator in ['>', '<']:
+        if operator in str_filter:
+            field, value = str_filter.split(operator)
+            config.actions.append(FilterConfig(
+                field = field.strip(),
+                operator = operator,
+                value = value.strip(),
+            ))
+            return config
     raise ValueError(
         f'Unsupported filter: {str_filter}'
     )

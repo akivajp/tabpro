@@ -40,10 +40,8 @@ def replace_string(
 ):
     value, found = row.search(config.source)
     if found:
-        value, found = row.search(config.source)
-        if found:
-            new_value = _replace_value(value, config)
-            row.staging[config.target] = new_value
+        new_value = _replace_value(value, config)
+        row.staging[config.target] = new_value
     return row
 
 def setup_replace_action(

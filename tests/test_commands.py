@@ -437,6 +437,44 @@ def test_filter_by_regex(csv_file: Path, tmp_path: Path):
     )
     assert [row['name'] for row in read_jsonl(output)] == ['alice']
 
+@pytest.mark.parametrize('operator,value,expected', [
+    ('>', '15', ['bob', 'carol']),
+    ('>=', '25', ['carol']),
+    ('<', '15', ['alice']),
+    ('<=', '20', ['alice', 'bob']),
+])
+def test_filter_comparison_operators(
+    csv_file: Path,
+    tmp_path: Path,
+    operator: str,
+    value: str,
+    expected: list[str],
+):
+    """大小比較フィルタ (CLI 文字列形式) が機能する。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_actions=[f'filter:score{operator}{value}'],
+    )
+    assert [row['name'] for row in read_jsonl(output)] == expected
+
+def test_filter_comparison_requires_numeric_values(
+    csv_file: Path, tmp_path: Path,
+):
+    """大小比較に数値でない値が混ざった場合は、黙って比較せずエラーにする。
+
+    異常データの検知が目的のため、文字列としての辞書順比較など
+    別の基準に黙って切り替えることはしない。
+    """
+    output = tmp_path / 'out.jsonl'
+    with pytest.raises(ValueError, match='requires numeric'):
+        convert(
+            input_files=[str(csv_file)],
+            output_file=str(output),
+            list_actions=['filter:name>3'],
+        )
+
 # --- cast アクション ----------------------------------------------------
 
 def test_cast_existing_field(csv_file: Path, tmp_path: Path):
