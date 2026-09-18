@@ -12,6 +12,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # NOTE: release ワークフローから呼び出して、テストが通らないものを公開しないようにする
+  workflow_call:
 
 jobs:
   test:
@@ -22,10 +24,10 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10
 
       - name: Create virtual environment
         run: uv venv --python ${{ matrix.python-version }}

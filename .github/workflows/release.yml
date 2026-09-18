@@ -1,0 +1,70 @@
+# タグ (v*) の push を契機に PyPI へ公開する。
+#
+# NOTE:
+#   認証には PyPI の Trusted Publishing (OIDC) を用いるため、
+#   API トークンをリポジトリのシークレットに保存する必要が無い。
+#   事前に PyPI 側で以下の Trusted Publisher を登録しておくこと:
+#     Owner: akivajp / Repository: tabpro
+#     Workflow name: release.yml / Environment name: pypi
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # NOTE:
+  #   このワークフローを追加する前に打ったタグを公開したい場合、
+  #   そのタグには本ファイルが存在せず tag push 経路が使えない。
+  #   その場合は main から手動実行し、tag 入力でリリース対象を指定する。
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'リリースするタグ (例: v0.6.0)'
+        required: true
+        type: string
+
+jobs:
+  # NOTE: テストが通らないものは公開しない
+  test:
+    uses: ./.github/workflows/test.yml
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # NOTE: Trusted Publishing の OIDC トークン取得に必要
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          # NOTE:
+          #   poetry-dynamic-versioning はタグからバージョンを決めるため、
+          #   全履歴とタグが必要 (既定の浅いクローンでは 0.0.0 になる)。
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
+
+      - name: Build
+        run: uvx --from poetry --with poetry-dynamic-versioning poetry build
+
+      # NOTE:
+      #   採番はタグ由来だが、浅いクローンや打ち間違いで食い違うと
+      #   誤ったバージョンをそのまま公開してしまう。PyPI は同じバージョンの
+      #   再アップロードを受け付けないため、公開前にここで止める。
+      - name: Verify that the built version matches the tag
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          expected="${tag#v}"
+          if [ ! -f "dist/tabpro-${expected}-py3-none-any.whl" ]; then
+            echo "::error::Tag ${tag} expects version ${expected}, but dist/ contains:"
+            ls -1 dist/
+            exit 1
+          fi
+          echo "Built version ${expected} matches tag ${tag}."
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
