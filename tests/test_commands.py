@@ -532,6 +532,30 @@ def test_cast_missing_field_uses_default(csv_file: Path, tmp_path: Path):
 
 # --- YAML 設定ファイル経路 ----------------------------------------------
 
+def test_assign_constant_bool_parses_false_as_false(
+    csv_file: Path, tmp_path: Path,
+):
+    """assign-constant の type=bool で 'false' が False になる。
+
+    回帰テスト: 以前は bool() で文字列を変換していたため、
+    'false' や '0' も非空文字列として True になっていた。
+    """
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_actions=[
+            'assign-constant:ok=true:type=bool',
+            'assign-constant:ng=false:type=bool',
+            'assign-constant:zero=0:type=bool',
+        ],
+        list_pick_columns=['id', 'ok', 'ng', 'zero'],
+    )
+    rows = read_jsonl(output)
+    assert all(row['ok'] is True for row in rows)
+    assert all(row['ng'] is False for row in rows)
+    assert all(row['zero'] is False for row in rows)
+
 def test_config_assign_length(csv_file: Path, tmp_path: Path):
     '''
     回帰テスト: process.assign_length が AttributeError にならないこと。
