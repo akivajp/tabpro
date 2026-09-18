@@ -1,6 +1,5 @@
 import pytest
 from tabpro.core.classes.row import Row
-from tabpro.core.io.loader import Loader
 
 from collections import OrderedDict
 
