@@ -36,15 +36,9 @@ def assign_format(
         try:
             formatted = template.format(**params)
         except KeyError as e:
-            #ic(e)
-            #ic(e.args)
-            #ic(e.args[0])
             key = e.args[0]
             params[key] = f'__{key}__undefined__'
         except:
-            #ic(params)
-            #ic(params.keys())
-            #ic(row.flat)
             raise
     #set_row_staging_value(row, config.target, formatted)
     row.staging[config.target] = formatted

@@ -63,7 +63,6 @@ def convert(
         redirect_stdout = False,
     )
     progress.start()
-    #ic.enable()
     console = progress.console
     logger.info('input_files: %s', input_files)
     row_list_filtered_out = []
@@ -133,7 +132,6 @@ def convert(
                         if not output_debug:
                             row.pop_staging()
                         if verbose:
-                            #ic('Filtered out: ', row.flat)
                             console.log('filtered out: ', row.flat)
                         if output_file_filtered_out:
                             # NOTE:
@@ -146,11 +144,8 @@ def convert(
                     row = new_row
                 except Exception as e:
                     if verbose:
-                        #ic(index)
                         #console.log('error in row index: ', index)
                         logger.error('error in row index: ', index)
-                        #ic(flat_row)
-                        #ic(row.flat)
                     raise e
             if config.pick:
                 row = remap_columns(row, config.pick)
@@ -173,11 +168,8 @@ def convert(
     console.log('total processed input rows: ', num_stacked_rows)
     if writer:
         writer.close()
-    #else:
-    #    ic(all_df)
     if row_list_filtered_out:
         #df_filtered_out = pd.DataFrame(row_list_filtered_out)
-        #ic('Saving filtered out to: ', output_file_filtered_out)
         if output_file_filtered_out:
             console.log('saving filtered out to: ', output_file_filtered_out)
             writer = get_writer(

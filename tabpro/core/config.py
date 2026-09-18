@@ -315,7 +315,6 @@ def setup_pick_with_args(
     list_fields: list[str],
     console: Console | None = None
 ):
-    #ic(list_fields)
     if console:
         console.log('list_fields:', list_fields)
     for field in list_fields:

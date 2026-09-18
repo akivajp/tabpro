@@ -8,7 +8,6 @@ def get_nested_field_value(
     field: str | int,
 ):
     if isinstance(data, list):
-        #ic(data, field)
         if field.isdigit():
             index = int(field)
             if index < len(data):

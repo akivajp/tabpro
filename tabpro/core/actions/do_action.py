@@ -4,6 +4,8 @@ from . import types
 
 from ...logging import logger
 
+from ..constants import FILE_ROW_INDEX_FIELD
+
 from .assign import assign
 from .cast import cast
 from .assign_constant import assign_constant
@@ -31,8 +33,8 @@ def do_actions(
             logger.error('failed with action: %s', action)
             #logger.error('failed with row: %s', row)
             logger.error('failed with row: %s', dict(row.items()))
-            if '__file_row_index__' in row.staging:
-                file_row_index = row.staging['__file_row_index__']
+            if FILE_ROW_INDEX_FIELD in row.staging:
+                file_row_index = row.staging[FILE_ROW_INDEX_FIELD]
                 logger.error('failed with file row index: %s', file_row_index)
             raise
         if last_row is None:

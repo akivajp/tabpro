@@ -183,7 +183,6 @@ def merge(
     if ignore_not_found:
         logger.debug('# ignored keys: %s', len(list_ignored_keys))
     if output_base_data_file:
-        #ic('Saving to: ', output_base_data_file)
         save(
             all_base_rows,
             output_base_data_file,
@@ -200,8 +199,6 @@ def merge(
         for key, row in dict_key_to_row.items():
             if key not in set_modified_keys:
                 remaining_rows.append(row)
-        #ic(len(remaining_rows))
-        #ic('Saving to: ', output_remaining_data_file)
         console.log('# remaining rows: ', len(remaining_rows))
         save(
             remaining_rows,

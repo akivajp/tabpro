@@ -4,8 +4,6 @@ Loader class is responsible for loading the data from the source.
 
 import os.path
 
-from rich.console import Console
-
 from . extensions.manage_loaders import get_loader
 from ..classes.row import Row
 
@@ -66,11 +64,6 @@ class Loader:
             raise ValueError('No rows loaded')
         return len(self.rows)
 
-    def _get_console(self):
-        if self.console is None:
-            self.console = Console()
-        return self.console
-    
     def _yield_data(self):
         if self.rows is not None:
             # NOTE: keep_rows=True で既に読み込み済みの場合は再読み込みしない
