@@ -1,50 +1,65 @@
-[tool.poetry]
+[project]
 name = "tabpro"
-version = "0.0.0"
 description = "A table data processor"
-authors = ["Akiva Miura <akiva.miura@gmail.com>"]
+authors = [
+    { name = "Akiva Miura", email = "akiva.miura@gmail.com" },
+]
 license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
-repository = "https://github.com/akivajp/tabpro"
-packages = [
-    { include = "tabpro" },
+# NOTE: Python 3.10 以降で動作することを CI のマトリクスで検証している
+requires-python = ">=3.10,<4.0"
+# NOTE:
+#   バージョンは poetry-dynamic-versioning が git のタグから決めるため、
+#   dynamic として宣言する。実際の値は [tool.poetry] version の
+#   プレースホルダがビルド時に置換される。
+dynamic = ["version"]
+dependencies = [
+    "icecream>=2.1.3,<3.0.0",
+    "openpyxl>=3.1.5,<4.0.0",
+    "pandas>=2.2.3,<3.0.0",
+    "pyyaml>=6.0.2,<7.0.0",
+    "rich>=13.9.4,<14.0.0",
+    # NOTE: 旧形式 (.xls) の読み込みに必要。94KB・依存ゼロ
+    "xlrd>=2.0.1,<3.0.0",
 ]
 
-[tool.poetry-dynamic-versioning]
-enable = true
-style = "pep440"
+[project.urls]
+Repository = "https://github.com/akivajp/tabpro"
 
-[tool.poetry.scripts]
-tabpro= "tabpro.cli:main"
+[project.scripts]
+tabpro = "tabpro.cli:main"
 tabpro-aggregate = "tabpro.cli:command_aggregate_tables"
 aggregate-tables = "tabpro.cli:command_aggregate_tables"
 tabpro-compare = "tabpro.cli:command_compare_tables"
 tabpro-diff = "tabpro.cli:command_compare_tables"
 compare-tables = "tabpro.cli:command_compare_tables"
-tabpro-convert= "tabpro.cli:command_convert_tables"
+tabpro-convert = "tabpro.cli:command_convert_tables"
 convert-tables = "tabpro.cli:command_convert_tables"
-tabpro-merge= "tabpro.cli:command_merge_tables"
+tabpro-merge = "tabpro.cli:command_merge_tables"
 merge-tables = "tabpro.cli:command_merge_tables"
-tabpro-sort= "tabpro.cli:command_sort_tables"
+tabpro-sort = "tabpro.cli:command_sort_tables"
 sort-tables = "tabpro.cli:command_sort_tables"
 tabpro-validate = "tabpro.cli:command_validate_tables"
 validate-tables = "tabpro.cli:command_validate_tables"
 
-[tool.poetry.dependencies]
-# NOTE: Python 3.10 以降で動作することを CI のマトリクスで検証している
-python = "^3.10"
-icecream = "^2.1.3"
-pandas = "^2.2.3"
-openpyxl = "^3.1.5"
-pyyaml = "^6.0.2"
-rich = "^13.9.4"
-# NOTE: 旧形式 (.xls) の読み込みに必要。94KB・依存ゼロ
-xlrd = "^2.0.1"
+[tool.poetry]
+# NOTE:
+#   dynamic = ["version"] を宣言した場合でも、poetry-core は
+#   [tool.poetry] 側にプレースホルダの version を要求する。
+#   この値は poetry-dynamic-versioning がビルド時に置換する。
+packages = [
+    { include = "tabpro" },
+]
+version = "0.0.0"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+style = "pep440"
 
 [tool.poetry.group.dev.dependencies]
 # NOTE: pytest は実行時には不要なため開発用依存とする
 pytest = "^8.3.5"
-
 
 [build-system]
 requires = ["poetry-core"]
