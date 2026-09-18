@@ -52,6 +52,11 @@ def setup_parser(
     parser.add_argument(
         '--pick-columns', '--pick',
         type=str,
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         help='Pick column map',
     )
@@ -63,12 +68,22 @@ def setup_parser(
     )
     parser.add_argument(
         '--do-actions', '--actions', '--do',
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         type=str,
         help='Actions to do',
     )
     parser.add_argument(
         '--ignore-file-rows', '--ignore-rows', '--ignore',
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         type=str,
         help='Ignore tuples of file name and row index',

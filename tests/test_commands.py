@@ -6,6 +6,7 @@
 経路を重点的に検証する。
 '''
 
+import argparse
 import csv
 import json
 import shutil
@@ -20,6 +21,12 @@ from tabpro.core.compare import compare
 from tabpro.core.convert import convert
 from tabpro.core.merge import merge
 from tabpro.core.sort import sort
+
+from tabpro.commands.aggregate_tables import setup_parser as setup_aggregate_parser
+from tabpro.commands.compare_tables import setup_parser as setup_compare_parser
+from tabpro.commands.convert_tables import setup_parser as setup_convert_parser
+from tabpro.commands.merge_tables import setup_parser as setup_merge_parser
+from tabpro.commands.sort_tables import setup_parser as setup_sort_parser
 
 CSV_SAMPLE = (
     'id,name,score,note\n'
@@ -360,6 +367,84 @@ def test_aggregate(csv_file: Path, tmp_path: Path):
     result = json.loads(output.read_text(encoding='utf-8'))
     assert result['num_rows'] == 3
     assert result['aggregated']['name']['num_variations'] == 3
+
+# --- 複数値オプションの繰り返し指定 -------------------------------------
+
+def build_parser(setup_parser) -> argparse.ArgumentParser:
+    """テスト用に各コマンドのパーサーを組み立てる。"""
+    parser = argparse.ArgumentParser()
+    setup_parser(parser)
+    return parser
+
+def test_repeated_do_actions_accumulate():
+    """
+    回帰テスト: --do を複数回書いても先の指定が捨てられないこと。
+
+    argparse の既定 (store) では後の指定が前を上書きするため、
+    警告も出ないまま最初のアクションだけが無視されていた。
+    """
+    parser = build_parser(setup_convert_parser)
+    args = parser.parse_args([
+        'in.csv',
+        '--do', 'cast:score=score:as=int',
+        '--do', 'filter:name==bob',
+    ])
+    assert args.do_actions == [
+        'cast:score=score:as=int',
+        'filter:name==bob',
+    ]
+
+def test_single_do_with_multiple_values_still_works():
+    """1つの --do に複数値を並べる従来の書き方も変わらず動く。"""
+    parser = build_parser(setup_convert_parser)
+    args = parser.parse_args([
+        'in.csv',
+        '--do', 'cast:score=score:as=int', 'filter:name==bob',
+    ])
+    assert args.do_actions == [
+        'cast:score=score:as=int',
+        'filter:name==bob',
+    ]
+
+def test_unspecified_multi_value_option_stays_none():
+    """指定しなければ従来どおり None のままであること。"""
+    parser = build_parser(setup_convert_parser)
+    args = parser.parse_args(['in.csv'])
+    assert args.do_actions is None
+    assert args.pick_columns is None
+
+def test_repeated_pick_columns_accumulate():
+    """--pick も繰り返し指定が累積される。"""
+    parser = build_parser(setup_convert_parser)
+    args = parser.parse_args(['in.csv', '--pick', 'id', '--pick', 'name'])
+    assert args.pick_columns == ['id', 'name']
+
+@pytest.mark.parametrize(
+    'setup_parser, base_args, option, dest',
+    [
+        (setup_sort_parser, ['in.csv'], '--sort-keys', 'sort_keys'),
+        (setup_aggregate_parser, ['in.csv'], '--keys-to-expand', 'keys_to_expand'),
+        (
+            setup_compare_parser,
+            ['a.csv', 'b.csv', '--query', 'id'],
+            '--compare-keys',
+            'compare_keys',
+        ),
+        (
+            setup_merge_parser,
+            ['--previous', 'a.csv', '--new', 'b.csv', '--keys', 'id'],
+            '--merge-fields',
+            'merge_fields',
+        ),
+    ],
+)
+def test_repeated_options_accumulate_for_every_command(
+    setup_parser, base_args: list[str], option: str, dest: str,
+):
+    """各コマンドの複数値オプションが一様に累積されること。"""
+    parser = build_parser(setup_parser)
+    args = parser.parse_args(base_args + [option, 'a', option, 'b'])
+    assert getattr(args, dest) == ['a', 'b']
 
 # --- コンソールスクリプト -----------------------------------------------
 

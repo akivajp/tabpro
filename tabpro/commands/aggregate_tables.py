@@ -36,6 +36,11 @@ def setup_parser(
         '--keys-to-show-duplicates',
         required=False,
         default=None,
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         help='Keys to show duplicates',
     )
@@ -43,6 +48,11 @@ def setup_parser(
         '--keys-to-show-all-count',
         required=False,
         default=None,
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         help='Keys to show all count',
     )
@@ -50,6 +60,11 @@ def setup_parser(
         '--keys-to-expand', '--expand',
         required=False,
         default=None,
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         help='Keys to expand',
     )

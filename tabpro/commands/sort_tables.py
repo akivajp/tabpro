@@ -28,6 +28,11 @@ def setup_parser(
         '--sort-keys', '--sort-key', '-K',
         required=True,
         default=None,
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         help='Keys to sort by',
     )

@@ -29,18 +29,33 @@ def setup_parser(
 ):
     parser.add_argument(
         '--previous-files', '--previous-file', '--previous', '--old', '-P',
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         required=True,
         help='Previous files to merge',
     )
     parser.add_argument(
         '--modification-files', '--modification', '--modify', '--modified', '--new', '-M',
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         required=True,
         help='Modification files to merge',
     )
     parser.add_argument(
         '--keys', '-K',
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         required=True,
         help='Primary keys',
@@ -77,6 +92,11 @@ def setup_parser(
     )
     parser.add_argument(
         '--merge-fields', '--merge-field', '--merge-keys', '--merge-key',
+        # NOTE:
+        #   action を指定しないと、オプションを複数回書いたときに
+        #   後の指定が前の指定を上書きして捨ててしまう (警告も出ない)。
+        #   extend にすることで繰り返し指定が累積される。
+        action='extend',
         nargs='+',
         required=False,
         help='Fields to merge',

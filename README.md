@@ -211,6 +211,16 @@ means target and source are the same. `<options>` is a comma-separated list
 of `key=value` pairs or bare flags. Remember that results land in staging,
 so `--pick` decides what actually reaches the output.
 
+Actions run in the order given. `--do` can be repeated or take several
+values at once; both accumulate, so these two are equivalent:
+
+```bash
+tabpro convert in.csv --do 'cast:score=score:as=int' 'filter:score!=0' ...
+tabpro convert in.csv --do 'cast:score=score:as=int' --do 'filter:score!=0' ...
+```
+
+The same holds for `--pick` and the other options that take several values.
+
 | Action | Form | Options | Description |
 |---|---|---|---|
 | `assign` | `assign:t=s` | `default`, `required`, `ignore-empty` | Copy a value |
