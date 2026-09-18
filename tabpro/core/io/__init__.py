@@ -1,4 +1,5 @@
 from . extensions import io_csv
+from . extensions import io_dbq
 from . extensions import io_excel
 from . extensions import io_json
 from . extensions import io_jsonl

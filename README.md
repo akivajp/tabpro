@@ -30,6 +30,7 @@ Requires Python 3.10 or later.
 | Excel (legacy) | `.xls` | ✓ | |
 | JSON | `.json` | ✓ | ✓ |
 | JSON Lines | `.jsonl` | ✓ | ✓ |
+| SQL query | `.dbq` | ✓ | |
 
 The format is chosen from the file extension, so conversion is just a matter
 of naming the output file:
@@ -55,6 +56,51 @@ order, recording which sheet each row came from in the staging area. Both are
 accepted by `convert`, `aggregate` and `validate`. Nested JSON values are flattened to dot-separated columns when
 written to CSV/TSV/Excel (`user.name`), and rebuilt into nested objects when
 written back to JSON/JSON Lines.
+
+## Reading from a database
+
+A `.dbq` file describes a query, and is then accepted anywhere an input file
+is — which is mostly useful for checking annotations against a master table
+without exporting it first:
+
+```yaml
+# master.dbq
+url: sqlite:///master.db
+query: |
+  SELECT id, name, status
+  FROM customers
+  WHERE status = 'active'
+```
+
+```bash
+tabpro merge --previous master.dbq --new annotations.xlsx --keys id \
+  --output-remaining still_to_do.jsonl
+```
+
+The connection lives in a file rather than on the command line on purpose: a
+URL typed as an argument ends up in shell history and in `ps` output, password
+and all. `${VAR}` in either field is replaced from the environment, so
+credentials need not be written down at all, and a variable that is not set is
+an error rather than a literal `${DB_PASSWORD}` sent to the server. Any URL
+that gets logged has its credentials masked.
+
+**Only read-only queries are accepted.** A query must begin with `SELECT` or
+`WITH` and be a single statement, so a mistake in a `.dbq` file cannot delete
+anything. SQLite connections are additionally opened in read-only mode.
+
+SQLite needs nothing beyond the standard library. Other databases go through
+SQLAlchemy, which is an optional install:
+
+```bash
+pip install "tabpro[sql]"
+```
+
+```yaml
+url: postgresql+psycopg://${DB_USER}:${DB_PASSWORD}@db.internal/records
+query: SELECT id, name FROM customers
+```
+
+Rows are streamed from the cursor in batches rather than fetched all at once.
 
 ## The staging area
 

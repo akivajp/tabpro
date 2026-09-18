@@ -26,6 +26,12 @@ from tabpro.core.aggregate import (
 from tabpro.core.compare import compare
 from tabpro.core.convert import convert
 from tabpro.core.merge import merge
+from tabpro.core.io.extensions.io_dbq import (
+    QuerySpecError,
+    iter_sqlalchemy_rows,
+    load_query_spec,
+    mask_url,
+)
 from tabpro.core.sort import sort
 from tabpro.core.classes.row import Row
 from tabpro.core.validate import (
@@ -1026,6 +1032,220 @@ def test_unknown_columns_rejects_bad_mode(tmp_path: Path):
     )
     with pytest.raises(SchemaError):
         load_schema(str(path))
+
+# --- データベースを入力とする (.dbq) -------------------------------------
+
+def write_database(path: Path) -> Path:
+    """テスト用の SQLite データベースを作成する。"""
+    import sqlite3
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            'CREATE TABLE customers (id TEXT, name TEXT, status TEXT)'
+        )
+        connection.executemany(
+            'INSERT INTO customers VALUES (?,?,?)',
+            [
+                ('0001', 'alice', 'active'),
+                ('0002', 'bob', 'inactive'),
+                ('0003', 'carol', 'active'),
+            ],
+        )
+        connection.commit()
+    finally:
+        connection.close()
+    return path
+
+@pytest.fixture
+def database(tmp_path: Path) -> Path:
+    """顧客表を持つ SQLite データベース。"""
+    return write_database(tmp_path / 'master.db')
+
+def write_dbq(path: Path, url: str, query: str) -> Path:
+    """.dbq ファイルを作成する。"""
+    return write_file(path, f'url: {url}\nquery: |\n  {query}\n')
+
+def test_dbq_is_read_like_any_other_input(database: Path, tmp_path: Path):
+    """データベースの問い合わせ結果を、ファイルと同じように読み込める。"""
+    source = write_dbq(
+        tmp_path / 'master.dbq',
+        f'sqlite:///{database}',
+        "SELECT id, name FROM customers WHERE status = 'active'",
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output) == [
+        {'id': '0001', 'name': 'alice'},
+        {'id': '0003', 'name': 'carol'},
+    ]
+
+def test_dbq_can_be_the_base_of_a_merge(database: Path, tmp_path: Path):
+    """マスタを merge の突合対象として直接指定できる。"""
+    source = write_dbq(
+        tmp_path / 'master.dbq',
+        f'sqlite:///{database}',
+        'SELECT id, name, status FROM customers',
+    )
+    corrections = write_file(
+        tmp_path / 'fix.csv', 'id,status\n0002,active\n',
+    )
+    output = tmp_path / 'merged.jsonl'
+    merge(
+        previous_files=[str(source)],
+        modification_files=[str(corrections)],
+        keys=['id'],
+        output_base_data_file=str(output),
+    )
+    rows = {row['id']: row for row in read_jsonl(output)}
+    assert rows['0002']['status'] == 'active'
+    assert rows['0001']['status'] == 'active'
+
+def test_dbq_expands_environment_variables(
+    database: Path, tmp_path: Path, monkeypatch,
+):
+    """URL 中の ${VAR} が環境変数で置換される。"""
+    monkeypatch.setenv('TABPRO_TEST_DB_DIR', str(database.parent))
+    source = write_dbq(
+        tmp_path / 'master.dbq',
+        'sqlite:///${TABPRO_TEST_DB_DIR}/master.db',
+        'SELECT id FROM customers',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert len(read_jsonl(output)) == 3
+
+def test_dbq_rejects_undefined_environment_variable(tmp_path: Path):
+    """
+    未定義の環境変数はエラーになる。
+
+    そのまま残すと、パスワードが '${VAR}' のまま接続を試みることになり、
+    原因の分かりにくい認証失敗になる。
+    """
+    source = write_dbq(
+        tmp_path / 'master.dbq',
+        'sqlite:///${TABPRO_NOT_SET_ANYWHERE}/x.db',
+        'SELECT 1',
+    )
+    with pytest.raises(QuerySpecError, match='Environment variable'):
+        load_query_spec(str(source))
+
+@pytest.mark.parametrize(
+    'query',
+    [
+        'DELETE FROM customers',
+        'UPDATE customers SET name = "x"',
+        'DROP TABLE customers',
+        'INSERT INTO customers VALUES (1, 2, 3)',
+    ],
+)
+def test_dbq_rejects_write_queries(tmp_path: Path, query: str):
+    """書き込みを行うクエリは入口で断られる。"""
+    source = write_dbq(tmp_path / 'q.dbq', 'sqlite:///x.db', query)
+    with pytest.raises(QuerySpecError, match='read-only'):
+        load_query_spec(str(source))
+
+def test_dbq_rejects_a_write_hidden_behind_a_comment(tmp_path: Path):
+    """コメントで SELECT に見せかけた書き込みも断られる。"""
+    source = write_file(
+        tmp_path / 'q.dbq',
+        'url: sqlite:///x.db\n'
+        'query: |\n'
+        '  -- SELECT\n'
+        '  DROP TABLE customers\n',
+    )
+    with pytest.raises(QuerySpecError, match='read-only'):
+        load_query_spec(str(source))
+
+def test_dbq_rejects_multiple_statements(tmp_path: Path):
+    """複数の命令を並べることはできない。"""
+    source = write_dbq(
+        tmp_path / 'q.dbq', 'sqlite:///x.db',
+        'SELECT 1; DROP TABLE customers',
+    )
+    with pytest.raises(QuerySpecError, match='single statement'):
+        load_query_spec(str(source))
+
+def test_dbq_allows_with_clause(database: Path, tmp_path: Path):
+    """WITH で始まるクエリは読み取りとして許される。"""
+    source = write_dbq(
+        tmp_path / 'q.dbq', f'sqlite:///{database}',
+        'WITH a AS (SELECT * FROM customers) SELECT id FROM a',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert len(read_jsonl(output)) == 3
+
+def test_dbq_allows_a_trailing_semicolon(database: Path, tmp_path: Path):
+    """末尾のセミコロンは許される。"""
+    source = write_dbq(
+        tmp_path / 'q.dbq', f'sqlite:///{database}',
+        'SELECT id FROM customers;',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert len(read_jsonl(output)) == 3
+
+@pytest.mark.parametrize(
+    'content',
+    [
+        'url: sqlite:///x.db\n',
+        'query: SELECT 1\n',
+        'just a string\n',
+        'url: 1\nquery: SELECT 1\n',
+    ],
+)
+def test_dbq_rejects_incomplete_specifications(tmp_path: Path, content: str):
+    """url と query が揃っていない .dbq は拒否される。"""
+    source = write_file(tmp_path / 'q.dbq', content)
+    with pytest.raises(QuerySpecError):
+        load_query_spec(str(source))
+
+def test_dbq_missing_database_file(tmp_path: Path):
+    """存在しないデータベースは、そう分かる形で失敗する。"""
+    source = write_dbq(
+        tmp_path / 'q.dbq', f'sqlite:///{tmp_path}/nosuch.db', 'SELECT 1',
+    )
+    with pytest.raises(FileNotFoundError):
+        convert(
+            input_files=[str(source)],
+            output_file=str(tmp_path / 'out.jsonl'),
+        )
+
+def test_dbq_masks_credentials_in_the_url():
+    """ログに出す URL から認証情報が伏せられる。"""
+    assert mask_url('postgresql://user:secret@host:5432/db') == \
+        'postgresql://***@host:5432/db'
+    assert mask_url('sqlite:///master.db') == 'sqlite:///master.db'
+
+def test_dbq_reports_a_missing_sqlalchemy(tmp_path: Path, monkeypatch):
+    """SQLAlchemy が無い場合、何を入れればよいかが示される。"""
+    import builtins
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == 'sqlalchemy':
+            raise ImportError('no sqlalchemy')
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, '__import__', fake_import)
+    with pytest.raises(QuerySpecError, match=r'tabpro\[sql\]'):
+        list(iter_sqlalchemy_rows('postgresql://host/db', 'SELECT 1'))
+
+def test_sqlalchemy_path_reads_the_same_rows(database: Path):
+    """
+    SQLAlchemy 経路も同じ結果を返す。
+
+    sqlite URL を用いることで、サーバーを立てずに検証する。
+    """
+    pytest.importorskip('sqlalchemy')
+    results = [
+        (columns, list(rows))
+        for columns, rows in iter_sqlalchemy_rows(
+            f'sqlite:///{database}', 'SELECT id, name FROM customers',
+        )
+    ]
+    assert results[0][0] == ['id', 'name']
+    assert results[0][1][0] == ('0001', 'alice')
 
 # --- 複数値オプションの繰り返し指定 -------------------------------------
 

@@ -32,8 +32,11 @@ jobs:
       - name: Create virtual environment
         run: uv venv --python ${{ matrix.python-version }}
 
+      # NOTE:
+      #   optional extra も入れて、SQLAlchemy 経由の読み込み経路まで検証する。
+      #   標準ライブラリだけで動く SQLite 経路は extra 無しでも通る。
       - name: Install package
-        run: uv pip install -e . pytest
+        run: uv pip install -e ".[sql]" pytest
 
       # NOTE:
       #   環境変数はステップ間で引き継がれないため、
