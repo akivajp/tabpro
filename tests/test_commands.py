@@ -1775,6 +1775,24 @@ def test_config_filter_accepts_zero_value(csv_file: Path, tmp_path: Path):
     # (CSV 読み込みでは数値も文字列として読まれる)
     assert [row['id'] for row in rows] == ['1', '2', '3']
 
+# --- アクション ------------------------------------------------------------
+
+def test_assign_length_non_sized_value_raises():
+    '''
+    assign_length の対象が str / list / dict 以外の場合、
+    どのフィールドで起きたか分かるエラーになること。
+
+    NOTE: CSV では数値も文字列として読まれるため、
+    直接 Row を組み立てて数値を渡す。
+    '''
+    from tabpro.core.actions.assign_length import assign_length
+    from tabpro.core.actions.types import AssignLengthConfig
+
+    row = Row.from_dict({'score': 10})
+    config = AssignLengthConfig(target='scorelen', source='score')
+    with pytest.raises(ValueError, match=r'field score has int: 10'):
+        assign_length(row, config)
+
 # --- コンソールスクリプト -----------------------------------------------
 
 def test_console_script_help():
