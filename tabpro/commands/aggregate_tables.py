@@ -16,6 +16,7 @@ def run(
         list_keys_to_expand=args.keys_to_expand,
         show_count_threshold=args.show_count_threshold,
         show_count_max_length=args.show_count_max_length,
+        compare_columns=args.compare_columns,
     )
 
 def setup_parser(
@@ -81,5 +82,10 @@ def setup_parser(
         default=100,
         type=int,
         help='Show count max length',
+    )
+    parser.add_argument(
+        '--compare-columns', '--compare-column', '--compare',
+        action='store_true',
+        help='Compare the column sets of the input files with each other',
     )
     parser.set_defaults(handler=run)

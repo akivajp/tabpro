@@ -166,6 +166,44 @@ hold something unexpected.
 | `--keys-to-expand`, `--expand` | Also aggregate array elements individually, by index |
 | `--show-count-threshold`, `-C` | Above this many distinct values, show only a summary (default 50) |
 | `--show-count-max-length`, `-L` | Truncate displayed values to this length (default 100) |
+| `--compare-columns`, `--compare` | Compare the column sets of the input files against each other |
+
+`--compare-columns` answers a different question: not what is in the data,
+but whether the files agree on their shape. When fifty people each send back
+a spreadsheet, some of them will have renamed a column, dropped one, or
+added their own.
+
+```bash
+tabpro aggregate submissions/*.xlsx --compare-columns --output report.json
+```
+
+```
+columns per file
+┃ file      ┃ id ┃ label ┃ comment ┃ Comment ┃ memo ┃
+│ alice.csv │ o  │   o   │    o    │    -    │  -   │
+│ bob.csv   │ o  │   o   │    -    │    o    │  -   │
+│ carol.csv │ o  │   o   │    o    │    -    │  o   │
+
+files that differ from the expected columns
+┃ file      ┃ missing ┃ extra   ┃
+│ bob.csv   │ comment │ Comment │
+│ carol.csv │         │ memo    │
+
+column names that differ only in case, width or spacing
+┃ variants          ┃
+│ comment / Comment │
+```
+
+Columns present in at least half the files are taken as expected; the rest
+are reported per file as missing or extra. The last table catches the common
+case of a column that only looks different — `Comment` for `comment`, or a
+full-width `ＩＤ` for `id`. Names are compared after NFKC normalization,
+case folding and trimming, and nothing fuzzier than that, so a genuinely
+different name is never guessed at.
+
+The full file-by-column matrix is always written to the JSON report, even
+when the terminal falls back to a summary because there are too many files
+or columns to lay out.
 
 ### sort
 

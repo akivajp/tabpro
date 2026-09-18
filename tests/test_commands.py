@@ -12,11 +12,17 @@ import json
 import shutil
 import subprocess
 
+from collections import OrderedDict
+
 from pathlib import Path
 
 import pytest
 
-from tabpro.core.aggregate import aggregate
+from tabpro.core.aggregate import (
+    aggregate,
+    compare_file_columns,
+    normalize_column_name,
+)
 from tabpro.core.compare import compare
 from tabpro.core.convert import convert
 from tabpro.core.merge import merge
@@ -367,6 +373,89 @@ def test_aggregate(csv_file: Path, tmp_path: Path):
     result = json.loads(output.read_text(encoding='utf-8'))
     assert result['num_rows'] == 3
     assert result['aggregated']['name']['num_variations'] == 3
+
+# --- aggregate: ファイル別の列構成比較 -----------------------------------
+
+def test_normalize_column_name():
+    """大文字小文字・全半角・前後空白の違いが吸収される。"""
+    assert normalize_column_name('Comment') == normalize_column_name('comment')
+    assert normalize_column_name(' id ') == normalize_column_name('id')
+    assert normalize_column_name('ＩＤ') == normalize_column_name('id')
+    # NOTE: 意味が同じでも綴りが違うものは別扱い (曖昧一致はしない)
+    assert normalize_column_name('label') != normalize_column_name('ラベル')
+
+def test_compare_file_columns_detects_missing_and_extra():
+    """半数以上のファイルにある列を基準に、欠落列と余剰列が検出される。"""
+    result = compare_file_columns(OrderedDict([
+        ('a.csv', ['id', 'label', 'comment']),
+        ('b.csv', ['id', 'label']),
+        ('c.csv', ['id', 'label', 'comment', 'memo']),
+    ]))
+    assert result['expected_columns'] == ['id', 'label', 'comment']
+    assert result['missing'] == {'b.csv': ['comment']}
+    assert result['extra'] == {'c.csv': ['memo']}
+
+def test_compare_file_columns_detects_name_variants():
+    """綴り揺れの候補が列挙される。"""
+    result = compare_file_columns(OrderedDict([
+        ('a.csv', ['id', 'comment']),
+        ('b.csv', ['id', 'Comment']),
+    ]))
+    assert result['name_variants'] == [['comment', 'Comment']]
+
+def test_compare_file_columns_without_anomalies():
+    """全ファイルの列構成が同一なら何も報告されない。"""
+    result = compare_file_columns(OrderedDict([
+        ('a.csv', ['id', 'name']),
+        ('b.csv', ['id', 'name']),
+    ]))
+    assert result['missing'] == {}
+    assert result['extra'] == {}
+    assert result['name_variants'] == []
+    assert result['expected_columns'] == ['id', 'name']
+
+def test_aggregate_compare_columns(tmp_path: Path):
+    """--compare-columns の結果がレポートに含まれる。"""
+    a = write_file(tmp_path / 'a.csv', 'id,label,comment\n1,x,ok\n')
+    b = write_file(tmp_path / 'b.csv', 'id,label,Comment\n2,y,ng\n')
+    c = write_file(tmp_path / 'c.csv', 'id,label,comment\n3,z,ok\n')
+    output = tmp_path / 'agg.json'
+    aggregate(
+        input_files=[str(a), str(b), str(c)],
+        output_file=str(output),
+        compare_columns=True,
+    )
+    result = json.loads(output.read_text(encoding='utf-8'))
+    comparison = result['column_comparison']
+    assert comparison['expected_columns'] == ['id', 'label', 'comment']
+    assert comparison['missing'] == {str(b): ['comment']}
+    assert comparison['extra'] == {str(b): ['Comment']}
+    assert comparison['name_variants'] == [['comment', 'Comment']]
+    assert comparison['matrix'][str(a)]['comment'] is True
+    assert comparison['matrix'][str(b)]['comment'] is False
+
+def test_aggregate_without_compare_columns_keeps_output_format(
+    csv_file: Path, tmp_path: Path,
+):
+    """既定では従来どおりの出力形式が保たれる。"""
+    output = tmp_path / 'agg.json'
+    aggregate(input_files=[str(csv_file)], output_file=str(output))
+    result = json.loads(output.read_text(encoding='utf-8'))
+    assert list(result.keys()) == ['num_rows', 'aggregated']
+
+def test_aggregate_compare_columns_with_empty_file(tmp_path: Path):
+    """行が1件も無いファイルも比較対象に含まれる。"""
+    a = write_file(tmp_path / 'a.csv', 'id,name\n1,alice\n')
+    empty = write_file(tmp_path / 'empty.csv', 'id,name\n')
+    output = tmp_path / 'agg.json'
+    aggregate(
+        input_files=[str(a), str(empty)],
+        output_file=str(output),
+        compare_columns=True,
+    )
+    comparison = json.loads(output.read_text(encoding='utf-8'))['column_comparison']
+    assert comparison['files'] == [str(a), str(empty)]
+    assert comparison['missing'] == {str(empty): ['id', 'name']}
 
 # --- 複数値オプションの繰り返し指定 -------------------------------------
 
