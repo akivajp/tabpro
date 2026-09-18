@@ -2,8 +2,6 @@
 Actions are used to transform the data in the table.
 '''
 
-import re
-
 from ..constants import (
     INPUT_FIELD,
     STAGING_FIELD,
@@ -56,28 +54,6 @@ def remap_columns(
             # NOTE: Set the unused value to the staging field
             new_row.staging[key] = row[key]
     return new_row
-
-def search_with_operator(
-    row: Row,
-    source: str,
-):
-    or_operator = '||'
-    null_or_operator = '??'
-    operator_group = f'{re.escape(or_operator)}|{re.escape(null_or_operator)}'
-    # NOTE: maxsplit の位置引数指定は非推奨で、将来の Python で動かなくなる
-    matched = re.split(f'({operator_group})', source, maxsplit=1)
-    if len(matched) == 1:
-        return search_column_value(row.nested, source)
-    matched = map(str.strip, matched)
-    left, operator, rest = matched
-    value, found = search_column_value(row.nested, left)
-    if operator == or_operator:
-        if bool(value):
-            return value, found
-    if operator == null_or_operator:
-        if found and value is not None:
-            return value, found
-    return search_with_operator(row, rest)
 
 def assign_array(
     row: Row,
