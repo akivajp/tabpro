@@ -7,7 +7,6 @@ from typing import (
     Mapping,
 )
 
-from icecream import ic
 from rich.console import Console
 
 import yaml
@@ -51,7 +50,6 @@ def setup_config(
             raise ValueError(
                 'Only YAML configuration files are supported.'
             )
-        ic(loaded)
         if 'pick' in loaded:
             if not isinstance(loaded['pick'], Mapping | list):
                 raise ValueError(
@@ -119,17 +117,14 @@ def raise_error_for_unsupported_type(
     value: Any,
     should_be: str | None = None,
 ):
-    ic.enable()
-    ic()
-    ic(value)
-    ic(type(value))
     if should_be:
         raise ValueError(
-            f'Unsupported value type: {type(value)}. Should be {should_be}.'
+            f'unsupported value type: {type(value)}, should be {should_be}, '
+            f'value: {value}'
         )
     else:
         raise ValueError(
-            f'Unsupported value type: {type(value)}'
+            f'unsupported value type: {type(value)}, value: {value}'
         )
 
 def require_item(
@@ -196,11 +191,8 @@ def setup_process_assign_array_config(
                     field = item.get('field')
                     optional = item.get('optional', False)
                     if field is None:
-                        ic.enable()
-                        ic(item)
-                        ic(item.get('field'))
                         raise ValueError(
-                            'Field is required for assign_array.'
+                            f'field is required for assign_array: {item}'
                         )
                     # NOTE:
                     #   YAML 上のキー名は 'field' だが、
@@ -238,27 +230,18 @@ def setup_process_filter_config(
         if isinstance(item, Mapping):
             field = item.get('field')
             if not field:
-                ic.enable()
-                ic(item)
-                ic(item.get('field'))
                 raise ValueError(
-                    'Field is required for filter.'
+                    f'field is required for filter: {item}'
                 )
             operator = item.get('operator')
             if not operator:
-                ic.enable()
-                ic(item)
-                ic(item.get('operator'))
                 raise ValueError(
-                    'Operator is required for filter.'
+                    f'operator is required for filter: {item}'
                 )
             value = item.get('value')
             if not value:
-                ic.enable()
-                ic(item)
-                ic(item.get('value'))
                 raise ValueError(
-                    'Value is required for filter.'
+                    f'value is required for filter: {item}'
                 )
             config.actions.append(FilterConfig(
                 field = field,
@@ -266,11 +249,8 @@ def setup_process_filter_config(
                 value = value,
             ))
         else:
-            ic.enable()
-            ic(item)
-            ic(type(item))
             raise ValueError(
-                f'Unsupported filter item type: {type(item)}'
+                f'unsupported filter item type: {type(item)}, item: {item}'
             )
         
 def setup_process_push_config(
@@ -308,19 +288,13 @@ def setup_process_split_config(
             if isinstance(value, Mapping):
                 field = value.get('field')
                 if not field:
-                    ic.enable()
-                    ic(value)
-                    ic(value.get('field'))
                     raise ValueError(
-                        'Field is required for split.'
+                        f'field is required for split: {value}'
                     )
                 delimiter = value.get('delimiter')
                 if not delimiter:
-                    ic.enable()
-                    ic(value)
-                    ic(value.get('delimiter'))
                     raise ValueError(
-                        'Delimiter is required for split.'
+                        f'delimiter is required for split: {value}'
                     )
                 #config.process.split[key] = SplitConfig(
                 #    field = field,
@@ -332,11 +306,8 @@ def setup_process_split_config(
                     delimiter = delimiter,
                 ))
             else:
-                ic.enable()
-                ic(value)
-                ic(type(value))
                 raise ValueError(
-                    f'Unsupported assign_ids value type: {type(value)}'
+                    f'unsupported split value type: {type(value)}, value: {value}'
                 )
 
 def setup_pick_with_args(

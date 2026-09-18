@@ -2,8 +2,6 @@
 
 from collections import OrderedDict
 
-from icecream import ic
-
 def get_nested_field_value(
     data: OrderedDict | list,
     #field: str,

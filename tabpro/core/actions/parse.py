@@ -29,20 +29,20 @@ def parse(
                     parsed = ast.literal_eval(value)
                 else:
                     parsed = value
-            except:
+            except Exception as e:
                 raise ValueError(
-                    f'Failed to parse literal: {value}'
-                )
+                    f'failed to parse literal: {value!r}'
+                ) from e
         elif config.as_type == 'json':
             try:
                 if type(value) is str:
                     parsed = json.loads(value)
                 else:
                     parsed = value
-            except:
+            except Exception as e:
                 raise ValueError(
-                    f'Failed to parse JSON: {value}'
-                )
+                    f'failed to parse JSON: {value!r}'
+                ) from e
         elif config.as_type == 'bool':
             if config.assign_default and value in [None, '']:
                 value = config.default_value

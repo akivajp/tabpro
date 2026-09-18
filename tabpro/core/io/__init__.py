@@ -1,8 +1,11 @@
-from . extensions import io_csv
-from . extensions import io_dbq
-from . extensions import io_excel
-from . extensions import io_json
-from . extensions import io_jsonl
+# NOTE:
+#   これらは import した時点でローダーとライターを登録する副作用が目的であり、
+#   名前としては使われない。未使用として取り除くと、対応形式が全て失われる。
+from . extensions import io_csv  # noqa: F401
+from . extensions import io_dbq  # noqa: F401
+from . extensions import io_excel  # noqa: F401
+from . extensions import io_json  # noqa: F401
+from . extensions import io_jsonl  # noqa: F401
 
 from . loader import Loader
 from . extensions.manage_writers import (

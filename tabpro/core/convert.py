@@ -5,7 +5,6 @@ import sys
 
 # 3-rd party modules
 
-import pandas as pd
 
 from . progress import Progress
 
@@ -22,7 +21,6 @@ from . constants import (
     ROW_INDEX_FIELD,
     FILE_ROW_INDEX_FIELD,
     INPUT_FIELD,
-    STAGING_FIELD,
 )
 
 from .actions import (

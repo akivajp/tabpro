@@ -4,10 +4,6 @@ Actions are used to transform the data in the table.
 
 import re
 
-from typing import (
-    Any,
-)
-
 from ..constants import (
     INPUT_FIELD,
     STAGING_FIELD,
@@ -68,7 +64,8 @@ def search_with_operator(
     or_operator = '||'
     null_or_operator = '??'
     operator_group = f'{re.escape(or_operator)}|{re.escape(null_or_operator)}'
-    matched = re.split(f'({operator_group})', source, 1)
+    # NOTE: maxsplit の位置引数指定は非推奨で、将来の Python で動かなくなる
+    matched = re.split(f'({operator_group})', source, maxsplit=1)
     #ic(source, matched)
     if len(matched) == 1:
         return search_column_value(row.nested, source)

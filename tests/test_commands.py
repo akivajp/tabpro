@@ -35,6 +35,7 @@ from tabpro.core.io.extensions.io_dbq import (
 from tabpro.core.sort import sort
 from tabpro.core.classes.row import Row
 from tabpro.core.io.loader import Loader
+from tabpro.core.io.extensions.io_json import escape_json
 from tabpro.core.validate import (
     SchemaError,
     load_schema,
@@ -1247,6 +1248,173 @@ def test_sqlalchemy_path_reads_the_same_rows(database: Path):
     ]
     assert results[0][0] == ['id', 'name']
     assert results[0][1][0] == ('0001', 'alice')
+
+# --- JSON のエスケープ ---------------------------------------------------
+
+def test_valid_json_escapes_survive(tmp_path: Path):
+    r"""
+    回帰テスト: 正しい JSON のエスケープが壊されないこと。
+
+    以前は \n, \", \\ 以外のバックスラッシュを無条件に二重化していたため、
+    \t や \uXXXX が文字列リテラルとして壊れていた。
+    """
+    original = {
+        'tab': 'a\tb',
+        'cr': 'x\ry',
+        'backslash': 'C:\\path',
+        'newline': 'p\nq',
+        'slash': 'a/b',
+    }
+    # NOTE: ensure_ascii の既定 (True) では非 ASCII が \uXXXX になる
+    source = write_file(
+        tmp_path / 'in.jsonl', json.dumps(original) + '\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output)[0] == original
+
+def test_non_ascii_written_as_unicode_escapes_survives(tmp_path: Path):
+    r"""
+    回帰テスト: \uXXXX で書かれた非 ASCII 文字が壊されないこと。
+
+    json.dumps は既定で非 ASCII を \uXXXX にするため、一般的なツールが
+    出力した日本語を含む JSON がことごとく壊れていた。
+    """
+    original = {'label': '肯定的', 'comment': 'とても良い'}
+    source = write_file(
+        tmp_path / 'in.jsonl',
+        json.dumps(original, ensure_ascii=True) + '\n',
+    )
+    assert '\\u' in source.read_text(encoding='utf-8')
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output)[0] == original
+
+def test_malformed_json_is_still_recovered(tmp_path: Path):
+    """エスケープされていないバックスラッシュを含む JSON は救済される。"""
+    source = write_file(
+        tmp_path / 'in.jsonl', '{"path": "C:\\xyz\\dir", "ok": 1}\n',
+    )
+    # NOTE: 標準の json では読めないことを確かめておく
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(source.read_text(encoding='utf-8'))
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output)[0] == {'path': 'C:\\xyz\\dir', 'ok': 1}
+
+def test_unrecoverable_json_still_raises(tmp_path: Path):
+    """救済しても読めない JSON は、そのままエラーになる。"""
+    source = write_file(tmp_path / 'in.jsonl', '{"a": }\n')
+    with pytest.raises(json.JSONDecodeError):
+        convert(
+            input_files=[str(source)],
+            output_file=str(tmp_path / 'out.jsonl'),
+        )
+
+def test_escape_json_leaves_valid_escapes_alone():
+    """救済関数そのものが、正しいエスケープに手を触れないこと。"""
+    for text in [
+        r'{"a": "b\tc"}',
+        r'{"a": "b\u3042c"}',
+        r'{"a": "b\\c"}',
+        r'{"a": "b\/c"}',
+        r'{"a": "b\rc"}',
+    ]:
+        assert escape_json(text) == text
+    # NOTE: 不正なエスケープのみが二重化される
+    assert escape_json(r'{"a": "b\xc"}') == r'{"a": "b\\xc"}'
+
+# --- omit と Row.pop -----------------------------------------------------
+
+def test_omit_does_not_remove_columns_with_the_same_prefix(tmp_path: Path):
+    """
+    回帰テスト: omit が、名前の先頭が一致するだけの列を巻き込まないこと。
+
+    フラット表現の削除が前方一致だったため、omit:x が xx や xyz まで
+    消していた。フラット表現を使う CSV / TSV / Excel でのみ現れていた。
+    """
+    source = write_file(tmp_path / 'in.csv', 'id,x,xx,xyz\n1,a,b,c\n')
+    output = tmp_path / 'out.csv'
+    convert(
+        input_files=[str(source)],
+        output_file=str(output),
+        list_actions=['omit:x'],
+    )
+    assert read_csv(output) == [{'id': '1', 'xx': 'b', 'xyz': 'c'}]
+
+def test_omit_nested_key_does_not_remove_siblings(tmp_path: Path):
+    """ネストしたキーの omit も、名前が似ただけの列を巻き込まない。"""
+    source = write_file(
+        tmp_path / 'in.jsonl', '{"a": {"b": 1}, "ab": 2, "c": 3}\n',
+    )
+    output = tmp_path / 'out.csv'
+    convert(
+        input_files=[str(source)],
+        output_file=str(output),
+        list_actions=['omit:a.b'],
+    )
+    assert read_csv(output) == [{'ab': '2', 'c': '3'}]
+
+def test_row_pop_removes_only_the_key_and_its_descendants():
+    """Row.pop が対象のキーとその子孫だけを取り除く。"""
+    row = Row.from_dict({'x': 1, 'xx': 2, 'x.y': 3, 'z': 4})
+    value, found = row.pop('x')
+    assert found is True
+    assert dict(row.items()) == {'xx': 2, 'z': 4}
+
+# --- merge: 行ごとに異なる列 ---------------------------------------------
+
+def test_merge_applies_the_fields_present_in_each_row(tmp_path: Path):
+    """
+    回帰テスト: 修正ファイルの行ごとに列が異なっても取りこぼさないこと。
+
+    以前はマージ対象の列を最初の1行から決めて使い回していたため、
+    手作業で編集された表や作業者ごとに異なるファイルでは、
+    最初の行に無い列の修正が無言で失われていた。
+    """
+    base = write_file(
+        tmp_path / 'base.jsonl',
+        '{"id": "1", "score": "10", "note": "x"}\n'
+        '{"id": "2", "score": "20", "note": "y"}\n',
+    )
+    corrections = write_file(
+        tmp_path / 'fix.jsonl',
+        '{"id": "1", "score": "99"}\n'
+        '{"id": "2", "note": "UPDATED"}\n',
+    )
+    output = tmp_path / 'merged.jsonl'
+    merge(
+        previous_files=[str(base)],
+        modification_files=[str(corrections)],
+        keys=['id'],
+        output_base_data_file=str(output),
+    )
+    rows = {row['id']: row for row in read_jsonl(output)}
+    assert rows['1']['score'] == '99'
+    assert rows['2']['note'] == 'UPDATED'
+    assert rows['2']['score'] == '20'
+
+def test_merge_fields_still_limits_what_is_merged(tmp_path: Path):
+    """--merge-fields を指定した場合は、その列だけが対象になる。"""
+    base = write_file(
+        tmp_path / 'base.jsonl',
+        '{"id": "1", "score": "10", "note": "x"}\n',
+    )
+    corrections = write_file(
+        tmp_path / 'fix.jsonl',
+        '{"id": "1", "score": "99", "note": "CHANGED"}\n',
+    )
+    output = tmp_path / 'merged.jsonl'
+    merge(
+        previous_files=[str(base)],
+        modification_files=[str(corrections)],
+        keys=['id'],
+        merge_fields=['score'],
+        output_base_data_file=str(output),
+    )
+    row = read_jsonl(output)[0]
+    assert row['score'] == '99'
+    assert row['note'] == 'x'
 
 # --- ストリーミング読み込み ----------------------------------------------
 

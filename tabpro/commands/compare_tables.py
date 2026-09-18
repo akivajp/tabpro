@@ -2,8 +2,6 @@
 
 import argparse
 
-from icecream import ic
-
 from ..core.compare import compare
 
 def run(

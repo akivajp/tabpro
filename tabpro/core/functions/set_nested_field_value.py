@@ -3,7 +3,6 @@ Set the value of a field in a nested dictionary.
 '''
 
 from collections import OrderedDict
-from icecream import ic
 
 def set_nested_field_value(
     data: OrderedDict | list,
@@ -31,11 +30,7 @@ def set_nested_field_value(
                 data[field] = OrderedDict()
         set_nested_field_value(data[field], rest, value)
     else:
-        try:
-            if isinstance(data, dict):
-                data[field] = value
-            elif isinstance(data, list):
-                data[int(field)] = value
-        except:
-            ic(data, field, value)
-            raise
+        if isinstance(data, dict):
+            data[field] = value
+        elif isinstance(data, list):
+            data[int(field)] = value

@@ -2,17 +2,13 @@ import pytest
 from tabpro.core.classes.row import Row
 from tabpro.core.io.loader import Loader
 
-from icecream import ic
 from collections import OrderedDict
 
 def test_row():
     # Enable debug output using icecream
-    ic.enable()
     
     # Test empty row initialization
     row = Row()
-    ic(row)
-    ic(len(row))
     assert len(row) == 0
     
     # Test get method with default value for non-existent key
@@ -20,16 +16,13 @@ def test_row():
     
     # Test KeyError when accessing non-existent key
     with pytest.raises(KeyError):
-        ic(row['x'])
-    
+        row['x']
+
     # Test setting and getting a simple key-value pair
     row['x'] = 100
-    ic(row)
-    ic(row.get('x', 'default'))
     
     # Test setting and getting a nested key
     row['a.b.c'] = 123
-    ic(row)
     
     # Test setting and getting a complex nested structure
     row['d1.d2'] = {
@@ -40,19 +33,13 @@ def test_row():
             'yyy': 222,
         }
     }
-    ic(row)
     
     # Test setting and accessing array values
     row['d1.a'] = [3, 5, 7]
-    ic(row)
     
     # Test array indexing with nested keys
-    ic(row['d1.a.1'])
-    ic(row.get('d1.a.2'))
-    ic(row.get('d1.a.3'))
     
     # Test row iteration
-    ic(list(row))
 
 def test_row_initialization():
     # Test basic initialization and empty state

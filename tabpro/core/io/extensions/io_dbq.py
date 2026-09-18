@@ -201,12 +201,12 @@ def iter_sqlalchemy_rows(
     '''
     try:
         import sqlalchemy
-    except ImportError:
+    except ImportError as e:
         raise QuerySpecError(
             f'Reading from {url.split("://", 1)[0]} requires SQLAlchemy, '
             'which is not installed. Install it with: pip install "tabpro[sql]" '
             '(sqlite:// URLs need no extra installation).'
-        )
+        ) from e
     engine = sqlalchemy.create_engine(url)
     try:
         with engine.connect() as connection:
@@ -253,7 +253,8 @@ def load_dbq(
         for index, values in enumerate(rows):
             if limit is not None and index >= limit:
                 break
-            record = OrderedDict(zip(columns, values))
+            # NOTE: strict で列数と値数の不一致を검出させる
+            record = OrderedDict(zip(columns, values, strict=True))
             if task_id is not None and progress is not None:
                 progress.update(task_id, advance=1)
             yield Row.from_dict(record)

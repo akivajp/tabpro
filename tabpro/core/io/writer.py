@@ -65,7 +65,7 @@ class BaseWriter:
                     console = self._get_console()
                     console.log('Writing into: ', self.target)
                     self.task_id = self.progress.add_task(
-                        f'Writing rows...',
+                        'Writing rows...',
                     )
 
     def support_streaming(self):

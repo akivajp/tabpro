@@ -2,7 +2,6 @@
 
 import sys
 
-from collections import OrderedDict
 
 from typing import (
     Any,
@@ -10,24 +9,14 @@ from typing import (
 
 # 3-rd party modules
 
-from icecream import ic
-
 # local
 
-from ..logging import logger
 
-from .constants import (
-    FILE_FIELD,
-    ROW_INDEX_FIELD,
-    FILE_ROW_INDEX_FIELD,
-)
 
-from .functions.search_column_value import search_column_value
 
 from .io import (
     check_writer,
     get_loader,
-    get_writer,
     save,
 )
 
@@ -84,7 +73,6 @@ def compare(
     console.log('compare keys: ', compare_keys)
     list_dict_key_to_row: list[dict[Any, Row]] = [{},{}]
     set_query_values = set()
-    num_modified = 0
     if output_path:
         check_writer(output_path)
     loaders = [get_loader(path) for path in [path1, path2]]

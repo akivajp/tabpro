@@ -14,7 +14,6 @@ from .types import (
     FilterConfig,
 )
 
-from ...logging import logger
 
 def filter_row(
     row: Row,

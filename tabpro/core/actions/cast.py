@@ -43,12 +43,12 @@ def cast(
         )
     try:
         casted = cast_func(value)
-    except Exception:
+    except Exception as e:
         if config.assign_default:
             casted = config.default_value
         else:
             raise ValueError(
-                f'Failed to cast: {value}'
-            )
+                f'failed to cast {value!r} as {config.as_type}'
+            ) from e
     row.staging[config.target] = casted
     return row

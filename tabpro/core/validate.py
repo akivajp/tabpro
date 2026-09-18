@@ -10,7 +10,6 @@ convert が「変換」を担うのに対し、本モジュールは「検査」
 import dataclasses
 import os
 import re
-import sys
 
 from collections import OrderedDict
 from typing import (

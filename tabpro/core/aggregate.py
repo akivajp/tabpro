@@ -414,7 +414,7 @@ def aggregate(
                             reverse=False,
                         )
                 if key in list_keys_to_show_duplicates:
-                    aggregation[f'count_duplicates'] = get_sorted(
+                    aggregation['count_duplicates'] = get_sorted(
                         counter.main_counter,
                         show_count_max_length,
                         max_items=None,

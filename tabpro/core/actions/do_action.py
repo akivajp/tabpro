@@ -27,7 +27,7 @@ def do_actions(
     for action in actions:
         try:
             last_row = do_action(status, last_row, action)
-        except Exception as e:
+        except Exception:
             logger.error('failed with action: %s', action)
             #logger.error('failed with row: %s', row)
             logger.error('failed with row: %s', dict(row.items()))

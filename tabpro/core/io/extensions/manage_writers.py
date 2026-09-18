@@ -3,7 +3,6 @@ import pandas as pd
 
 from typing import Callable, TypeAlias
 
-from rich.console import Console
 
 from ... progress import Progress
 

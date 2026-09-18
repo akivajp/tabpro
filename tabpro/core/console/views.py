@@ -31,11 +31,15 @@ class Panel(BasePanel):
     ):
         if isinstance(data, dict):
             data = capture_dict(data)
+        # NOTE:
+        #   キーワード引数の後に *args を展開すると、位置引数が data の
+        #   次の引数に割り当てられ、意図しない結果になりうる。
         super().__init__(
             data,
+            *args,
             title = title,
             title_align = title_align,
             style = style,
             border_style = border_style,
-            *args, **kwargs
+            **kwargs
         )
