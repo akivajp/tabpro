@@ -35,8 +35,7 @@ def get_key_value(
     for primary_column in primary:
         value, found = search_column_value(row.nested, primary_column)
         if not found:
-            #raise KeyError(f'Column not found: {primary_column}, existing columns: {row.flat.keys()}')
-            raise KeyError(f'Column not found: {context_column}')
+            raise KeyError(f'Column not found: {primary_column}')
         primary_columns.append(primary_column)
         primary_values.append(value)
     context_key = (
