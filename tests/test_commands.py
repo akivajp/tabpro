@@ -1547,6 +1547,20 @@ def test_row_pop_found_returns_value_and_found():
     assert found is False
     assert value is None
 
+def test_row_iteration_and_len_exclude_staging():
+    """dict(row) と row.keys() が一致する (Mapping の契約)。
+
+    以前は __iter__ と __len__ が staging 込みで、
+    keys() / items() は staging 除外という不整合な状態だった。
+    """
+    row = Row.from_dict({'a': 1, 'b': 2})
+    row.staging['c'] = 3
+    assert list(row) == ['a', 'b']
+    assert list(row.keys()) == ['a', 'b']
+    assert len(row) == 2
+    assert dict(row) == {'a': 1, 'b': 2}
+    assert dict(row.items()) == {'a': 1, 'b': 2}
+
 # --- merge: 行ごとに異なる列 ---------------------------------------------
 
 def test_merge_applies_the_fields_present_in_each_row(tmp_path: Path):

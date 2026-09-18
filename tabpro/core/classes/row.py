@@ -187,10 +187,17 @@ class Row(Mapping):
         return found
 
     def __iter__(self):
-        return iter(self.flat)
+        # NOTE:
+        #   keys() / items() と同じく staging を除外する。
+        #   以前はフラット表現そのものを反復していたため、
+        #   iter と keys で結果が一致しない状態だった。
+        return self.iter(include_staging=False)
 
     def __len__(self):
-        return len(self.flat)
+        # NOTE:
+        #   Mapping の契約 (len と iter の一致) に揃えるため、
+        #   staging を除外した件数を返す。
+        return sum(1 for _ in self.iter())
 
     def __repr__(self):
         return f'Row(flat={self.flat}, nested={self.nested})'
