@@ -108,6 +108,23 @@ def setup_actions_with_args(
                     default_value = options['default']
                     if default_value in ['None', 'none', 'Null', 'null']:
                         default_value = None
+                    elif as_type != 'str':
+                        # NOTE:
+                        #   default も as_type に沿って変換する。
+                        #   文字列のまま流すと as=int の列に
+                        #   '0' (文字列) が書かれてしまう。
+                        try:
+                            if as_type == 'bool':
+                                default_value = as_boolean(default_value)
+                            elif as_type == 'int':
+                                default_value = int(default_value)
+                            elif as_type == 'float':
+                                default_value = float(default_value)
+                        except ValueError:
+                            raise ValueError(
+                                f'invalid default for as={as_type}: '
+                                f'{options["default"]!r}'
+                            ) from None
                 config.actions.append(types.CastConfig(
                     target = target,
                     source = source,

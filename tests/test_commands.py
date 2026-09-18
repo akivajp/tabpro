@@ -520,7 +520,11 @@ def test_cast_missing_field_does_not_raise(csv_file: Path, tmp_path: Path):
     assert len(read_jsonl(output)) == 3
 
 def test_cast_missing_field_uses_default(csv_file: Path, tmp_path: Path):
-    '''default 指定があれば欠損時に既定値が入る。'''
+    '''default 指定があれば欠損時に既定値が入る。
+
+    回帰テスト: 以前は default が文字列のまま流れたため、
+    as=int の default=0 で文字列 '0' が書き込まれていた。
+    '''
     output = tmp_path / 'out.jsonl'
     convert(
         input_files=[str(csv_file)],
@@ -528,7 +532,7 @@ def test_cast_missing_field_uses_default(csv_file: Path, tmp_path: Path):
         list_actions=['cast:v=nosuch:as=int,default=0'],
         list_pick_columns=['id', 'v'],
     )
-    assert read_jsonl(output)[0]['v'] == '0'
+    assert read_jsonl(output)[0]['v'] == 0
 
 # --- YAML 設定ファイル経路 ----------------------------------------------
 
@@ -1865,6 +1869,48 @@ def test_setup_action_boolean_options_accept_false():
     config = Config()
     setup_actions_with_args(config, ['assign-id:x,a:reverse=false'])
     assert config.actions[0].reverse is False
+
+def test_setup_action_cast_default_is_cast_per_as_type():
+    '''
+    回帰テスト: cast の default オプションが as_type に沿って変換されること。
+
+    以前は文字列のまま流れたため、as=int で default=0 と書くと
+    文字列 '0' が書き込まれていた。
+    '''
+    from tabpro.core.actions import setup_actions_with_args
+    from tabpro.core.config import Config
+
+    config = Config()
+    setup_actions_with_args(config, ['cast:b,a:as=int,default=0'])
+    assert config.actions[0].default_value == 0
+    assert config.actions[0].assign_default is True
+
+    config = Config()
+    setup_actions_with_args(config, ['cast:b,a:as=float,default=1.5'])
+    assert config.actions[0].default_value == 1.5
+
+    config = Config()
+    setup_actions_with_args(config, ['cast:b,a:as=bool,default=false'])
+    assert config.actions[0].default_value is False
+
+    # NOTE: as=str では文字列のまま扱う
+    config = Config()
+    setup_actions_with_args(config, ['cast:b,a:as=str,default=0'])
+    assert config.actions[0].default_value == '0'
+
+    # NOTE: 変換できない default は設定時に明示エラーになる
+    with pytest.raises(ValueError, match=r'invalid default for as=int'):
+        config = Config()
+        setup_actions_with_args(config, ['cast:b,a:as=int,default=abc'])
+
+def test_setup_action_cast_default_keeps_none_literal():
+    '''default=None は従来どおり None として扱われること。'''
+    from tabpro.core.actions import setup_actions_with_args
+    from tabpro.core.config import Config
+
+    config = Config()
+    setup_actions_with_args(config, ['cast:b,a:as=int,default=None'])
+    assert config.actions[0].default_value is None
 
 # --- コンソールスクリプト -----------------------------------------------
 
