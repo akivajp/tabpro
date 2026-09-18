@@ -44,7 +44,8 @@ def setup_config(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                 lambda loader, node: OrderedDict(loader.construct_pairs(node)),
             )
-            with open(config_path, 'r') as f:
+            # NOTE: ロケールに依存しないよう、エンコーディングを明示する
+            with open(config_path, 'r', encoding='utf-8') as f:
                 loaded = yaml.load(f, yaml.Loader)
         else:
             raise ValueError(
