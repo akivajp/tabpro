@@ -23,7 +23,7 @@ class BaseActionConfig:
 # NOTE:
 #   do_action が types.AssignConfig として参照するため、ここでの再公開が必要。
 #   未使用として取り除くとアクションの振り分けが壊れる。
-from .assign import AssignConfig  # noqa: F401
+from .assign import AssignConfig  # noqa: F401, E402
 
 @dataclasses.dataclass
 class AssignArrayElementConfig(BaseActionConfig):
@@ -110,7 +110,7 @@ class PushConfig(BaseActionConfig):
     condition: str | None = None
 
 # NOTE: 同上 (types.ReplaceConfig として参照される)
-from .replace_string import ReplaceConfig  # noqa: F401
+from .replace_string import ReplaceConfig  # noqa: F401, E402
 
 @dataclasses.dataclass
 class SplitConfig(BaseActionConfig):

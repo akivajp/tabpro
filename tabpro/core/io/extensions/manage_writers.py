@@ -15,7 +15,9 @@ Saver: TypeAlias = Callable[[pd.DataFrame, str], None]
 
 dict_writers: dict[str, type[BaseWriter]] = {}
 
-from ...classes.row import Row
+# NOTE:
+#   import 順の制約によりここで読み込む必要がある (Row を定義前に参照できない)。
+from ...classes.row import Row  # noqa: E402
 
 def register_writer(
     ext: str,

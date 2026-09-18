@@ -108,7 +108,8 @@ class BaseWriter:
         raise NotImplementedError
     
     def close(self):
-        if self.finished: return
+        if self.finished:
+            return
         if not self.streaming and self.rows:
             if not self.quiet:
                 console = self._get_console()

@@ -97,10 +97,12 @@ def assign_array(
         row.staging[config.target] = None
     return row
 
-from .setup_actions import (
+# NOTE:
+#   循環 import を避けるため、関数定義の後に置く必要がある。
+from .setup_actions import (  # noqa: E402
     setup_actions_with_args,
 )
-from .do_action import (
+from .do_action import (  # noqa: E402
     do_actions,
 )
 __all__ = [

@@ -47,17 +47,17 @@ class ValueCounter:
             self.max_count = self.main_counter[value]
 
     def add_type(self, value: Any):
-        if type(value) == str:
+        if type(value) is str:
             str_type = 'string'
-        elif type(value) == int:
+        elif type(value) is int:
             str_type = 'integer'
-        elif type(value) == float:
+        elif type(value) is float:
             str_type = 'float'
-        elif type(value) == bool:
+        elif type(value) is bool:
             str_type = 'boolean'
-        elif type(value) == list:
+        elif type(value) is list:
             str_type = 'array'
-        elif type(value) == dict:
+        elif type(value) is dict:
             str_type = 'object'
         elif value is None:
             str_type = 'null'

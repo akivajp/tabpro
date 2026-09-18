@@ -27,7 +27,7 @@ def assign(
 ):
     value, found = row.search(config.source)
     if config.required:
-        if not found or bool(value) == False:
+        if not found or not bool(value):
             raise ValueError(
                 'Required field not found or empty, ' +
                 f'field: {config.source}, found: {found}, value: {value}'
