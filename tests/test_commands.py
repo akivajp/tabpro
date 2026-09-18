@@ -664,6 +664,199 @@ def test_validate_rejects_unwritable_output_before_reading(
             report_file=str(tmp_path / 'report.txt'),
         )
 
+# --- validate: unique / max_length / unknown_columns ---------------------
+
+def test_max_length_rule(tmp_path: Path):
+    """文字数の上限を超えた値が違反として検出される。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  comment:\n    required: true\n    max_length: 5\n',
+    )
+    schema = load_schema(str(path))
+    assert validate_row(Row.from_dict({'comment': '12345'}), schema) == []
+    violations = validate_row(Row.from_dict({'comment': '123456'}), schema)
+    assert [(v['column'], v['rule']) for v in violations] == \
+        [('comment', 'max_length')]
+
+@pytest.mark.parametrize('param', ['five', 3.5, True, -1])
+def test_max_length_rejects_bad_parameter(tmp_path: Path, param):
+    """max_length に整数以外を書いたらスキーマの誤りとして弾かれる。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        f'columns:\n  comment:\n    max_length: {param}\n',
+    )
+    with pytest.raises(SchemaError):
+        load_schema(str(path))
+
+def test_unique_reports_only_later_occurrences(tmp_path: Path):
+    """
+    重複のうち2件目以降を違反とする。
+
+    最初の出現を適合とすることで、差し戻す対象が一意に決まる。
+    """
+    schema_path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  id:\n    required: true\n    unique: true\n',
+    )
+    source = write_file(tmp_path / 'in.csv', 'id\n1\n2\n1\n1\n')
+    report = tmp_path / 'report.json'
+    result = validate(
+        input_files=[str(source)],
+        schema_path=str(schema_path),
+        report_file=str(report),
+    )
+    assert result.num_invalid == 2
+    records = json.loads(report.read_text(encoding='utf-8'))
+    assert [r['row_index'] for r in records] == [2, 3]
+
+def test_unique_spans_all_input_files_by_default(tmp_path: Path):
+    """既定の unique は入力ファイル全体を通じて判定される。"""
+    schema_path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  id:\n    required: true\n    unique: true\n',
+    )
+    a = write_file(tmp_path / 'a.csv', 'id\n1\n2\n')
+    b = write_file(tmp_path / 'b.csv', 'id\n2\n3\n')
+    report = tmp_path / 'report.json'
+    result = validate(
+        input_files=[str(a), str(b)],
+        schema_path=str(schema_path),
+        report_file=str(report),
+    )
+    assert result.num_invalid == 1
+    records = json.loads(report.read_text(encoding='utf-8'))
+    assert records[0]['file'] == str(b)
+    assert records[0]['actual'] == '2'
+
+def test_unique_per_file_is_scoped_to_each_file(tmp_path: Path):
+    """unique: per_file ではファイルをまたいだ重複を違反としない。"""
+    schema_path = write_file(
+        tmp_path / 'spec.yaml',
+        "columns:\n  'no':\n    required: true\n    unique: per_file\n",
+    )
+    a = write_file(tmp_path / 'a.csv', 'no\n1\n2\n')
+    b = write_file(tmp_path / 'b.csv', 'no\n1\n1\n')
+    result = validate(
+        input_files=[str(a), str(b)],
+        schema_path=str(schema_path),
+    )
+    # NOTE: b.csv 内での重複1件のみ。a.csv との重複は対象外。
+    assert result.num_invalid == 1
+
+def test_unique_rejects_bad_scope(tmp_path: Path):
+    """unique に未対応の値を書いたらスキーマの誤りとして弾かれる。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  id:\n    unique: per_batch\n',
+    )
+    with pytest.raises(SchemaError):
+        load_schema(str(path))
+
+def test_unique_false_disables_the_check(tmp_path: Path):
+    """unique: false は検査しないことを意味する。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  id:\n    required: true\n    unique: false\n',
+    )
+    schema = load_schema(str(path))
+    assert schema.columns[0].checks == []
+
+def test_unknown_columns_warn_is_not_a_violation(tmp_path: Path):
+    """既定の warn では、未定義の列があっても違反にはしない。"""
+    schema_path = write_file(
+        tmp_path / 'spec.yaml', 'columns:\n  id:\n    required: true\n',
+    )
+    source = write_file(tmp_path / 'in.csv', 'id,memo\n1,m\n2,m\n')
+    result = validate(
+        input_files=[str(source)], schema_path=str(schema_path),
+    )
+    assert result.ok is True
+    assert result.unknown_columns == {'memo': 2}
+
+def test_unknown_columns_error_is_a_violation(tmp_path: Path):
+    """error では、未定義の列が違反として報告される。"""
+    schema_path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  id:\n    required: true\n'
+        'unknown_columns: error\n',
+    )
+    source = write_file(tmp_path / 'in.csv', 'id,memo\n1,m\n')
+    invalid = tmp_path / 'invalid.jsonl'
+    result = validate(
+        input_files=[str(source)],
+        schema_path=str(schema_path),
+        output_invalid=str(invalid),
+    )
+    assert result.ok is False
+    assert read_jsonl(invalid)[0]['__violations__'] == [{
+        'column': 'memo',
+        'rule': 'unknown_column',
+        'expected': 'a column defined in the schema',
+        'actual': 'memo',
+    }]
+
+def test_unknown_columns_ignore_says_nothing(tmp_path: Path):
+    """ignore では、未定義の列を記録すらしない。"""
+    schema_path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  id:\n    required: true\n'
+        'unknown_columns: ignore\n',
+    )
+    source = write_file(tmp_path / 'in.csv', 'id,memo\n1,m\n')
+    result = validate(
+        input_files=[str(source)], schema_path=str(schema_path),
+    )
+    assert result.ok is True
+    assert result.unknown_columns == {}
+
+def test_unknown_columns_accepts_nested_children(tmp_path: Path):
+    """スキーマが親を定義していれば、ネストした子は未定義扱いにしない。"""
+    schema_path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  nested:\n    required: false\n'
+        'unknown_columns: error\n',
+    )
+    source = write_file(
+        tmp_path / 'in.jsonl', '{"nested": {"k": "v"}}\n',
+    )
+    result = validate(
+        input_files=[str(source)], schema_path=str(schema_path),
+    )
+    assert result.ok is True
+
+def test_schema_rejects_column_name_read_as_boolean(tmp_path: Path):
+    """
+    YAML が真偽値と解釈する列名は、黙って化けずにエラーになる。
+
+    no / No / on / off などは引用符が無いと真偽値になり、
+    さらに no と No は同じ False に潰れて定義が合流してしまう。
+    """
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  no:\n    required: true\n',
+    )
+    with pytest.raises(SchemaError, match='boolean'):
+        load_schema(str(path))
+
+def test_schema_accepts_quoted_column_name(tmp_path: Path):
+    """引用符を付ければ、そのままの列名として扱われる。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        "columns:\n  'no':\n    required: true\n",
+    )
+    schema = load_schema(str(path))
+    assert [c.name for c in schema.columns] == ['no']
+
+def test_unknown_columns_rejects_bad_mode(tmp_path: Path):
+    """unknown_columns に未対応の値を書いたら弾かれる。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  id:\n    required: true\n'
+        'unknown_columns: explode\n',
+    )
+    with pytest.raises(SchemaError):
+        load_schema(str(path))
+
 # --- 複数値オプションの繰り返し指定 -------------------------------------
 
 def build_parser(setup_parser) -> argparse.ArgumentParser:

@@ -114,6 +114,59 @@ def check_pattern(value: Any, expected: Any) -> bool:
     '''値が正規表現に一致するかを判定する。'''
     return re.search(str(expected), str(value)) is not None
 
+@register_rule('max_length')
+def check_max_length(value: Any, expected: Any) -> bool:
+    '''値の文字数が上限以内かを判定する。'''
+    return len(str(value)) <= int(expected)
+
+# NOTE:
+#   unique は「既出の値」を覚えていないと判定できないため、
+#   1行だけを見る dict_rules ではなく検査状態を伴う経路で扱う。
+STATEFUL_RULES = ['unique']
+
+UNIQUE_SCOPES = [True, 'per_file']
+UNKNOWN_COLUMN_MODES = ['error', 'warn', 'ignore']
+
+@dataclasses.dataclass
+class ValidationState:
+    '''
+    複数行・複数ファイルにまたがる検査のための状態。
+
+    保持するのは検査対象の列の値のみで、行データ自体は保持しない。
+    '''
+    # (スコープキー, 列名) から、既出の値の集合への対応
+    seen_values: dict = dataclasses.field(default_factory=dict)
+    # スキーマに無い列の名前から、出現したファイル数への対応
+    unknown_columns: OrderedDict = dataclasses.field(default_factory=OrderedDict)
+
+    def is_first_occurrence(
+        self,
+        scope_key: str,
+        column: str,
+        value: Any,
+    ) -> bool:
+        '''
+        その値がまだ現れていなければ True を返し、現れたものとして記録する。
+
+        Args:
+            scope_key: 一意性を判定する範囲を表すキー。
+            column: 対象の列名。
+            value: 判定する値。
+
+        Returns:
+            初出であれば True。
+        '''
+        key = (scope_key, column)
+        values = self.seen_values.setdefault(key, set())
+        # NOTE:
+        #   CSV 由来の値は文字列、JSON 由来は数値になりうるため、
+        #   文字列に揃えて比較する。
+        normalized = str(value)
+        if normalized in values:
+            return False
+        values.add(normalized)
+        return True
+
 @dataclasses.dataclass
 class ColumnSchema:
     '''1つの列に対する検査仕様。'''
@@ -126,6 +179,8 @@ class ColumnSchema:
 class Schema:
     '''入力データ全体に対する検査仕様。'''
     columns: list[ColumnSchema] = dataclasses.field(default_factory=list)
+    # スキーマに無い列が現れたときの扱い
+    unknown_columns: str = 'warn'
 
 def load_schema(
     schema_path: str,
@@ -156,7 +211,25 @@ def load_schema(
     if not isinstance(dict_columns, Mapping):
         raise SchemaError("Schema must have a 'columns' mapping.")
     schema = Schema()
+    mode = loaded.get('unknown_columns', 'warn')
+    if mode not in UNKNOWN_COLUMN_MODES:
+        raise SchemaError(
+            f'Unsupported unknown_columns mode: {mode!r}. '
+            f'Must be one of {UNKNOWN_COLUMN_MODES}.'
+        )
+    schema.unknown_columns = mode
     for name, definition in dict_columns.items():
+        if isinstance(name, bool):
+            # NOTE:
+            #   YAML は no / No / on / off などを真偽値として解釈するため、
+            #   引用符を付けずに書いた列名が黙って True / False に化ける。
+            #   さらに no と No は同じ False に潰れて定義が合流してしまうため、
+            #   気付けるようにここで明示的に停止する。
+            raise SchemaError(
+                f'Column name was read as the boolean {name}. '
+                'YAML treats no, No, on, off and similar words as booleans; '
+                'quote the column name to keep it as text.'
+            )
         if definition is None:
             # NOTE: 規則を書かない場合は「列の存在だけを期待しない」任意項目とする
             definition = {}
@@ -173,10 +246,10 @@ def load_schema(
                     )
                 column.required = param
                 continue
-            if key not in dict_rules:
+            if key not in dict_rules and key not in STATEFUL_RULES:
                 raise SchemaError(
                     f'Unsupported rule {key!r} for column {name!r}. '
-                    f'Supported rules: {sorted(dict_rules)}'
+                    f'Supported rules: {sorted(list(dict_rules) + STATEFUL_RULES)}'
                 )
             if key == 'type' and param not in TYPE_NAMES:
                 raise SchemaError(
@@ -187,6 +260,22 @@ def load_schema(
                 raise SchemaError(
                     f'enum of column {name!r} must be a list.'
                 )
+            if key == 'unique' and param not in UNIQUE_SCOPES:
+                if param is False:
+                    # NOTE: unique: false は「検査しない」の意なので登録しない
+                    continue
+                raise SchemaError(
+                    f'unique of column {name!r} must be true or "per_file".'
+                )
+            if key == 'max_length':
+                if isinstance(param, bool) or not isinstance(param, int):
+                    raise SchemaError(
+                        f'max_length of column {name!r} must be an integer.'
+                    )
+                if param < 0:
+                    raise SchemaError(
+                        f'max_length of column {name!r} must not be negative.'
+                    )
             column.checks.append((key, param))
         schema.columns.append(column)
     if not schema.columns:
@@ -206,9 +295,40 @@ def is_empty_value(
         return True
     return False
 
+def find_unknown_columns(
+    row: Row,
+    schema: Schema,
+) -> list[str]:
+    '''
+    スキーマに定義されていない列の名前を返す。
+
+    ネストした値はフラット表現 (`a.b`) で現れるため、
+    スキーマが `a` を定義していれば `a.b` も既知として扱う。
+
+    Args:
+        row: 対象の行。
+        schema: 検査仕様。
+
+    Returns:
+        未定義の列名のリスト。
+    '''
+    known = [column.name for column in schema.columns]
+    unknown: list[str] = []
+    for key in row.keys():
+        name = str(key)
+        if name in known:
+            continue
+        if any(name.startswith(f'{k}.') for k in known):
+            continue
+        if name not in unknown:
+            unknown.append(name)
+    return unknown
+
 def validate_row(
     row: Row,
     schema: Schema,
+    state: ValidationState | None = None,
+    file_path: str = '',
 ) -> list[OrderedDict]:
     '''
     1行を検査し、違反の一覧を返す。
@@ -216,10 +336,15 @@ def validate_row(
     Args:
         row: 検査対象の行。
         schema: 検査仕様。
+        state: 複数行にまたがる検査 (unique) のための状態。
+            省略した場合は毎回新しい状態を用いるため、unique は常に満たされる。
+        file_path: unique を per_file で判定する際に用いるファイルのパス。
 
     Returns:
         違反を表す辞書のリスト。違反が無ければ空リスト。
     '''
+    if state is None:
+        state = ValidationState()
     violations: list[OrderedDict] = []
     for column in schema.columns:
         value, found = row.search(column.name)
@@ -236,6 +361,21 @@ def validate_row(
             #   必須項目が空の場合も、違反を1件に絞るため後続の検査は行わない。
             continue
         for rule_name, param in column.checks:
+            if rule_name == 'unique':
+                # NOTE:
+                #   最初の出現は適合とし、2件目以降を違反とする。
+                #   こうすると差し戻す対象が一意に決まる。
+                scope_key = file_path if param == 'per_file' else ''
+                if state.is_first_occurrence(scope_key, column.name, value):
+                    continue
+                violations.append(OrderedDict([
+                    ('column', column.name),
+                    ('rule', 'unique'),
+                    ('expected', 'per_file' if param == 'per_file'
+                        else 'unique across all inputs'),
+                    ('actual', value),
+                ]))
+                continue
             checker = dict_rules[rule_name]
             if not checker(value, param):
                 violations.append(OrderedDict([
@@ -244,6 +384,19 @@ def validate_row(
                     ('expected', param),
                     ('actual', value),
                 ]))
+    if schema.unknown_columns != 'ignore':
+        for name in find_unknown_columns(row, schema):
+            if schema.unknown_columns == 'error':
+                violations.append(OrderedDict([
+                    ('column', name),
+                    ('rule', 'unknown_column'),
+                    ('expected', 'a column defined in the schema'),
+                    ('actual', name),
+                ]))
+            else:
+                # NOTE: warn では違反とせず、最後にまとめて件数を報告する
+                state.unknown_columns[name] = \
+                    state.unknown_columns.get(name, 0) + 1
     return violations
 
 @dataclasses.dataclass
@@ -253,6 +406,8 @@ class ValidationResult:
     num_valid: int = 0
     num_invalid: int = 0
     violations: list[OrderedDict] = dataclasses.field(default_factory=list)
+    # スキーマに無い列 (unknown_columns: warn のときに記録される)
+    unknown_columns: OrderedDict = dataclasses.field(default_factory=OrderedDict)
 
     @property
     def ok(self) -> bool:
@@ -281,6 +436,19 @@ def print_summary(
         else f'[green]{result.num_invalid}[/green]',
     )
     console.print(table)
+    if result.unknown_columns:
+        # NOTE:
+        #   warn では違反としないが、黙って通すと
+        #   列の作り変えに気付けないため必ず表示する。
+        table = Table(
+            title='columns not defined in the schema',
+            title_justify='left',
+        )
+        table.add_column('column', overflow='fold')
+        table.add_column('rows', justify='right')
+        for name, count in result.unknown_columns.items():
+            table.add_row(f'[yellow]{name}[/yellow]', str(count))
+        console.print(table)
     if not result.violations:
         return
     # NOTE: 列と規則の組ごとに件数を集計し、どこを直せばよいかが一目で分かるようにする
@@ -340,6 +508,8 @@ def validate(
     console.log('input_files: ', input_files)
     console.log('schema: ', schema_path)
     result = ValidationResult()
+    # NOTE: unique の判定は入力全体にまたがるため、ファイルをまたいで保持する
+    state = ValidationState()
     writer_valid = get_writer(output_valid, progress=progress) \
         if output_valid else None
     writer_invalid = get_writer(output_invalid, progress=progress) \
@@ -353,7 +523,9 @@ def validate(
             console.log('# rows: ', len(loader))
             for index, row in enumerate(loader):
                 result.num_rows += 1
-                violations = validate_row(row, schema)
+                violations = validate_row(
+                    row, schema, state=state, file_path=input_file,
+                )
                 if not violations:
                     result.num_valid += 1
                     if writer_valid:
@@ -381,6 +553,7 @@ def validate(
             writer_valid.close()
         if writer_invalid:
             writer_invalid.close()
+    result.unknown_columns = state.unknown_columns
     if report_file:
         console.log('writing report into: ', report_file)
         writer_report = get_writer(report_file, progress=progress)

@@ -229,12 +229,35 @@ columns:
     required: true        # the column must be present and not empty
     type: int             # bool / float / int / str
     pattern: '^[0-9]{4}$'
+    unique: true          # no other row, in any input file, may repeat it
+  local_no:
+    required: true
+    unique: per_file      # unique within each file, not across them
   label:
     required: true
     enum: [positive, negative, neutral]
   comment:
     required: false       # checked only when a value is present
+    max_length: 200
+
+# What to do about columns the schema does not mention.
+# error / warn / ignore. The default is warn.
+unknown_columns: warn
 ```
+
+`unique` reports the second and later occurrences, not the first, so what
+has to be sent back is unambiguous. It spans every input file by default,
+which is what catches an id reused between two people's spreadsheets; use
+`per_file` for a number that only has to be unique within one file.
+
+`unknown_columns: warn` counts columns the schema does not mention and shows
+them at the end without failing the run — enough to notice that someone
+added a column of their own. `error` turns them into violations.
+
+> Quote column names that YAML would read as something else. `no`, `No`,
+> `on` and `off` become booleans, and `no` and `No` collapse into the same
+> key, silently merging two definitions. Writing `'no':` keeps it as text.
+> A schema that hits this is rejected rather than quietly misread.
 
 ```bash
 tabpro validate submissions/*.xlsx --schema schema.yaml \
@@ -290,6 +313,9 @@ tabpro validate incoming.xlsx --schema schema.yaml --invalid bad.jsonl \
 A required column that is empty reports only that, rather than also
 complaining that the empty value is not an integer. Optional columns are
 checked only when they hold a value.
+
+Checking `unique` means remembering the values seen so far; only those
+values are held, never the rows.
 
 ### sort
 
