@@ -98,6 +98,17 @@ def command_sort_tables(
         'Sort tables.',
     )
 
+def command_validate_tables(
+    subparsers: argparse._SubParsersAction | None = None,
+):
+    from . commands.validate_tables import setup_parser
+    setup_command(
+        subparsers,
+        setup_parser,
+        'validate',
+        'Validate tables against a schema.',
+    )
+
 def setup_common_args(
     parser: argparse.ArgumentParser,
 ):
@@ -125,6 +136,7 @@ def main():
     command_convert_tables(subparsers)
     command_merge_tables(subparsers)
     command_sort_tables(subparsers)
+    command_validate_tables(subparsers)
 
     parse_and_run(parser)
 

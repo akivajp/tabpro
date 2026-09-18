@@ -27,6 +27,8 @@ tabpro-merge= "tabpro.cli:command_merge_tables"
 merge-tables = "tabpro.cli:command_merge_tables"
 tabpro-sort= "tabpro.cli:command_sort_tables"
 sort-tables = "tabpro.cli:command_sort_tables"
+tabpro-validate = "tabpro.cli:command_validate_tables"
+validate-tables = "tabpro.cli:command_validate_tables"
 
 [tool.poetry.dependencies]
 # NOTE: Python 3.10 以降で動作することを CI のマトリクスで検証している

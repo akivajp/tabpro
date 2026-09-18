@@ -27,6 +27,13 @@ from tabpro.core.compare import compare
 from tabpro.core.convert import convert
 from tabpro.core.merge import merge
 from tabpro.core.sort import sort
+from tabpro.core.classes.row import Row
+from tabpro.core.validate import (
+    SchemaError,
+    load_schema,
+    validate,
+    validate_row,
+)
 
 from tabpro.commands.aggregate_tables import setup_parser as setup_aggregate_parser
 from tabpro.commands.compare_tables import setup_parser as setup_compare_parser
@@ -456,6 +463,206 @@ def test_aggregate_compare_columns_with_empty_file(tmp_path: Path):
     comparison = json.loads(output.read_text(encoding='utf-8'))['column_comparison']
     assert comparison['files'] == [str(a), str(empty)]
     assert comparison['missing'] == {str(empty): ['id', 'name']}
+
+# --- validate: スキーマ検査 ----------------------------------------------
+
+SPEC_SAMPLE = """
+columns:
+  id:
+    required: true
+    type: int
+    pattern: '^[0-9]{4}$'
+  label:
+    required: true
+    enum: [positive, negative, neutral]
+  comment:
+    required: false
+"""
+
+VALIDATE_SAMPLE = (
+    'id,label,comment\n'
+    '0001,positive,ok\n'      # 適合
+    'abc,positive,\n'         # id が型・正規表現の両方に違反
+    '0002,POSITIVE,x\n'       # label が許容値に無い
+    '0003,,y\n'               # label が必須なのに空
+    '12,neutral,z\n'          # id は整数だが桁数が合わない
+)
+
+@pytest.fixture
+def schema_file(tmp_path: Path) -> Path:
+    """標準的なスキーマファイル。"""
+    return write_file(tmp_path / 'spec.yaml', SPEC_SAMPLE)
+
+def test_load_schema(schema_file: Path):
+    """スキーマが定義順どおりに読み込まれる。"""
+    schema = load_schema(str(schema_file))
+    assert [c.name for c in schema.columns] == ['id', 'label', 'comment']
+    assert schema.columns[0].required is True
+    assert schema.columns[0].checks == [
+        ('type', 'int'), ('pattern', '^[0-9]{4}$'),
+    ]
+    assert schema.columns[2].required is False
+
+@pytest.mark.parametrize(
+    'content, reason',
+    [
+        ('columns:\n  id:\n    nosuchrule: true\n', '未対応の規則'),
+        ('columns:\n  id:\n    type: complex\n', '未対応の型'),
+        ('columns:\n  id:\n    enum: positive\n', 'enum がリストでない'),
+        ('columns:\n  id:\n    required: yes_please\n', 'required が真偽値でない'),
+        ('columns: []\n', 'columns がマッピングでない'),
+        ('foo: bar\n', 'columns が無い'),
+    ],
+)
+def test_load_schema_rejects_bad_definitions(
+    tmp_path: Path, content: str, reason: str,
+):
+    """スキーマ自体の誤りは検査開始前に明示的なエラーになる。"""
+    path = write_file(tmp_path / 'spec.yaml', content)
+    with pytest.raises(SchemaError):
+        load_schema(str(path))
+
+def test_load_schema_rejects_non_yaml(tmp_path: Path):
+    """YAML 以外のスキーマファイルは受け付けない。"""
+    path = write_file(tmp_path / 'spec.json', '{}')
+    with pytest.raises(SchemaError):
+        load_schema(str(path))
+
+def test_validate_row_accepts_valid_row(schema_file: Path):
+    """仕様を満たす行には違反が出ない。"""
+    schema = load_schema(str(schema_file))
+    row = Row.from_dict({'id': '0001', 'label': 'positive', 'comment': 'ok'})
+    assert validate_row(row, schema) == []
+
+def test_validate_row_reports_every_failing_rule(schema_file: Path):
+    """1つの値が複数の規則に違反する場合、全て報告される。"""
+    schema = load_schema(str(schema_file))
+    row = Row.from_dict({'id': 'abc', 'label': 'positive'})
+    violations = validate_row(row, schema)
+    assert [(v['column'], v['rule']) for v in violations] == [
+        ('id', 'type'), ('id', 'pattern'),
+    ]
+
+def test_validate_row_required_stops_further_checks(schema_file: Path):
+    """必須項目が空のとき、違反は required の1件に絞られる。"""
+    schema = load_schema(str(schema_file))
+    row = Row.from_dict({'id': '', 'label': 'positive'})
+    violations = validate_row(row, schema)
+    assert [(v['column'], v['rule']) for v in violations] == [('id', 'required')]
+
+def test_validate_row_skips_checks_for_empty_optional(tmp_path: Path):
+    """任意項目が空なら、型などの検査は行われない。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  score:\n    required: false\n    type: int\n',
+    )
+    schema = load_schema(str(path))
+    assert validate_row(Row.from_dict({'score': ''}), schema) == []
+    assert validate_row(Row.from_dict({}), schema) == []
+    # NOTE: 値があるなら任意項目でも検査される
+    assert len(validate_row(Row.from_dict({'score': 'x'}), schema)) == 1
+
+def test_validate_type_rule_distinguishes_bool_from_int(tmp_path: Path):
+    """bool は int としては扱わない。"""
+    path = write_file(
+        tmp_path / 'spec.yaml',
+        'columns:\n  flag:\n    required: true\n    type: int\n',
+    )
+    schema = load_schema(str(path))
+    assert len(validate_row(Row.from_dict({'flag': True}), schema)) == 1
+    assert validate_row(Row.from_dict({'flag': 3}), schema) == []
+
+def test_validate_separates_valid_and_invalid_rows(
+    schema_file: Path, tmp_path: Path,
+):
+    """適合行と違反行がそれぞれの出力先に振り分けられる。"""
+    source = write_file(tmp_path / 'in.csv', VALIDATE_SAMPLE)
+    valid = tmp_path / 'valid.jsonl'
+    invalid = tmp_path / 'invalid.jsonl'
+    result = validate(
+        input_files=[str(source)],
+        schema_path=str(schema_file),
+        output_valid=str(valid),
+        output_invalid=str(invalid),
+    )
+    assert (result.num_rows, result.num_valid, result.num_invalid) == (5, 1, 4)
+    assert result.ok is False
+    assert [row['id'] for row in read_jsonl(valid)] == ['0001']
+    assert [row['id'] for row in read_jsonl(invalid)] == \
+        ['abc', '0002', '0003', '12']
+
+def test_validate_attaches_violations_to_invalid_rows(
+    schema_file: Path, tmp_path: Path,
+):
+    """違反行には理由が __violations__ として付与される。"""
+    source = write_file(tmp_path / 'in.csv', VALIDATE_SAMPLE)
+    invalid = tmp_path / 'invalid.jsonl'
+    validate(
+        input_files=[str(source)],
+        schema_path=str(schema_file),
+        output_invalid=str(invalid),
+    )
+    rows = read_jsonl(invalid)
+    assert rows[0]['__violations__'] == [
+        {'column': 'id', 'rule': 'type',
+         'expected': 'int', 'actual': 'abc'},
+        {'column': 'id', 'rule': 'pattern',
+         'expected': '^[0-9]{4}$', 'actual': 'abc'},
+    ]
+
+def test_validate_does_not_touch_valid_rows(
+    schema_file: Path, tmp_path: Path,
+):
+    """適合行に __violations__ は付かない。"""
+    source = write_file(tmp_path / 'in.csv', VALIDATE_SAMPLE)
+    valid = tmp_path / 'valid.jsonl'
+    validate(
+        input_files=[str(source)],
+        schema_path=str(schema_file),
+        output_valid=str(valid),
+    )
+    assert '__violations__' not in read_jsonl(valid)[0]
+
+def test_validate_report_records_the_source_location(
+    schema_file: Path, tmp_path: Path,
+):
+    """レポートから、どのファイルの何行目かを辿れる。"""
+    source = write_file(tmp_path / 'in.csv', VALIDATE_SAMPLE)
+    report = tmp_path / 'report.json'
+    validate(
+        input_files=[str(source)],
+        schema_path=str(schema_file),
+        report_file=str(report),
+    )
+    records = json.loads(report.read_text(encoding='utf-8'))
+    assert len(records) == 5
+    assert records[0]['file'] == str(source)
+    assert records[0]['row_index'] == 1
+
+def test_validate_ok_when_every_row_satisfies_the_schema(
+    schema_file: Path, tmp_path: Path,
+):
+    """全行が適合すれば ok になる。"""
+    source = write_file(
+        tmp_path / 'in.csv', 'id,label,comment\n0001,positive,ok\n',
+    )
+    result = validate(
+        input_files=[str(source)], schema_path=str(schema_file),
+    )
+    assert result.ok is True
+    assert result.violations == []
+
+def test_validate_rejects_unwritable_output_before_reading(
+    schema_file: Path, tmp_path: Path,
+):
+    """書き出せない出力形式は、読み込みを始める前に弾かれる。"""
+    source = write_file(tmp_path / 'in.csv', VALIDATE_SAMPLE)
+    with pytest.raises(ValueError):
+        validate(
+            input_files=[str(source)],
+            schema_path=str(schema_file),
+            report_file=str(tmp_path / 'report.txt'),
+        )
 
 # --- 複数値オプションの繰り返し指定 -------------------------------------
 

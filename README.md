@@ -205,6 +205,92 @@ The full file-by-column matrix is always written to the JSON report, even
 when the terminal falls back to a summary because there are too many files
 or columns to lay out.
 
+### validate — check a table against a schema
+
+```bash
+tabpro validate [options] <input_file>... --schema <schema.yaml>
+```
+
+`convert` transforms, `validate` only judges. They are separate because a
+transformation is allowed to fill in a default and carry on, while a check
+has to report that the data did not meet the spec.
+
+| Option | Description |
+|---|---|
+| `--schema`, `-S` | Schema file (YAML), required |
+| `--output-valid`, `--valid` | Rows that satisfy the schema |
+| `--output-invalid`, `--invalid` | Rows that do not, each annotated with why |
+| `--report` | The list of violations, one row each |
+
+```yaml
+# schema.yaml
+columns:
+  id:
+    required: true        # the column must be present and not empty
+    type: int             # bool / float / int / str
+    pattern: '^[0-9]{4}$'
+  label:
+    required: true
+    enum: [positive, negative, neutral]
+  comment:
+    required: false       # checked only when a value is present
+```
+
+```bash
+tabpro validate submissions/*.xlsx --schema schema.yaml \
+  --output-valid   delivery.jsonl \
+  --output-invalid rejected.jsonl \
+  --report         violations.xlsx
+```
+
+```
+validation summary
+┃ rows ┃ valid ┃ invalid ┃
+│    6 │     2 │       4 │
+
+violations by column and rule
+┃ column ┃ rule     ┃ count ┃
+│ id     │ pattern  │     2 │
+│ id     │ type     │     1 │
+│ label  │ enum     │     1 │
+│ label  │ required │     1 │
+```
+
+Rows written to `--output-invalid` carry a `__violations__` field saying
+what failed, so the row and its reasons travel together:
+
+```json
+{"id": "abc", "label": "positive",
+ "__violations__": [
+   {"column": "id", "rule": "type", "expected": "int", "actual": "abc"},
+   {"column": "id", "rule": "pattern", "expected": "^[0-9]{4}$", "actual": "abc"}]}
+```
+
+`__violations__` is deliberately not part of the staging area: staging holds
+working values that are thrown away before output, and these are the one
+thing that must survive it.
+
+`--report` takes any supported extension, so `violations.xlsx` gives you a
+spreadsheet — one row per violation, with the file and row index — that can
+go straight back to whoever filled the form in.
+
+The exit status is meant to be used from a script:
+
+| Status | Meaning |
+|---|---|
+| 0 | every row satisfies the schema |
+| 1 | violations were found, and separated out |
+| 2 | the check could not run (bad schema, missing file, …) |
+
+```bash
+tabpro validate incoming.xlsx --schema schema.yaml --invalid bad.jsonl \
+  || echo 'send it back'
+```
+
+A required column that is empty reports only that, rather than also
+complaining that the empty value is not an integer. Optional columns are
+checked only when they hold a value.
+
 ### sort
 
 ```bash
