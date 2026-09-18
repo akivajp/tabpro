@@ -12,6 +12,7 @@ def run(
         output_file=args.output_file,
         sort_keys=args.sort_keys,
         reverse=args.reverse,
+        numeric=args.numeric,
         verbose=args.verbose,
     )
 
@@ -45,5 +46,13 @@ def setup_parser(
         '--reverse', '-R',
         action='store_true',
         help='Reverse the sort order',
+    )
+    parser.add_argument(
+        '--numeric', '-N',
+        action='store_true',
+        help=(
+            'Sort numeric values in numeric order instead of '
+            'lexicographic order (default)'
+        ),
     )
     parser.set_defaults(handler=run)

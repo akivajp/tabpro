@@ -610,6 +610,62 @@ def test_sort(csv_file: Path, tmp_path: Path):
     )
     assert [row['score'] for row in read_csv(output)] == ['30', '20', '10']
 
+def test_sort_numeric_option(tmp_path: Path):
+    '''--numeric で数値順に並べ、既定では辞書順のままであること。
+
+    CSV 等では全ての値が文字列のため、既定では '10' は '5' より先に
+    並ぶ (辞書順)。数値としての順序が必要な場合は --numeric を使う。
+    '''
+    source = write_file(
+        tmp_path / 'input.csv',
+        'id,score\n1,10\n2,5\n3,20\n',
+    )
+    output = tmp_path / 'out.csv'
+    sort(
+        sort_keys=['score'],
+        input_files=[str(source)],
+        output_file=str(output),
+    )
+    assert [row['score'] for row in read_csv(output)] == ['10', '20', '5']
+    sort(
+        sort_keys=['score'],
+        input_files=[str(source)],
+        output_file=str(output),
+        numeric=True,
+    )
+    assert [row['score'] for row in read_csv(output)] == ['5', '10', '20']
+
+def test_sort_numeric_keeps_non_numeric_values_last(tmp_path: Path):
+    '''数値として解釈できない値は、数値の後ろに文字列順で並ぶ。
+
+    数値と文字列が混ざったキーでも TypeError で停止しない。
+    '''
+    source = write_file(
+        tmp_path / 'input.jsonl',
+        '{"id": 1, "score": "10"}\n'
+        '{"id": 2, "score": "5"}\n'
+        '{"id": 3, "score": "n/a"}\n',
+    )
+    output = tmp_path / 'out.csv'
+    sort(
+        sort_keys=['score'],
+        input_files=[str(source)],
+        output_file=str(output),
+        numeric=True,
+    )
+    rows = read_csv(output)
+    assert [row['score'] for row in rows] == ['5', '10', 'n/a']
+
+def test_sort_empty_input_raises(tmp_path: Path):
+    '''空の入力に対しては、黙って IndexError になるのではなく明示的に止まる。'''
+    source = write_file(tmp_path / 'input.csv', 'id,score\n')
+    with pytest.raises(ValueError, match='no rows to sort'):
+        sort(
+            sort_keys=['id'],
+            input_files=[str(source)],
+            output_file=str(tmp_path / 'out.csv'),
+        )
+
 def test_compare(csv_file: Path, tmp_path: Path):
     '''値の変更・削除・追加がそれぞれ差分として検出される。'''
     modified = write_file(tmp_path / 'modified.csv', CSV_MODIFIED)

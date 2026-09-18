@@ -413,9 +413,14 @@ tabpro sort [options] <input_file>... --sort-keys <key>... --output <output_file
 | `--sort-keys`, `--sort-key`, `-K` | Columns to sort by |
 | `--output-file`, `--output`, `-O` | Output file path |
 | `--reverse`, `-R` | Descending order |
+| `--numeric`, `-N` | Sort numeric values in numeric order |
 
 Values are compared as they are read, so numeric columns coming from CSV
-sort as strings. Use `convert` with `cast` first if that matters.
+sort as strings by default (`10` before `5`). Pass `--numeric` to compare
+values that look numeric in numeric order; values that do not, sort after
+them in string order. Keys whose types are mixed (for example integers
+from JSON mixed with strings) never abort the sort; they fall back to
+string comparison.
 
 ### compare
 
