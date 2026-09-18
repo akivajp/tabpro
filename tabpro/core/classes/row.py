@@ -96,9 +96,13 @@ class Row(Mapping):
         default: Any = None,
     ):
         '''
-        指定したキーを取り除き、(値, 見つかったか) の組を返す。
+        指定したキーを取り除き、その値を返す。
 
         NOTE:
+            Row は Mapping を継承しているため、pop は Mapping の契約
+            (取り除いた値そのものを返す) に従う。
+            見つかったかどうかも確認したい場合は pop_found を用いる。
+
             以前はフラット表現の削除条件が壊れていた。
             ループ変数を使い回していたため対象がパスの手前の要素になり、
             さらに startswith による前方一致だったため、
@@ -110,13 +114,32 @@ class Row(Mapping):
             default: 見つからなかった場合に返す値。
 
         Returns:
+            取り除いた値。見つからなかった場合は default。
+        '''
+        value, found = self.pop_found(key)
+        if not found:
+            return default
+        return value
+
+    def pop_found(
+        self,
+        key: str,
+    ):
+        '''
+        指定したキーを取り除き、(値, 見つかったか) の組を返す。
+
+        Args:
+            key: 取り除くキー。ドット区切りでネストを辿る。
+
+        Returns:
             (取り除いた値, 見つかったか) の組。
+            見つからなかった場合は (None, False)。
         '''
         last_nested = self.nested
         keys = key.split('.')
         for part in keys[:-1]:
             if part not in last_nested:
-                return default, False
+                return None, False
             last_nested = last_nested[part]
         # NOTE:
         #   フラット表現からは、そのキー自身とその子孫だけを削除する。
@@ -127,10 +150,15 @@ class Row(Mapping):
                 isinstance(flat_key, str) and flat_key.startswith(prefix)
             ):
                 del self.flat[flat_key]
-        return last_nested.pop(keys[-1], default), True
-    
+        # NOTE:
+        #   葉のキーが存在しない場合も found=True を返していたため、
+        #   見つからなかった場合の判定をここで行う。
+        if keys[-1] not in last_nested:
+            return None, False
+        return last_nested.pop(keys[-1]), True
+
     def pop_staging(self):
-        return self.pop(STAGING_FIELD)
+        return self.pop_found(STAGING_FIELD)
 
     def search(
         self,

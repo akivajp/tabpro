@@ -1355,12 +1355,26 @@ def test_omit_nested_key_does_not_remove_siblings(tmp_path: Path):
     )
     assert read_csv(output) == [{'ab': '2', 'c': '3'}]
 
-def test_row_pop_removes_only_the_key_and_its_descendants():
-    """Row.pop が対象のキーとその子孫だけを取り除く。"""
+def test_row_pop_follows_the_mapping_contract():
+    """Row.pop は Mapping の契約どおり、値そのものを返す。
+
+    以前は (値, 見つかったか) のタプルを返しており、
+    Mapping.pop として利用した場合に契約から外れた API だった。
+    """
+    row = Row.from_dict({'x': 1, 'z': 4})
+    assert row.pop('x') == 1
+    assert row.pop('missing', 'd') == 'd'
+    assert dict(row.items()) == {'z': 4}
+
+def test_row_pop_found_returns_value_and_found():
+    """Row.pop_found が値と見つかったかの組を返し、子孫だけを取り除く。"""
     row = Row.from_dict({'x': 1, 'xx': 2, 'x.y': 3, 'z': 4})
-    value, found = row.pop('x')
+    value, found = row.pop_found('x')
     assert found is True
     assert dict(row.items()) == {'xx': 2, 'z': 4}
+    value, found = row.pop_found('missing')
+    assert found is False
+    assert value is None
 
 # --- merge: 行ごとに異なる列 ---------------------------------------------
 

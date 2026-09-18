@@ -18,7 +18,7 @@ def omit_field(
     row: Row,
     config: OmitConfig,
 ):
-    value, found = row.pop(config.field)
+    value, found = row.pop_found(config.field)
     if not found:
         return row
     if not config.purge:
