@@ -70,7 +70,17 @@ class Progress(progress.Progress):
         if total is None:
             if hasattr(sequence, '__len__'):
                 assert isinstance(sequence, Sized)
-                total = len(sequence)
+                try:
+                    total = len(sequence)
+                except Exception:
+                    # NOTE:
+                    #   ストリーミング読み込み中の Loader のように、
+                    #   件数を数えること自体に代償がある対象もある。
+                    #   その場合は総数不明のまま進捗を表示する。
+                    #   rich 側も length_hint() で __len__ を呼ぶため、
+                    #   イテレータに包んで再度の問い合わせを防ぐ。
+                    total = None
+                    sequence = iter(sequence)
         if disable:
             return sequence
         return super().track(

@@ -524,7 +524,6 @@ def validate(
                 sheet=sheet,
                 all_sheets=all_sheets,
             )
-            console.log('# rows: ', len(loader))
             for index, row in enumerate(loader):
                 result.num_rows += 1
                 violations = validate_row(

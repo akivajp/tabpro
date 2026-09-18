@@ -101,7 +101,6 @@ def convert(
             sheet=sheet,
             all_sheets=all_sheets,
         )
-        console.log('# rows: ', len(loader))
         for index, row in enumerate(loader):
             file_row_index = f'{input_file}:{index}'
             if file_row_index in set_ignore_file_rows:

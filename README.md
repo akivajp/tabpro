@@ -557,8 +557,18 @@ process:
 
 ## Known limitations
 
-- **Memory.** The whole input is held in memory; a 30 MB JSON Lines file
-  needs roughly 500 MB. Fine for spreadsheets, not for very large exports.
+- **Memory.** `convert` and `validate` stream: they read a row, handle it and
+  let it go, so memory stays flat whatever the input size. `aggregate` holds
+  the distinct values it is counting. `sort`, `compare` and `merge` have to
+  hold every row by their nature — sorting and matching are not decidable one
+  row at a time. Measured on a 30 MB JSON Lines file of 200,000 rows:
+
+  | Command | Peak memory |
+  |---|---|
+  | `convert`, `validate` | ~85 MB |
+  | `aggregate` | ~185 MB |
+  | `sort` | ~380 MB |
+  | `merge` | ~690 MB |
 - **Almost no stdout.** Only `aggregate` writes its report to standard
   output when `--output` is omitted. The other commands write to the file
   named by `--output` and cannot be used in the middle of a shell pipeline.

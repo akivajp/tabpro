@@ -350,7 +350,6 @@ def aggregate(
             sheet=sheet,
             all_sheets=all_sheets,
         )
-        console.log('# rows: ', len(loader))
         if compare_columns:
             # NOTE: 行が1件も無いファイルも比較対象に含める
             dict_file_columns.setdefault(input_file, [])

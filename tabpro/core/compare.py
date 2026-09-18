@@ -90,7 +90,6 @@ def compare(
     loaders = [get_loader(path) for path in [path1, path2]]
     for loader_index, loader in enumerate(loaders):
         console.log('loading file: ', [path1, path2][loader_index])
-        console.log('# rows: ', len(loader))
         dict_key_to_row = list_dict_key_to_row[loader_index] = {}
         for row_index, row in enumerate(loader):
             query_value = get_primary_key(row, query_keys)

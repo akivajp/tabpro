@@ -101,7 +101,6 @@ def merge(
             previous_file,
             progress=progress,
         )
-        console.log('# rows: ', len(loader))
         #for index, row in enumerate(tqdm(
         #    loader,
         #    desc=f'Loading: {previous_file}',
@@ -130,7 +129,6 @@ def merge(
             modification_file,
             progress=progress,
         )
-        console.log('# rows: ', len(loader))
         for index, row in enumerate(progress.track(
             loader,
             description=f'processing ...',

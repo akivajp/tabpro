@@ -37,7 +37,13 @@ class BaseWriter:
         self.quiet = quiet
         self.encoding = encoding
         self.skip_header = skip_header
+        # NOTE:
+        #   ストリーミング書き込みでは行を貯めない。
+        #   以前は書き出し済みの行も self.rows に積み続けていたため、
+        #   出力サイズに比例してメモリを消費していた。
+        #   全件を一度に必要とする形式 (JSON / Excel) でのみ保持する。
         self.rows: list[Row] | None = None
+        self.num_rows: int = 0
         self.fobj: IO | None = None
         self.finished: bool = False
         self.progress: Progress | None = progress
@@ -66,18 +72,20 @@ class BaseWriter:
         return False
 
     def push_row(self, row: Row | pd.Series):
-        if self.rows is None:
-            self.rows = []
         if isinstance(row, pd.Series):
             new_row = Row()
             for key in row.keys():
                 new_row[key] = row[key]
             row = new_row
-        self.rows.append(row)
+        self.num_rows += 1
         if self.streaming:
             self._write_row(row)
             if self.progress and self.task_id is not None:
                 self.progress.update(self.task_id, advance=1)
+            return
+        if self.rows is None:
+            self.rows = []
+        self.rows.append(row)
 
     def push_rows(self, rows: list[Row] | pd.DataFrame):
         if isinstance(rows, pd.DataFrame):
@@ -101,13 +109,12 @@ class BaseWriter:
     
     def close(self):
         if self.finished: return
-        if self.rows:
-            if not self.streaming:
-                if not self.quiet:
-                    console = self._get_console()
-                    console.log(f'writing {len(self.rows)} rows into: ', self.target)
-                self._write_all_rows()
-            self.finished = True
+        if not self.streaming and self.rows:
+            if not self.quiet:
+                console = self._get_console()
+                console.log(f'writing {len(self.rows)} rows into: ', self.target)
+            self._write_all_rows()
+        self.finished = True
         if self.fobj:
             self.fobj.close()
             self.fobj = None

@@ -34,6 +34,7 @@ from tabpro.core.io.extensions.io_dbq import (
 )
 from tabpro.core.sort import sort
 from tabpro.core.classes.row import Row
+from tabpro.core.io.loader import Loader
 from tabpro.core.validate import (
     SchemaError,
     load_schema,
@@ -1246,6 +1247,61 @@ def test_sqlalchemy_path_reads_the_same_rows(database: Path):
     ]
     assert results[0][0] == ['id', 'name']
     assert results[0][1][0] == ('0001', 'alice')
+
+# --- ストリーミング読み込み ----------------------------------------------
+
+def test_loader_does_not_hold_rows_by_default(csv_file: Path):
+    """
+    回帰テスト: Loader が既定で行を保持しないこと。
+
+    以前は常に全行を溜めており、入力サイズに比例してメモリを消費していた。
+    """
+    loader = Loader(str(csv_file))
+    assert [row['id'] for row in loader] == ['1', '2', '3']
+    assert loader.rows is None
+
+def test_loader_len_requires_keeping_rows(csv_file: Path):
+    """
+    件数を数えるには全件保持が要ることが、呼び出し側に示される。
+
+    黙って全件読み込むと、メモリ消費の原因が見えなくなる。
+    """
+    loader = Loader(str(csv_file))
+    with pytest.raises(RuntimeError, match='keep_rows'):
+        len(loader)
+
+def test_loader_keeps_rows_when_asked(csv_file: Path):
+    """keep_rows=True では件数を取得でき、二度目の走査もできる。"""
+    loader = Loader(str(csv_file), keep_rows=True)
+    assert len(loader) == 3
+    assert [row['id'] for row in loader] == ['1', '2', '3']
+    assert [row['id'] for row in loader] == ['1', '2', '3']
+
+def test_streaming_writer_does_not_hold_rows(tmp_path: Path):
+    """
+    回帰テスト: ストリーミング書き込みで行を保持しないこと。
+
+    書き出し済みの行を積み続けると、出力サイズに比例してメモリを消費する。
+    """
+    from tabpro.core.io import get_writer
+    target = tmp_path / 'out.jsonl'
+    writer = get_writer(str(target))
+    for index in range(3):
+        writer.push_row(Row.from_dict({'id': index}))
+    assert writer.rows is None
+    assert writer.num_rows == 3
+    writer.close()
+    assert len(read_jsonl(target)) == 3
+
+def test_non_streaming_writer_still_holds_rows(tmp_path: Path):
+    """全件を一度に必要とする形式では、従来どおり保持する。"""
+    from tabpro.core.io import get_writer
+    target = tmp_path / 'out.json'
+    writer = get_writer(str(target))
+    writer.push_row(Row.from_dict({'id': 1}))
+    assert writer.rows is not None
+    writer.close()
+    assert json.loads(target.read_text(encoding='utf-8')) == [{'id': 1}]
 
 # --- 複数値オプションの繰り返し指定 -------------------------------------
 

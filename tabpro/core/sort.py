@@ -53,7 +53,6 @@ def sort(
             input_file,
             progress=progress,
         )
-        console.log('# rows: ', len(loader))
         for index, row in enumerate(loader):
             primary_key = get_primary_key(row, sort_keys)
             all_input_row_items.append((primary_key, row))
