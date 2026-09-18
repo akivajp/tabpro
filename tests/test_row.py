@@ -87,21 +87,6 @@ def test_row_iteration():
     assert list(row.keys()) == ['a', 'b', 'c.d']
     assert list(row.items()) == [('a', 1), ('b', 2), ('c.d', 3)]
 
-def test_row_clone():
-    # Test cloning functionality and independence
-    row = Row()
-    row['a'] = 1
-    row['b.c'] = 2
-    
-    cloned = row.clone()
-    assert cloned['a'] == 1
-    assert cloned['b.c'] == 2
-    
-    # Verify that clone is independent
-    cloned['a'] = 3
-    assert row['a'] == 1
-    assert cloned['a'] == 3
-
 def test_row_from_dict():
     # Test creation from dictionary
     data = {

@@ -40,20 +40,6 @@ class Row(Mapping):
             self._staging = row
         return self._staging
 
-    def clone(self):
-        cloned = self.__class__.from_dict(self.flat)
-        cloned._prefix = self._prefix
-        return cloned
-    
-    def extract(self, keys: list[str], keep_staging: bool = True):
-        row = Row()
-        if keep_staging:
-            for key, value in self.staging.items():
-                row.staging[key] = value
-        for key in keys:
-            row[key] = self[key]
-        return row
-
     def get(self, key, default=None):
         if self._prefix:
             key = f'{self._prefix}.{key}'
