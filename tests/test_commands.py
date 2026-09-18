@@ -1748,6 +1748,33 @@ def test_repeated_options_accumulate_for_every_command(
     args = parser.parse_args(base_args + [option, 'a', option, 'b'])
     assert getattr(args, dest) == ['a', 'b']
 
+# --- config 読み込み -----------------------------------------------------
+
+def test_config_filter_accepts_zero_value(csv_file: Path, tmp_path: Path):
+    '''
+    回帰テスト: filter の value に 0 を指定しても「必須欠落」と
+    見なされず、正常にフィルタが適用されること。
+    '''
+    config = write_file(
+        tmp_path / 'config.yaml',
+        'process:\n'
+        '  filter:\n'
+        '    - field: score\n'
+        "      operator: '>'\n"
+        '      value: 0\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=str(config),
+        list_pick_columns=['id', 'score'],
+    )
+    rows = read_jsonl(output)
+    # NOTE: score は 10 / 20 / 30 なので 0 より大きい全行が通る
+    # (CSV 読み込みでは数値も文字列として読まれる)
+    assert [row['id'] for row in rows] == ['1', '2', '3']
+
 # --- コンソールスクリプト -----------------------------------------------
 
 def test_console_script_help():

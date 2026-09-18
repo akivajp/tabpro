@@ -239,11 +239,14 @@ def setup_process_filter_config(
                 raise ValueError(
                     f'operator is required for filter: {item}'
                 )
-            value = item.get('value')
-            if not value:
+            # NOTE:
+            #   真偽判定を使うと value: 0 や false が「必須欠落」と
+            #   見なされてしまうため、キーの存在だけを確認する。
+            if 'value' not in item:
                 raise ValueError(
                     f'value is required for filter: {item}'
                 )
+            value = item['value']
             config.actions.append(FilterConfig(
                 field = field,
                 operator = operator,
