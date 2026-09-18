@@ -10,7 +10,6 @@ from typing import (
 
 # 3-rd party modules
 
-from icecream import ic
 
 # local
 
@@ -20,6 +19,7 @@ from . constants import (
     FILE_FIELD,
     ROW_INDEX_FIELD,
     FILE_ROW_INDEX_FIELD,
+    STAGING_FIELD,
 )
 
 from . functions.search_column_value import search_column_value
@@ -32,9 +32,6 @@ from . io import (
 
 from . classes.row import Row
 
-from . console.views import (
-    Panel,
-)
 
 from . progress import (
     Progress,
@@ -108,7 +105,7 @@ def merge(
         #)):
         for index, row in enumerate(progress.track(
             loader,
-            description=f'prcessing ...',
+            description='prcessing ...',
         )):
             set_staging_values(
                 row,
@@ -118,8 +115,10 @@ def merge(
             primary_key = get_primary_key(row, keys)
             if not allow_duplicate_conventional_keys:
                 if primary_key in dict_key_to_row:
-                    ic(index)
-                    raise ValueError(f'Duplicate key: {primary_key}')
+                    raise ValueError(
+                        f'duplicate key: {primary_key} '
+                        f'at row {index} of {previous_file}'
+                    )
             dict_key_to_row[primary_key] = row
             all_base_rows.append(row)
     for modification_file in modification_files:
@@ -131,7 +130,7 @@ def merge(
         )
         for index, row in enumerate(progress.track(
             loader,
-            description=f'processing ...',
+            description='processing ...',
         )):
             set_staging_values(
                 row,
@@ -154,17 +153,23 @@ def merge(
                 #console.log('skipped duplicate key: ', primary_key)
             else:
                 all_modified_rows.append(target_row)
+            # NOTE:
+            #   以前はここで引数の merge_fields 自体を書き換えていたため、
+            #   最初の1行が持つ列が以降の全ての行・全てのファイルに
+            #   使い回されていた。行ごとに列構成が異なる修正ファイル
+            #   (手作業で編集された表や、作業者ごとに異なるファイル) では、
+            #   最初の行に無い列の修正が無言で失われていた。
             if merge_fields is None:
-                merge_fields = []
-                for field in row.flat.keys():
-                    if field.startswith('__staging__.'):
-                        continue
-                    merge_fields.append(field)
-            if merge_staging:
-                if '__staging__' not in merge_fields:
-                    merge_fields.append('__staging__')
-            #logger.debug('merge fields: %s', merge_fields)
-            for field in merge_fields:
+                target_fields = [
+                    field for field in row.flat.keys()
+                    if not field.startswith(f'{STAGING_FIELD}.')
+                ]
+            else:
+                target_fields = list(merge_fields)
+            if merge_staging and STAGING_FIELD not in target_fields:
+                target_fields.append(STAGING_FIELD)
+            #logger.debug('merge fields: %s', target_fields)
+            for field in target_fields:
                 value, found = search_column_value(row.nested, field)
                 #logger.debug('field: %s', field)
                 #logger.debug('found: %s', found)
