@@ -110,7 +110,13 @@ class BaseWriter:
     def close(self):
         if self.finished:
             return
-        if not self.streaming and self.rows:
+        # NOTE:
+        #   rows が空リスト (または1行も追加されなかった None) の場合も
+        #   書き出しを行う。真偽判定にすると空入力で _write_all_rows が
+        #   呼ばれず、出力ファイル自体が作られないまま終わっていた。
+        if not self.streaming:
+            if self.rows is None:
+                self.rows = []
             if not self.quiet:
                 console = self._get_console()
                 console.log(f'writing {len(self.rows)} rows into: ', self.target)

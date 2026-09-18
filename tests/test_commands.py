@@ -1793,6 +1793,31 @@ def test_assign_length_non_sized_value_raises():
     with pytest.raises(ValueError, match=r'field score has int: 10'):
         assign_length(row, config)
 
+# --- 出力 Writer ---------------------------------------------------------
+
+def test_json_writer_writes_empty_output(csv_file: Path, tmp_path: Path):
+    '''
+    回帰テスト: 全行フィルタされても、空配列の JSON が出力されること。
+    以前は空入力で出力ファイル自体が作られなかった。
+    '''
+    config = write_file(
+        tmp_path / 'config.yaml',
+        'process:\n'
+        '  filter:\n'
+        '    - field: id\n'
+        "      operator: '>'\n"
+        '      value: 100\n',
+    )
+    output = tmp_path / 'out.json'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=str(config),
+        list_pick_columns=['id'],
+    )
+    with open(output, 'r', encoding='utf-8') as f:
+        assert json.load(f) == []
+
 # --- コンソールスクリプト -----------------------------------------------
 
 def test_console_script_help():

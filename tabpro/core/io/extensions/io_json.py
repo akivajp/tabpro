@@ -150,13 +150,13 @@ class JsonWriter(BaseWriter):
     
     def _write_all_rows(self):
         self._open()
-        #if not self.quiet:
-        #    console = self._get_console()
-        #    console.log(f'writing {len(self.rows)} json rows into: ', self.target)
-        if self.rows:
-            rows = [row.nested for row in self.rows]
-            if self.fobj:
-                self.fobj.write(json.dumps(rows, indent=2, ensure_ascii=False))
-                self.fobj.close()
+        # NOTE:
+        #   空入力でも空配列の JSON ファイルを出力する。
+        #   以前は rows が空だと書き出し自体がスキップされ、
+        #   出力ファイルが作られないまま終わっていた。
+        rows = [row.nested for row in self.rows]
+        if self.fobj:
+            self.fobj.write(json.dumps(rows, indent=2, ensure_ascii=False))
+            self.fobj.close()
         self.fobj = None
         self.finished = True
