@@ -14,8 +14,6 @@ from .types import (
     PickConfig,
 )
 
-from ..functions.search_column_value import search_column_value
-
 def remap_columns(
     row: Row,
     list_config: list[PickConfig],
