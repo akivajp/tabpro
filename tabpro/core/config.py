@@ -39,7 +39,8 @@ def setup_config(
 ):
     config = Config()
     if config_path:
-        if config_path.endswith('.yaml'):
+        # NOTE: validate コマンドと同様に .yaml / .yml の両方を受け付ける
+        if config_path.endswith(('.yaml', '.yml')):
             yaml.add_constructor(
                 yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
                 lambda loader, node: OrderedDict(loader.construct_pairs(node)),

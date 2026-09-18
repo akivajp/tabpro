@@ -1793,6 +1793,25 @@ def test_assign_length_non_sized_value_raises():
     with pytest.raises(ValueError, match=r'field score has int: 10'):
         assign_length(row, config)
 
+def test_config_yml_extension_accepted(csv_file: Path, tmp_path: Path):
+    '''
+    validate コマンドと同様に、設定ファイルとして .yml も受け付けること。
+    '''
+    config = write_file(
+        tmp_path / 'config.yml',
+        'process:\n'
+        '  assign_length:\n'
+        '    namelen: name\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=str(config),
+        list_pick_columns=['id', 'namelen'],
+    )
+    assert read_jsonl(output)[0]['namelen'] == len('alice')
+
 # --- 出力 Writer ---------------------------------------------------------
 
 def test_json_writer_writes_empty_output(csv_file: Path, tmp_path: Path):
