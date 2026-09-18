@@ -11,6 +11,8 @@ from collections import OrderedDict
 
 from ...logging import logger
 
+from ..functions.as_boolean import as_boolean
+
 from .assign import setup_assign_action
 from .assign_constant import setup_assign_constant_action
 from .assign_format import setup_assign_format_action
@@ -74,7 +76,8 @@ def setup_actions_with_args(
                 context = options.get('context', None)
                 if context:
                     context = context.split(',')
-                reverse = options.get('reverse', False)
+                # NOTE: 'false' などの文字列が truthy にならないよう as_boolean を通す
+                reverse = as_boolean(options.get('reverse', False))
                 config.actions.append(types.AssignIdConfig(
                     target = target,
                     primary = [source],
@@ -89,7 +92,8 @@ def setup_actions_with_args(
                 ))
                 continue
             if action_name == 'cast':
-                required = options.get('required', False)
+                # NOTE: 'false' などの文字列が truthy にならないよう as_boolean を通す
+                required = as_boolean(options.get('required', False))
                 as_type = options.get('as', 'literal')
                 if as_type in ['boolean']:
                     as_type = 'bool'
@@ -142,7 +146,8 @@ def setup_actions_with_args(
                 setup_parse_action(config, target, source, options)
                 continue
             if action_name == 'parse-json':
-                required = options.get('required', False)
+                # NOTE: 'false' などの文字列が truthy にならないよう as_boolean を通す
+                required = as_boolean(options.get('required', False))
                 config.actions.append(types.ParseConfig(
                     target = target,
                     source = source,

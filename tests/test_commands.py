@@ -1837,6 +1837,35 @@ def test_json_writer_writes_empty_output(csv_file: Path, tmp_path: Path):
     with open(output, 'r', encoding='utf-8') as f:
         assert json.load(f) == []
 
+# --- アクション setup -----------------------------------------------------
+
+def test_setup_action_boolean_options_accept_false():
+    '''
+    回帰テスト: CLI アクションオプションの required=false / reverse=false が
+    文字列のまま truthy 扱いされて True にならないこと。
+
+    以前は cast / parse-json / assign-id の setup だけ as_boolean を
+    通していなかったため、'false' という文字列が真と判定されていた。
+    '''
+    from tabpro.core.actions import setup_actions_with_args
+    from tabpro.core.config import Config
+
+    config = Config()
+    setup_actions_with_args(config, ['cast:b,a:as=int,required=false'])
+    assert config.actions[0].required is False
+
+    config = Config()
+    setup_actions_with_args(config, ['cast:b,a:as=int,required=true'])
+    assert config.actions[0].required is True
+
+    config = Config()
+    setup_actions_with_args(config, ['parse-json:x,a:required=false'])
+    assert config.actions[0].required is False
+
+    config = Config()
+    setup_actions_with_args(config, ['assign-id:x,a:reverse=false'])
+    assert config.actions[0].reverse is False
+
 # --- コンソールスクリプト -----------------------------------------------
 
 def test_console_script_help():
