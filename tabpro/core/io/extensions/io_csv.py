@@ -75,11 +75,21 @@ def _load_delimited(
         else:
             header: list[str] = []
             for i, row in enumerate(get_iter(reader)):
-                assert isinstance(row, Iterable)
-                row = list(row)
+                assert isinstance(row, list)
                 if i == 0:
                     header = row
                     continue
+                # NOTE:
+                #   ヘッダーと列数が一致しない行は、異常データの可能性が高い。
+                #   多い場合は IndexError で落ちていたうえ文脈が無く、
+                #   少ない場合は列が黙って欠落していたため、
+                #   どちらも行番号と列数を明示したエラーにする。
+                if len(row) != len(header):
+                    raise ValueError(
+                        f'{label} row {i + 1} of {input_file} has '
+                        f'{len(row)} fields, but the header has '
+                        f'{len(header)} columns'
+                    )
                 d = OrderedDict()
                 for j, field in enumerate(row):
                     d[header[j]] = field

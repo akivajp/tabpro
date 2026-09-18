@@ -168,6 +168,32 @@ def test_convert_preserves_newline_in_quoted_field(tmp_path: Path):
     convert(input_files=[str(source)], output_file=str(output))
     assert read_jsonl(output)[0]['note'] == 'line1\nline2'
 
+def test_csv_too_many_fields_raises_with_row_number(tmp_path: Path):
+    """ヘッダーより列数が多い行は、行番号を含むエラーで止まる。
+
+    回帰テスト: 以前は IndexError で落ちて行番号などの文脈が無かった。
+    """
+    source = write_file(
+        tmp_path / 'input.csv',
+        'id,name,score\n'
+        '1,alice,10\n'
+        '2,bob,20,extra\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    with pytest.raises(ValueError, match=r'row 3 .*4 fields'):
+        convert(input_files=[str(source)], output_file=str(output))
+
+def test_csv_too_few_fields_raises_with_row_number(tmp_path: Path):
+    """ヘッダーより列数が少ない行は、黙って列を欠落させずエラーにする。"""
+    source = write_file(
+        tmp_path / 'input.csv',
+        'id,name,score\n'
+        '1,alice\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    with pytest.raises(ValueError, match=r'row 2 .*2 fields'):
+        convert(input_files=[str(source)], output_file=str(output))
+
 # --- Excel: シート選択と旧形式 -------------------------------------------
 
 DATA_DIR = Path(__file__).parent / 'data'
