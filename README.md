@@ -468,7 +468,7 @@ The same holds for `--pick` and the other options that take several values.
 | `assign-format` | `assign-format:t={a}-{b}` | — | Build a string from other fields |
 | `assign-id` | `assign-id:t=s` | `context`, `reverse` | Assign sequential integer ids per distinct value |
 | `assign-length` | `assign-length:t=s` | — | Length of the value |
-| `cast` | `cast:t=s` | `as` (`bool`/`int`/`float`/`str`), `required`, `default` (cast per `as`) | Convert the type |
+| `cast` | `cast:t=s` | `as` (`bool`/`int`/`float`/`str`; `bool` accepts `true`/`yes`/`on`/`1` and `false`/`no`/`off`/`0`, and rejects anything else), `required`, `default` (cast per `as`) | Convert the type |
 | `filter` | `filter:field==value` | — | Keep matching rows (`==`, `!=`, `=~`, and the numeric `>`, `>=`, `<`, `<=`) |
 | `filter-empty` | `filter-empty:field` | — | Keep rows where the field is empty or absent |
 | `filter-not-empty` | `filter-not-empty:field` | — | Keep rows where the field has a value |
