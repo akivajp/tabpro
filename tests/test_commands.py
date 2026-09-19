@@ -437,6 +437,54 @@ def test_filter_by_regex(csv_file: Path, tmp_path: Path):
     )
     assert [row['name'] for row in read_jsonl(output)] == ['alice']
 
+def test_filter_regex_containing_equals_is_parsed_as_regex():
+    '''正規表現に '==' を含む '=~' 指定は '=~' として分解される。
+
+    回帰テスト: 以前は判定順序が固定 ('==' を常に先に確認) だったため、
+    'filter:name=~a==b' が演算子 '=='・フィールド 'name=~a' に誤分解され、
+    存在しないフィールドを参照して全行が黙って落ちていた。
+    '''
+    from types import SimpleNamespace
+
+    from tabpro.core.actions.filter_row import setup_filter_action
+
+    config = SimpleNamespace(actions=[])
+    setup_filter_action(config, 'filter:comment=~hel==lo')
+    assert len(config.actions) == 1
+    assert config.actions[0].field == 'comment'
+    assert config.actions[0].operator == '=~'
+    assert config.actions[0].value == 'hel==lo'
+
+def test_filter_comparison_operators_still_resolve_to_two_char_operator():
+    '''同位置に候補が複数ある場合はより長い演算子が優先される。
+
+    'score>=25' は '>=' と '>' の両方が同位置に現れるため、
+    左端規則だけだと '>' と残り '=25' に誤って分解されうる。
+    '''
+    from types import SimpleNamespace
+
+    from tabpro.core.actions.filter_row import setup_filter_action
+
+    for expression, operator in [('score>=25', '>='), ('score<=25', '<=')]:
+        config = SimpleNamespace(actions=[])
+        setup_filter_action(config, f'filter:{expression}')
+        assert config.actions[0].operator == operator
+        assert config.actions[0].value == '25'
+
+def test_filter_regex_with_equals_matches_rows(tmp_path: Path):
+    '''正規表現に '==' を含む '=~' 指定で実際に行を絞り込める。'''
+    source = write_file(
+        tmp_path / 'input.csv',
+        'id,comment\n1,a==b\n2,other\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(source)],
+        output_file=str(output),
+        list_actions=['filter:comment=~^a==b$'],
+    )
+    assert [row['id'] for row in read_jsonl(output)] == ['1']
+
 # --- CLI アクション文字列の '=' を含む値の分割 --------------------------
 
 def test_filter_value_containing_operator_is_split_at_first_operator():

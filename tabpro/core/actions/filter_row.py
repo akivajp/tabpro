@@ -123,55 +123,36 @@ def setup_filter_action(
     assert action_name == 'filter'
     str_filter = action_fields[1].strip()
     # NOTE:
-    #   値に '==' などを含む指定 (例: comment==hello==world) でも
-    #   最初の演算子のみで分割するよう maxsplit=1 を付ける。
-    #   以前は maxsplit 無しの split だったため、値に演算子が含まれると
-    #   "too many values to unpack" でクラッシュしていた。
-    if '==' in str_filter:
-        field, value = str_filter.split('==', 1)
-        config.actions.append(FilterConfig(
-            field = field.strip(),
-            operator = '==',
-            value = value.strip(),
-        ))
-        return config
-    if '!=' in str_filter:
-        field, value = str_filter.split('!=', 1)
-        config.actions.append(FilterConfig(
-            field = field.strip(),
-            operator = '!=',
-            value = value.strip(),
-        ))
-        return config
-    # NOTE:
-    #   '>' よりも先に '>=' を判定する (1文字の区切りが先だと
-    #   '>=' が '>' と残り '=...' に誤って分解されるため)。
-    for operator in ['>=', '<=']:
-        if operator in str_filter:
-            field, value = str_filter.split(operator, 1)
-            config.actions.append(FilterConfig(
-                field = field.strip(),
-                operator = operator,
-                value = value.strip(),
-            ))
-            return config
-    if '=~' in str_filter:
-        field, value = str_filter.split('=~', 1)
-        config.actions.append(FilterConfig(
-            field = field.strip(),
-            operator = '=~',
-            value = value.strip(),
-        ))
-        return config
-    for operator in ['>', '<']:
-        if operator in str_filter:
-            field, value = str_filter.split(operator, 1)
-            config.actions.append(FilterConfig(
-                field = field.strip(),
-                operator = operator,
-                value = value.strip(),
-            ))
-            return config
-    raise ValueError(
-        f'Unsupported filter: {str_filter}'
-    )
+    #   演算子は「文字列中で最も左に現れたもの」を採用する。
+    #   同位置に候補が複数ある場合はより長い演算子を優先するため
+    #   ('>=' と '>' など)、判定ルールは1つで済む。
+    #   以前は固定の判定順序 ('==' を常に先に確認) だったため、
+    #   正規表現に '==' を含む '=~' 指定 (例: name=~a==b) が
+    #   '==' として誤分解され、存在しないフィールドを参照して
+    #   全行が黙って落ちていた。
+    #   また、値に演算子と同じ文字列が含まれる場合 (comment==a==b など)
+    #   は、maxsplit=1 の分割により最初の出現のみで分解する。
+    filter_operators = ['==', '!=', '>=', '<=', '=~', '>', '<']
+    best: tuple[str, int] | None = None
+    for operator in filter_operators:
+        index = str_filter.find(operator)
+        if index == -1:
+            continue
+        if best is None:
+            best = (operator, index)
+        elif index < best[1]:
+            best = (operator, index)
+        elif index == best[1] and len(operator) > len(best[0]):
+            best = (operator, index)
+    if best is None:
+        raise ValueError(
+            f'Unsupported filter: {str_filter}'
+        )
+    operator = best[0]
+    field, value = str_filter.split(operator, 1)
+    config.actions.append(FilterConfig(
+        field = field.strip(),
+        operator = operator,
+        value = value.strip(),
+    ))
+    return config
