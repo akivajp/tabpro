@@ -116,14 +116,16 @@ def setup_common_args(
         '--verbose', '-v',
         action='store_true',
     )
+    # NOTE:
+    #   以前は parse_args の前に sys.argv を直接走査して
+    #   '--version' / '-V' を含んでいたら即終了させていた。
+    #   argparse 標準の version アクションに任せることで、
+    #   サブコマンドのパーサでも同じ挙動になる。
     parser.add_argument(
         '--version', '-V',
-        action='store_true',
+        action='version',
+        version=f'tabpro v{__version__}',
     )
-    # Only check for version flag without processing other arguments
-    if '--version' in sys.argv or '-V' in sys.argv:
-        print(f'tabpro v{__version__}')
-        sys.exit(0)
 
 def main():
     parser = argparse.ArgumentParser(description='Table Data Converter')
