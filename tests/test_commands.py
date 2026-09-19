@@ -1049,6 +1049,53 @@ def test_validate_rejects_unwritable_output_before_reading(
             report_file=str(tmp_path / 'report.txt'),
         )
 
+def make_validate_args(
+    input_files: list[str],
+    schema_path: str,
+) -> argparse.Namespace:
+    """validate コマンドの run() に渡す argparse.Namespace を組み立てる。"""
+    return argparse.Namespace(
+        input_files=input_files,
+        schema=schema_path,
+        output_valid=None,
+        output_invalid=None,
+        report=None,
+        verbose=False,
+        sheet=None,
+        all_sheets=False,
+    )
+
+def test_validate_run_exit_codes(
+    schema_file: Path, tmp_path: Path,
+):
+    '''validate コマンド run() の終了コード契約を検証する。
+
+    成功=0 / 違反あり=1 / 実行不能=2。シェルや CI から扱えるように
+    するための契約 (NOTE コメント) なので、ここで固定しておく。
+    '''
+    from tabpro.commands.validate_tables import run
+
+    # NOTE: 全行が適合する入力 → 終了コード 0
+    source = write_file(
+        tmp_path / 'ok.csv', 'id,label,comment\n0001,positive,ok\n',
+    )
+    with pytest.raises(SystemExit) as exc_info:
+        run(make_validate_args([str(source)], str(schema_file)))
+    assert exc_info.value.code == 0
+
+    # NOTE: 違反行を含む入力 → 終了コード 1
+    violating = write_file(tmp_path / 'violating.csv', VALIDATE_SAMPLE)
+    with pytest.raises(SystemExit) as exc_info:
+        run(make_validate_args([str(violating)], str(schema_file)))
+    assert exc_info.value.code == 1
+
+    # NOTE: スキーマファイルが存在しない → 終了コード 2
+    with pytest.raises(SystemExit) as exc_info:
+        run(make_validate_args(
+            [str(source)], str(tmp_path / 'missing.yaml'),
+        ))
+    assert exc_info.value.code == 2
+
 # --- validate: unique / max_length / unknown_columns ---------------------
 
 def test_max_length_rule(tmp_path: Path):
