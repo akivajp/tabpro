@@ -57,7 +57,6 @@ def compare(
     output_path: str,
     query_keys: list[str],
     compare_keys: list[str] | None = None,
-    verbose: bool = False,
 ):
     progress = Progress(
         #redirect_stdout = False,

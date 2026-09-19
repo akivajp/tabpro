@@ -310,7 +310,6 @@ def print_column_comparison(
 def aggregate(
     input_files: list[str],
     output_file: str | None = None,
-    verbose: bool = False,
     list_keys_to_show_duplicates: list[str] | None = None,
     show_count_threshold: int = 50,
     list_keys_to_show_all_count: list[str] | None = None,

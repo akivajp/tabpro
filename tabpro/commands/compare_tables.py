@@ -13,7 +13,6 @@ def run(
         output_path=args.output_path,
         query_keys=args.query_keys,
         compare_keys=args.compare_keys,
-        verbose=args.verbose,
     )
 
 def setup_parser(

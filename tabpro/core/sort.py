@@ -67,7 +67,6 @@ def sort(
     output_file: str | None = None,
     reverse: bool = False,
     numeric: bool = False,
-    verbose: bool = False,
 ):
     progress = Progress(
         redirect_stdout = False,

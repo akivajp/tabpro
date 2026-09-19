@@ -10,7 +10,6 @@ def run(
     aggregate(
         input_files=args.input_files,
         output_file=args.output_file,
-        verbose=args.verbose,
         list_keys_to_show_duplicates=args.keys_to_show_duplicates,
         list_keys_to_show_all_count=args.keys_to_show_all_count,
         list_keys_to_expand=args.keys_to_expand,

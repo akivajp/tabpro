@@ -13,7 +13,6 @@ def run(
         sort_keys=args.sort_keys,
         reverse=args.reverse,
         numeric=args.numeric,
-        verbose=args.verbose,
     )
 
 def setup_parser(
