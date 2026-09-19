@@ -52,6 +52,16 @@ class Row(Mapping):
         self,
         include_staging: bool = False,
     ):
+        # NOTE:
+        #   staging ビュー (プレフィックス __staging__ を持つ Row) では、
+        #   staged キーをプレフィックスを外して返す。
+        #   以前は共有する flat をそのまま反復していたため、
+        #   staging.keys() が staged 値ではなくデータ列を返す不整合があった。
+        if self._prefix is not None:
+            for key in self.flat:
+                if isinstance(key, str) and key.startswith(self._prefix + '.'):
+                    yield key[len(self._prefix) + 1:]
+            return
         for key in self.flat:
             if not include_staging:
                 if isinstance(key, str):
@@ -63,6 +73,13 @@ class Row(Mapping):
         self,
         include_staging: bool = False,
     ):
+        # NOTE:
+        #   staging ビューでは staged キーと値の組を返す (iter と同じ規約)。
+        if self._prefix is not None:
+            for key, value in self.flat.items():
+                if isinstance(key, str) and key.startswith(self._prefix + '.'):
+                    yield key[len(self._prefix) + 1:], value
+            return
         for key, value in self.flat.items():
             if not include_staging:
                 if isinstance(key, str):

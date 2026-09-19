@@ -66,17 +66,36 @@ def test_row_staging():
     # Test staging functionality
     row = Row()
     row['a'] = 1
-    
+
     staging = row.staging
     staging['b'] = 2
-    
+
     assert 'b' in staging
     assert 'b' not in row
-    
+
     # Verify that staging changes don't affect original
     staging['a'] = 3
     assert row['a'] == 1
     assert staging['a'] == 3
+
+def test_row_staging_view_iteration():
+    '''staging ビューの反復は staged キーを返すこと。
+
+    回帰テスト: 以前は共有する flat をそのまま反復していたため、
+    staging.keys() が staged 値ではなくデータ列を返していた。
+    '''
+    row = Row()
+    row['data'] = 1
+    row.staging['a'] = 2
+    row.staging['b.c'] = 3
+
+    assert list(row.staging.keys()) == ['a', 'b.c']
+    assert list(row.staging) == ['a', 'b.c']
+    assert list(row.staging.items()) == [('a', 2), ('b.c', 3)]
+    assert len(row.staging) == 2
+    # NOTE: staging ビューの修正は元の行の反復に影響しない
+    assert list(row.keys()) == ['data']
+    assert 'data' not in row.staging
 
 def test_row_search():
     # Test search functionality
