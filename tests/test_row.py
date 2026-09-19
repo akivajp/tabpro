@@ -3,43 +3,6 @@ from tabpro.core.classes.row import Row
 
 from collections import OrderedDict
 
-def test_row():
-    # Enable debug output using icecream
-    
-    # Test empty row initialization
-    row = Row()
-    assert len(row) == 0
-    
-    # Test get method with default value for non-existent key
-    assert row.get('x', 'default') == 'default'
-    
-    # Test KeyError when accessing non-existent key
-    with pytest.raises(KeyError):
-        row['x']
-
-    # Test setting and getting a simple key-value pair
-    row['x'] = 100
-    
-    # Test setting and getting a nested key
-    row['a.b.c'] = 123
-    
-    # Test setting and getting a complex nested structure
-    row['d1.d2'] = {
-        'x': 100,
-        'y': 200,
-        'd3': {
-            'xxx': 111,
-            'yyy': 222,
-        }
-    }
-    
-    # Test setting and accessing array values
-    row['d1.a'] = [3, 5, 7]
-    
-    # Test array indexing with nested keys
-    
-    # Test row iteration
-
 def test_row_initialization():
     # Test basic initialization and empty state
     row = Row()
