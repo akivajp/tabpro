@@ -195,7 +195,10 @@ class ExcelWriter(BaseWriter):
     def _write_all_rows(
         self,
     ):
-        if self.rows:
-            df = pd.DataFrame([row.flat for row in self.rows])
-            df.to_excel(self.target, index=False)
+        # NOTE:
+        #   空入力でも空のブックを出力する。
+        #   以前は rows が空だと書き出し自体がスキップされ、
+        #   出力ファイルが作られないまま終わっていた。
+        df = pd.DataFrame([row.flat for row in self.rows])
+        df.to_excel(self.target, index=False)
         self.finished = True

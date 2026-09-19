@@ -1912,6 +1912,28 @@ def test_setup_action_cast_default_keeps_none_literal():
     setup_actions_with_args(config, ['cast:b,a:as=int,default=None'])
     assert config.actions[0].default_value is None
 
+def test_excel_writer_writes_empty_output(csv_file: Path, tmp_path: Path):
+    '''
+    回帰テスト: 全行フィルタされても、空のブックが .xlsx で出力されること。
+    以前は空入力で出力ファイル自体が作られなかった。
+    '''
+    config = write_file(
+        tmp_path / 'config.yaml',
+        'process:\n'
+        '  filter:\n'
+        '    - field: id\n'
+        "      operator: '>'\n"
+        '      value: 100\n',
+    )
+    output = tmp_path / 'out.xlsx'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=str(config),
+        list_pick_columns=['id'],
+    )
+    assert output.exists()
+
 # --- コンソールスクリプト -----------------------------------------------
 
 def test_console_script_help():
