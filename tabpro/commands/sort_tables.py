@@ -51,7 +51,7 @@ def setup_parser(
         action='store_true',
         help=(
             'Sort numeric values in numeric order instead of '
-            'lexicographic order (default)'
+            'the default lexicographic order'
         ),
     )
     parser.set_defaults(handler=run)
