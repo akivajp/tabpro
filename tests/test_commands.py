@@ -2272,3 +2272,158 @@ def test_console_script_help():
     )
     assert completed.returncode == 0
     assert 'convert' in completed.stdout
+
+# --- CLI パーサ層 --------------------------------------------------------
+
+def make_parser(setup_parser):
+    '''コマンドの setup_parser を空の ArgumentParser に適用する。'''
+    parser = argparse.ArgumentParser()
+    setup_parser(parser)
+    return parser
+
+def test_sort_parser_wiring():
+    '''sort コマンドの別名オプションと action=extend の累積を検証する。'''
+    from tabpro.commands.sort_tables import setup_parser
+    args = make_parser(setup_parser).parse_args([
+        'in1.csv', 'in2.csv',
+        '-K', 'a', 'b', '--sort-key', 'c',
+        '--output', 'out.jsonl',
+        '--reverse', '--numeric',
+    ])
+    assert args.input_files == ['in1.csv', 'in2.csv']
+    # NOTE:
+    #   action='extend' により繰り返し指定が累積される。
+    #   1つの指定内の複数値は nargs='+' で受け取る
+    #   (カンマ ('b,c') は分割されず1つのキー名として扱われる)。
+    assert args.sort_keys == ['a', 'b', 'c']
+    assert args.output_file == 'out.jsonl'
+    assert args.reverse is True
+    assert args.numeric is True
+    # NOTE: 必須オプションの欠落はパース時にエラーになる
+    with pytest.raises(SystemExit):
+        make_parser(setup_parser).parse_args(['in1.csv'])
+
+def test_convert_parser_wiring():
+    '''convert コマンドのオプションの別名と累積を検証する。'''
+    from tabpro.commands.convert_tables import setup_parser
+    args = make_parser(setup_parser).parse_args([
+        'in.csv',
+        '-O', 'out.jsonl',
+        '-f', 'filtered.jsonl',
+        '-c', 'config.yaml',
+        '--pick', 'id', '--pick-columns', 'name=x',
+        '--do', 'cast:b,a:as=int', '--do-actions', 'filter:a>0',
+        '--action-delimiter', '=',
+        '--output-debug', '--no-header', '--all-sheets',
+    ])
+    assert args.output_file == 'out.jsonl'
+    assert args.output_file_filtered_out == 'filtered.jsonl'
+    assert args.config == 'config.yaml'
+    assert args.pick_columns == ['id', 'name=x']
+    assert args.do_actions == ['cast:b,a:as=int', 'filter:a>0']
+    assert args.action_delimiter == '='
+    assert args.output_debug is True
+    assert args.no_header is True
+    assert args.all_sheets is True
+
+def test_aggregate_parser_wiring():
+    '''aggregate コマンドのオプションの別名と累積を検証する。'''
+    from tabpro.commands.aggregate_tables import setup_parser
+    args = make_parser(setup_parser).parse_args([
+        'in.csv',
+        '-O', 'out.jsonl',
+        '--keys-to-show-duplicates', 'a', 'b', '--keys-to-show-duplicates', 'c',
+        '--keys-to-show-all-count', 'd',
+        '--expand', 'e', 'f',
+        '--count-threshold', '10',
+        '--count-max-length', '20',
+        '--compare',
+        '--sheet', 'Sheet1',
+    ])
+    assert args.keys_to_show_duplicates == ['a', 'b', 'c']
+    assert args.keys_to_show_all_count == ['d']
+    assert args.keys_to_expand == ['e', 'f']
+    assert args.show_count_threshold == 10
+    assert args.show_count_max_length == 20
+    assert args.compare_columns is True
+    assert args.sheet == 'Sheet1'
+    assert args.all_sheets is False
+
+def test_merge_parser_wiring():
+    '''merge コマンドの必須オプションと別名を検証する。'''
+    from tabpro.commands.merge_tables import setup_parser
+    args = make_parser(setup_parser).parse_args([
+        '--previous', 'old.csv', '--old', 'old2.csv',
+        '--modify', 'new.csv',
+        '-K', 'id', '--keys', 'subkey',
+        '--output-base', 'base.jsonl',
+        '--merge-field', 'a', '--merge-fields', 'b',
+        '--merge-staging', '--staging',
+    ])
+    assert args.previous_files == ['old.csv', 'old2.csv']
+    assert args.modification_files == ['new.csv']
+    assert args.keys == ['id', 'subkey']
+    assert args.output_base_data_file == 'base.jsonl'
+    assert args.merge_fields == ['a', 'b']
+    assert args.merge_staging is True
+    assert args.use_staging is True
+    # NOTE: 必須オプションは3つある (previous / modification / keys)
+    with pytest.raises(SystemExit):
+        make_parser(setup_parser).parse_args(['--previous', 'old.csv'])
+
+def test_validate_parser_wiring():
+    '''validate コマンドの必須オプションと別名を検証する。'''
+    from tabpro.commands.validate_tables import setup_parser
+    args = make_parser(setup_parser).parse_args([
+        'in.csv', 'in2.csv',
+        '--schema', 'schema.yaml',
+        '--valid', 'ok.jsonl',
+        '--invalid', 'ng.jsonl',
+        '--report', 'report.txt',
+        '--all-sheets',
+    ])
+    assert args.input_files == ['in.csv', 'in2.csv']
+    assert args.schema == 'schema.yaml'
+    assert args.output_valid == 'ok.jsonl'
+    assert args.output_invalid == 'ng.jsonl'
+    assert args.report == 'report.txt'
+    assert args.all_sheets is True
+    with pytest.raises(SystemExit):
+        make_parser(setup_parser).parse_args(['in.csv'])
+
+def test_compare_parser_wiring():
+    '''compare コマンドの必須オプションと別名を検証する。'''
+    from tabpro.commands.compare_tables import setup_parser
+    args = make_parser(setup_parser).parse_args([
+        'old.csv', 'new.csv',
+        '-O', 'diff.jsonl',
+        '-Q', 'id', '--query', 'subkey',
+        '-C', 'a', '--compare', 'b',
+    ])
+    assert args.query_keys == ['id', 'subkey']
+    assert args.compare_keys == ['a', 'b']
+    assert args.output_path == 'diff.jsonl'
+    with pytest.raises(SystemExit):
+        make_parser(setup_parser).parse_args(['old.csv', 'new.csv'])
+
+def test_main_without_command_prints_help_and_exits(monkeypatch, capsys):
+    '''コマンドを指定せずに起動すると help を表示して終了コード1で終わる。'''
+    import sys
+    from tabpro import cli
+    monkeypatch.setattr(sys, 'argv', ['tabpro'])
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main()
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert 'convert' in captured.out
+
+def test_main_version_flag_prints_version_and_exits(monkeypatch, capsys):
+    '''--version は他の引数を処理せず、バージョン表示のみで終了する。'''
+    import sys
+    from tabpro import cli
+    monkeypatch.setattr(sys, 'argv', ['tabpro', '--version'])
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main()
+    assert exc_info.value.code == 0
+    captured = capsys.readouterr()
+    assert captured.out.startswith('tabpro v')
