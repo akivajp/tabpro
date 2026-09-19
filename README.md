@@ -235,6 +235,14 @@ overwrites the corresponding field of the matching base row.
 > correction file rather than the base file. This is the documented
 > behavior for now; revisiting how origins are carried may change it.
 
+NOTE: the output files carry the origin block `__staging__` (the source
+file and row index of every row). This is deliberate: `convert` keeps
+the origin its input already carries, so a merge in the middle of a
+pipeline does not break the trace back to the first input file. Since
+`convert` strips staging from its own output, staging is absent there
+and present only in the files `merge` writes. If you do not want the
+block in a final artifact, run `convert` on the merged file.
+
 `--output-remaining-data-file` is what tells you which rows are still
 waiting for someone to look at them.
 
