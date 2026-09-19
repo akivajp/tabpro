@@ -31,6 +31,16 @@ dependencies = [
 #   それ以外のデータベースに接続する場合のみ SQLAlchemy を必要とする。
 sql = ["sqlalchemy>=2.0,<3.0"]
 
+[dependency-groups]
+# NOTE:
+#   PEP 735 の開発用依存グループ。uv (uv sync / uv run) は既定で dev
+#   グループを整えるため、pytest が環境から外されるのを防げる。
+#   poetry 側の [tool.poetry.group.dev.dependencies] にも pytest があり、
+#   実質二重管理になる点に注意。
+dev = [
+    "pytest>=8.3.5,<10.0.0",
+]
+
 [project.urls]
 Repository = "https://github.com/akivajp/tabpro"
 
