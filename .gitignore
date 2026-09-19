@@ -9,3 +9,11 @@ __pycache__
 
 # build files
 /dist
+# NOTE: 本リポジトリは poetry (poetry.lock) で依存管理しているため、
+#   uv の検証で生成されたロックファイルはコミットしない
+/uv.lock
+
+# local environments and caches
+/.venv
+/.pytest_cache
+/.ruff_cache
