@@ -1,4 +1,5 @@
 from ..classes.row import Row
+from ..functions.as_boolean import parse_boolean_str
 from .types import CastConfig
 
 def cast(
@@ -30,7 +31,14 @@ def cast(
             row.staging[config.target] = config.default_value
         return row
     if config.as_type == 'bool':
-        cast_func = bool
+        # NOTE:
+        #   bool() に文字列を通すと非空文字列は常に True になるため
+        #   ('false' や '0' も True)、文字列は parse アクションと同じ
+        #   解釈で変換する (CSV / Excel 由来の入力は全て文字列)。
+        if isinstance(value, str):
+            cast_func = parse_boolean_str
+        else:
+            cast_func = bool
     elif config.as_type == 'int':
         cast_func = int
     elif config.as_type == 'float':

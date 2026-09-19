@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 import ast
 import json
 
-from ..functions.as_boolean import as_boolean
+from ..functions.as_boolean import as_boolean, parse_boolean_str
 from .types import ParseConfig
 
 def parse(
@@ -49,14 +49,8 @@ def parse(
             if type(value) is bool:
                 parsed = value
             elif type(value) is str:
-                if value.lower() in ['true', 'yes', 'on', '1']:
-                    parsed = True
-                elif value.lower() in ['false', 'no', 'off', '0']:
-                    parsed = False
-                else:
-                    raise ValueError(
-                        f'Failed to parse bool: {value}'
-                    )
+                # NOTE: 文字列の解釈は cast アクションと共通のヘルパーに一本化
+                parsed = parse_boolean_str(value)
             else:
                 raise ValueError(
                     f'Failed to parse bool: {value}'

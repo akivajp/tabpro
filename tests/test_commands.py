@@ -1944,6 +1944,66 @@ def test_setup_action_cast_default_keeps_none_literal():
     setup_actions_with_args(config, ['cast:b,a:as=int,default=None'])
     assert config.actions[0].default_value is None
 
+def test_cast_as_bool_parses_boolean_strings():
+    '''
+    回帰テスト: cast as=bool の文字列変換。
+    以前は bool() に通していたため、非空文字列 ('false' や '0' を含む)
+    がすべて True になる無言のデータ破損が起きていた。
+    '''
+    from tabpro.core.actions.cast import cast
+    from tabpro.core.actions.types import CastConfig
+
+    for source_value, expected in [
+        ('true', True), ('yes', True), ('on', True), ('1', True),
+        ('false', False), ('no', False), ('off', False), ('0', False),
+        (' True ', True), ('FALSE', False),
+    ]:
+        row = Row()
+        row['src'] = source_value
+        cast(row, CastConfig(target='dst', source='src', as_type='bool'))
+        assert row.staging['dst'] is expected, source_value
+
+    # NOTE: 非文字列は従来どおり bool() で変換する
+    row = Row()
+    row['src'] = 1
+    cast(row, CastConfig(target='dst', source='src', as_type='bool'))
+    assert row.staging['dst'] is True
+
+def test_cast_as_bool_invalid_string_raises_and_uses_default():
+    '''真偽値として解釈できない文字列は、default 無しではエラー、有りでは default。'''
+    from tabpro.core.actions.cast import cast
+    from tabpro.core.actions.types import CastConfig
+
+    row = Row()
+    row['src'] = 'xyz'
+    with pytest.raises(ValueError, match=r'failed to cast'):
+        cast(row, CastConfig(target='dst', source='src', as_type='bool'))
+
+    row = Row()
+    row['src'] = 'xyz'
+    cast(row, CastConfig(
+        target='dst', source='src', as_type='bool',
+        assign_default=True, default_value=None,
+    ))
+    assert row.staging['dst'] is None
+
+def test_setup_config_rejects_non_mapping_yaml(tmp_path: Path):
+    '''
+    空ファイルやリストの YAML 設定は、TypeError ではなく
+    分かりやすい ValueError になること。
+    '''
+    from tabpro.core.config import setup_config
+
+    empty_config = tmp_path / 'empty.yaml'
+    empty_config.write_text('', encoding='utf-8')
+    with pytest.raises(ValueError, match=r'must contain a mapping'):
+        setup_config(config_path=str(empty_config))
+
+    list_config = tmp_path / 'list.yaml'
+    list_config.write_text('- just\n- a\n- list\n', encoding='utf-8')
+    with pytest.raises(ValueError, match=r'must contain a mapping'):
+        setup_config(config_path=str(list_config))
+
 def test_excel_writer_writes_empty_output(csv_file: Path, tmp_path: Path):
     '''
     回帰テスト: 全行フィルタされても、空のブックが .xlsx で出力されること。
