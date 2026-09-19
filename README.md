@@ -489,6 +489,16 @@ The same holds for `--pick` and the other options that take several values.
 Rows rejected by a filter are dropped unless `--output-file-filtered-out`
 is given.
 
+NOTE: when a filter field is missing from a row, `==`, `!=`, `=~` and the
+numeric comparisons see an empty value. The comparisons treat this as
+"not matching": a missing field fails `==` and passes `!=`, so
+`filter:x!=0` keeps rows without an `x`. One accidental exception: a
+missing field does not match the literal value `None` (the missing value
+is stringified as `None` before the comparison), so `filter:x!=None`
+drops rows without an `x` as well. This asymmetry is the documented
+behavior for now; revisiting how missing fields are treated in
+comparisons may change it.
+
 ```bash
 # Separate rows whose id does not look like a 4-digit number,
 # rather than losing them.

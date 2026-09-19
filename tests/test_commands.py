@@ -501,6 +501,29 @@ def test_assign_format_with_equals_in_template(csv_file: Path, tmp_path: Path):
     )
     assert read_jsonl(output)[0]['label'] == 'name=alice'
 
+def test_filter_missing_field_asymmetry(tmp_path: Path):
+    '''フィールド不在時の filter 挙動を README の注記どおりに固定する。
+
+    == は不在行を落とし、!= は残す。ただし値がリテラル 'None' の場合は
+    不在値の文字列表現 'None' と一致してしまうため、!= でも落とされる
+    (README の NOTE に記載の非対称性)。
+    '''
+    source = write_file(
+        tmp_path / 'input.jsonl',
+        '{"id": 1, "x": "0"}\n{"id": 2}\n',
+    )
+    def run(filter_expr: str) -> list[int]:
+        output = tmp_path / 'out.jsonl'
+        convert(
+            input_files=[str(source)],
+            output_file=str(output),
+            list_actions=[filter_expr],
+        )
+        return [row['id'] for row in read_jsonl(output)]
+    assert run('filter:x==0') == [1]
+    assert run('filter:x!=0') == [2]
+    assert run('filter:x!=None') == [1]
+
 @pytest.mark.parametrize('operator,value,expected', [
     ('>', '15', ['bob', 'carol']),
     ('>=', '25', ['carol']),
