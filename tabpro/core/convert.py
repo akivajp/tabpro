@@ -168,14 +168,17 @@ def convert(
     console.log('total processed input rows: ', num_stacked_rows)
     if writer:
         writer.close()
-    if row_list_filtered_out:
-        #df_filtered_out = pd.DataFrame(row_list_filtered_out)
-        if output_file_filtered_out:
-            console.log('saving filtered out to: ', output_file_filtered_out)
-            writer = get_writer(
-                output_file_filtered_out,
-                progress=progress,
-            )
-            writer.push_rows(row_list_filtered_out)
-            writer.close()
+    if output_file_filtered_out:
+        # NOTE:
+        #   除外行が 0 件でも空のファイルを出力する。
+        #   以前は行が 1 件も除外されないとファイル自体を作らなかったため、
+        #   ファイルの存在を前提にする後続のパイプラインが
+        #   「除外が多かった日にだけ落ちる」不安定な挙動になっていた。
+        console.log('saving filtered out to: ', output_file_filtered_out)
+        writer = get_writer(
+            output_file_filtered_out,
+            progress=progress,
+        )
+        writer.push_rows(row_list_filtered_out)
+        writer.close()
     progress.stop()

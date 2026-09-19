@@ -427,6 +427,25 @@ def test_filter_writes_filtered_out_rows_to_csv(csv_file: Path, tmp_path: Path):
     )
     assert [row['name'] for row in read_csv(rejected)] == ['alice', 'carol']
 
+def test_filter_writes_empty_filtered_out_file_when_nothing_rejected(
+    csv_file: Path, tmp_path: Path,
+):
+    '''除外行が 0 件でも空のファイルが出力される。
+
+    回帰テスト: 以前は行が 1 件も除外されないとファイル自体を作らなかった
+    ため、その存在を前提にする後続のパイプラインが
+    「除外が多かった日にだけ落ちる」不安定な挙動になっていた。
+    '''
+    rejected = tmp_path / 'rejected.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(tmp_path / 'out.jsonl'),
+        output_file_filtered_out=str(rejected),
+        list_actions=['filter:name!=nobody'],
+    )
+    assert rejected.exists()
+    assert read_jsonl(rejected) == []
+
 def test_filter_by_regex(csv_file: Path, tmp_path: Path):
     """正規表現によるフィルタが機能する。"""
     output = tmp_path / 'out.jsonl'
