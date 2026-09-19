@@ -2324,6 +2324,20 @@ def test_join_field_joins_list_values():
     join_field(row, JoinConfig(target='joined', source='lines', delimiter='\\n'))
     assert row.staging['joined'] == 'a\nb'
 
+def test_join_field_stringifies_non_string_items():
+    '''join: 数値など非文字列の要素を含む配列も文字列化して連結する。
+
+    回帰テスト: 以前は str.join に直接渡していたため、parse-json で
+    生成された配列に数値が混ざると TypeError で停止していた。
+    '''
+    from tabpro.core.actions.join_field import join_field
+    from tabpro.core.actions.types import JoinConfig
+
+    row = Row()
+    row['values'] = [1, 'a', 2.5]
+    join_field(row, JoinConfig(target='joined', source='values'))
+    assert row.staging['joined'] == '1;a;2.5'
+
 def test_join_field_passes_through_non_list():
     '''join: 非リスト値はそのまま staging に写されること。'''
     from tabpro.core.actions.join_field import join_field

@@ -14,6 +14,10 @@ def join_field(
         if delimiter == '\\n':
             delimiter = '\n'
         if isinstance(value, list):
-            value = delimiter.join(value)
+            # NOTE:
+            #   parse-json で生成された配列には数値などが混ざりうる。
+            #   以前は str.join に直接渡していたため、非文字列の要素が
+            #   1つでもあると TypeError で停止していた。文字列化して結合する。
+            value = delimiter.join(str(item) for item in value)
         row.staging[config.target] = value
     return row
