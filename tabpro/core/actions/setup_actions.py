@@ -52,14 +52,20 @@ def setup_actions_with_args(
         if str_options:
             for str_option in str_options.split(','):
                 if '=' in str_option:
-                    key, value = str_option.split('=')
+                    # NOTE:
+                    #   maxsplit=1 により、値に '=' を含む指定
+                    #   (例: default=a=b) でも最初の '=' のみで分割する。
+                    #   以前は split('=') だったため 3 つ以上に分かれて
+                    #   "too many values to unpack" でクラッシュしていた。
+                    key, value = str_option.split('=', 1)
                     options[key.strip()] = value.strip()
                 else:
                     options[str_option.strip()] = True
         fields = str_fields.split(',')
         for field in fields:
             if '=' in field:
-                target, source = field.split('=')
+                # NOTE: 値に '=' を含む指定 (例: label=x=y) に対応するため maxsplit=1
+                target, source = field.split('=', 1)
                 target = target.strip()
                 source = source.strip()
             else:

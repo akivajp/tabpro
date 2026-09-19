@@ -122,8 +122,13 @@ def setup_filter_action(
     action_name = action_fields[0].strip()
     assert action_name == 'filter'
     str_filter = action_fields[1].strip()
+    # NOTE:
+    #   値に '==' などを含む指定 (例: comment==hello==world) でも
+    #   最初の演算子のみで分割するよう maxsplit=1 を付ける。
+    #   以前は maxsplit 無しの split だったため、値に演算子が含まれると
+    #   "too many values to unpack" でクラッシュしていた。
     if '==' in str_filter:
-        field, value = str_filter.split('==')
+        field, value = str_filter.split('==', 1)
         config.actions.append(FilterConfig(
             field = field.strip(),
             operator = '==',
@@ -131,7 +136,7 @@ def setup_filter_action(
         ))
         return config
     if '!=' in str_filter:
-        field, value = str_filter.split('!=')
+        field, value = str_filter.split('!=', 1)
         config.actions.append(FilterConfig(
             field = field.strip(),
             operator = '!=',
@@ -143,7 +148,7 @@ def setup_filter_action(
     #   '>=' が '>' と残り '=...' に誤って分解されるため)。
     for operator in ['>=', '<=']:
         if operator in str_filter:
-            field, value = str_filter.split(operator)
+            field, value = str_filter.split(operator, 1)
             config.actions.append(FilterConfig(
                 field = field.strip(),
                 operator = operator,
@@ -151,7 +156,7 @@ def setup_filter_action(
             ))
             return config
     if '=~' in str_filter:
-        field, value = str_filter.split('=~')
+        field, value = str_filter.split('=~', 1)
         config.actions.append(FilterConfig(
             field = field.strip(),
             operator = '=~',
@@ -160,7 +165,7 @@ def setup_filter_action(
         return config
     for operator in ['>', '<']:
         if operator in str_filter:
-            field, value = str_filter.split(operator)
+            field, value = str_filter.split(operator, 1)
             config.actions.append(FilterConfig(
                 field = field.strip(),
                 operator = operator,

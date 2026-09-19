@@ -437,6 +437,70 @@ def test_filter_by_regex(csv_file: Path, tmp_path: Path):
     )
     assert [row['name'] for row in read_jsonl(output)] == ['alice']
 
+# --- CLI アクション文字列の '=' を含む値の分割 --------------------------
+
+def test_filter_value_containing_operator_is_split_at_first_operator():
+    '''値に '==' を含むフィルタ指定でも最初の演算子のみで分割される。
+
+    回帰テスト: 以前は maxsplit 無しの split だったため、値に演算子が
+    含まれると too many values to unpack でクラッシュしていた。
+    '''
+    from types import SimpleNamespace
+
+    from tabpro.core.actions.filter_row import setup_filter_action
+
+    config = SimpleNamespace(actions=[])
+    setup_filter_action(config, 'filter:comment==hello==world')
+    assert len(config.actions) == 1
+    assert config.actions[0].field == 'comment'
+    assert config.actions[0].operator == '=='
+    assert config.actions[0].value == 'hello==world'
+
+def test_action_option_value_containing_equals():
+    '''オプション値に '=' を含む指定 (default=a=b) でも正しく分割される。
+
+    回帰テスト: 以前は options 分割が split('=') だったため、
+    値に '=' が含まれると too many values to unpack でクラッシュしていた。
+    '''
+    from types import SimpleNamespace
+
+    from tabpro.core.actions.assign import AssignConfig
+    from tabpro.core.actions.setup_actions import setup_actions_with_args
+
+    config = SimpleNamespace(actions=[])
+    setup_actions_with_args(config, ['assign:label=label:default=a=b'])
+    assert isinstance(config.actions[0], AssignConfig)
+    assert config.actions[0].assign_default is True
+    assert config.actions[0].default_value == 'a=b'
+
+def test_assign_format_accepts_format_containing_equals():
+    '''書式に '=' を含む assign-format 指定が分割エラーにならない。
+
+    回帰テスト: 以前は split('=') だったため、書式に '=' が含まれると
+    Expected 2 fields separated by "=" エラーになっていた。
+    '''
+    from types import SimpleNamespace
+
+    from tabpro.core.actions.assign_format import setup_assign_format_action
+    from tabpro.core.config import AssignFormatConfig
+
+    config = SimpleNamespace(actions=[])
+    setup_assign_format_action(config, 'assign-format:label=a={id}')
+    assert isinstance(config.actions[0], AssignFormatConfig)
+    assert config.actions[0].target == 'label'
+    assert config.actions[0].format == 'a={id}'
+
+def test_assign_format_with_equals_in_template(csv_file: Path, tmp_path: Path):
+    ''''=' を含む書式で実際に変換できる。'''
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_actions=['assign-format:label=name={name}'],
+        list_pick_columns=['id', 'label'],
+    )
+    assert read_jsonl(output)[0]['label'] == 'name=alice'
+
 @pytest.mark.parametrize('operator,value,expected', [
     ('>', '15', ['bob', 'carol']),
     ('>=', '25', ['carol']),

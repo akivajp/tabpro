@@ -53,7 +53,11 @@ def setup_assign_format_action(
         )
     action_name = action_fields[0].strip()
     assert action_name == 'assign-format'
-    assignment_fields = action_fields[1].split('=')
+    # NOTE:
+    #   書式に '=' を含む指定 (例: label=a={id}) に対応するため maxsplit=1。
+    #   以前は split('=') だったため書式に '=' が含まれると
+    #   "Expected 2 fields" エラーになっていた。
+    assignment_fields = action_fields[1].split('=', 1)
     if len(assignment_fields) != 2:
         raise ValueError(
             f'Expected 2 fields separated by "=": {action_fields[1]}'
