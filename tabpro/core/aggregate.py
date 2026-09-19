@@ -382,7 +382,11 @@ def aggregate(
                 show_count_max_length,
                 reverse=True,
             )
-            top_threshold = 50
+            # NOTE:
+            #   --show-count-threshold で指定されたしきい値。
+            #   以前は引数が接続されておらず、CLI で指定しても
+            #   無言の no-op になっていた。
+            top_threshold = show_count_threshold
             count1_threshold = 30
             top_n  = 10
             show_all = False

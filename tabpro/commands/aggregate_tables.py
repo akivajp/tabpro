@@ -76,7 +76,10 @@ def setup_parser(
         required=False,
         default=50,
         type=int,
-        help='Show count threshold',
+        help=(
+            'Above this many distinct values, show only a summary '
+            '(default 50)'
+        ),
     )
     parser.add_argument(
         '--show-count-max-length', '--count-max-length', '-L',

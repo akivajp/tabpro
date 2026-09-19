@@ -734,6 +734,38 @@ def test_aggregate(csv_file: Path, tmp_path: Path):
     assert result['num_rows'] == 3
     assert result['aggregated']['name']['num_variations'] == 3
 
+# --- aggregate: カウント表示のしきい値 -------------------------------------
+
+def test_aggregate_count_threshold_is_respected(csv_file: Path, tmp_path: Path):
+    '''
+    回帰テスト: --show-count-threshold で指定した値が
+    全件表示とサマリー表示の切り替えに反映されること。
+
+    以前は引数が接続されておらず、CLI で指定しても無言の
+    no-op になっていた。
+    '''
+    # NOTE: score は 10 / 20 / 30 の3変種
+    output_below = tmp_path / 'below.json'
+    aggregate(
+        input_files=[str(csv_file)],
+        output_file=str(output_below),
+        show_count_threshold=5,
+    )
+    result = json.loads(output_below.read_text(encoding='utf-8'))
+    # NOTE: しきい値以下なので全件の count が出る
+    assert 'count' in result['aggregated']['score']
+
+    output_above = tmp_path / 'above.json'
+    aggregate(
+        input_files=[str(csv_file)],
+        output_file=str(output_above),
+        show_count_threshold=2,
+    )
+    result = json.loads(output_above.read_text(encoding='utf-8'))
+    # NOTE: しきい値超過なので上位だけのサマリーになる
+    assert 'count_top10' in result['aggregated']['score']
+    assert 'count' not in result['aggregated']['score']
+
 # --- aggregate: ファイル別の列構成比較 -----------------------------------
 
 def test_normalize_column_name():
