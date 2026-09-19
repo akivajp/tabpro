@@ -22,7 +22,7 @@ def setup_parser(
         'input_files',
         metavar='input-file',
         nargs='+',
-        help='Input files to aggregate',
+        help='Input files to sort',
     )
     parser.add_argument(
         '--sort-keys', '--sort-key', '-K',

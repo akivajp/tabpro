@@ -90,10 +90,13 @@ def sort(
             all_input_row_items.append(
                 (make_sort_key(primary_key, numeric), row)
             )
-    if not all_input_row_items:
-        raise ValueError(f'no rows to sort in: {input_files}')
+    # NOTE:
+    #   空入力でもエラーにせず空のファイルを出力する。
+    #   convert と同様に、上流の filter で全行が除外された場合など
+    #   パイプラインの途中で入力が空になるケースを正常系として扱う。
     console.log('# input rows: ', len(all_input_row_items))
-    console.log('sorting rows...')
+    if all_input_row_items:
+        console.log('sorting rows...')
     try:
         all_input_row_items.sort(
             key=lambda x: x[0],
@@ -108,12 +111,21 @@ def sort(
             reverse=reverse,
         )
     if output_file is None and sys.stdout.isatty():
-        console.print(Panel(
-            all_input_row_items[0][1],
-            title='first row',
-            title_align='left',
-            border_style='cyan',
-        ))
+        if len(all_input_row_items) > 0:
+            console.print(Panel(
+                all_input_row_items[0][1],
+                title='first row',
+                title_align='left',
+                border_style='cyan',
+            ))
+        else:
+            # NOTE: 空入力のときは参照する行が無いため、その旨を表示する
+            console.print(Panel(
+                'no rows to sort',
+                title='sort',
+                title_align='left',
+                border_style='green',
+            ))
     elif output_file:
         writer = get_writer(
             output_file,

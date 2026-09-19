@@ -747,15 +747,23 @@ def test_sort_numeric_keeps_non_numeric_values_last(tmp_path: Path):
     rows = read_csv(output)
     assert [row['score'] for row in rows] == ['5', '10', 'n/a']
 
-def test_sort_empty_input_raises(tmp_path: Path):
-    '''空の入力に対しては、黙って IndexError になるのではなく明示的に止まる。'''
+def test_sort_empty_input_writes_empty_output(tmp_path: Path):
+    '''空の入力でもエラーにせず空のファイルを出力する。
+
+    convert と同様に、上流の filter で全行が除外された場合など、
+    パイプラインの途中で入力が空になるケースを正常系として扱う。
+    以前は ValueError で停止していたため、パイプラインの後続が
+    sort だけの理由で止まることになる。
+    '''
     source = write_file(tmp_path / 'input.csv', 'id,score\n')
-    with pytest.raises(ValueError, match='no rows to sort'):
-        sort(
-            sort_keys=['id'],
-            input_files=[str(source)],
-            output_file=str(tmp_path / 'out.csv'),
-        )
+    output = tmp_path / 'out.csv'
+    sort(
+        sort_keys=['id'],
+        input_files=[str(source)],
+        output_file=str(output),
+    )
+    assert output.exists()
+    assert read_csv(output) == []
 
 def test_compare(csv_file: Path, tmp_path: Path):
     '''値の変更・削除・追加がそれぞれ差分として検出される。'''
