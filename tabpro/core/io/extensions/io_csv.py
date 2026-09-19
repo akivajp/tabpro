@@ -1,6 +1,5 @@
 from typing import (
     Generator,
-    Iterable,
 )
 
 import csv
@@ -67,7 +66,6 @@ def _load_delimited(
         reader = csv.reader(f, delimiter=delimiter)
         if no_header:
             for i, row in enumerate(get_iter(reader)):
-                assert isinstance(row, Iterable)
                 d = OrderedDict()
                 for j, field in enumerate(row):
                     d[f'{j}'] = field
@@ -75,7 +73,6 @@ def _load_delimited(
         else:
             header: list[str] = []
             for i, row in enumerate(get_iter(reader)):
-                assert isinstance(row, list)
                 if i == 0:
                     header = row
                     continue

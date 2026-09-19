@@ -105,7 +105,7 @@ def merge(
         #)):
         for index, row in enumerate(progress.track(
             loader,
-            description='prcessing ...',
+            description='processing ...',
         )):
             set_staging_values(
                 row,
