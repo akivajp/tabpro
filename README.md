@@ -534,6 +534,9 @@ process:
       context: [document_id]
 
   # Collect several fields into an array
+  # NOTE: `optional` defaults differ by item form: a plain string item is
+  # optional (a missing field becomes a null element), while a `field:`-style
+  # dict item is required unless `optional: true` is set explicitly.
   assign_array:
     choices:
       - choice_a
