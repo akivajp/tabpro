@@ -2004,6 +2004,238 @@ def test_setup_config_rejects_non_mapping_yaml(tmp_path: Path):
     with pytest.raises(ValueError, match=r'must contain a mapping'):
         setup_config(config_path=str(list_config))
 
+def test_assign_format_renders_template():
+    '''assign-format: 行の値でテンプレートを整形し、staging に格納すること。'''
+    from tabpro.core.actions.assign_format import assign_format
+    from tabpro.core.actions.types import AssignFormatConfig
+
+    row = Row()
+    row['name'] = 'x'
+    row['n'] = 2
+    assign_format(row, AssignFormatConfig(target='id', format='{name}-{n}'))
+    assert row.staging['id'] == 'x-2'
+
+def test_assign_format_fills_undefined_fields():
+    '''assign-format: 未定義フィールドは '__key__undefined__' で埋まること。'''
+    from tabpro.core.actions.assign_format import assign_format
+    from tabpro.core.actions.types import AssignFormatConfig
+
+    row = Row()
+    row['name'] = 'x'
+    assign_format(row, AssignFormatConfig(
+        target='id', format='{name}-{missing}',
+    ))
+    assert row.staging['id'] == 'x-__missing__undefined__'
+
+def test_assign_length_measures_sizes():
+    '''assign-length: str / list / dict のサイズを staging に格納すること。'''
+    from tabpro.core.actions.assign_length import assign_length
+    from tabpro.core.actions.types import AssignLengthConfig
+
+    for source_value, expected in [('abc', 3), ([1, 2, 3, 4], 4), ({'a': 1}, 1)]:
+        row = Row()
+        row['src'] = source_value
+        assign_length(row, AssignLengthConfig(target='len', source='src'))
+        assert row.staging['len'] == expected, source_value
+
+def test_assign_length_rejects_value_without_length():
+    '''assign-length: サイズを持たない値 (数値等) は明示エラーになること。'''
+    from tabpro.core.actions.assign_length import assign_length
+    from tabpro.core.actions.types import AssignLengthConfig
+
+    row = Row()
+    row['src'] = 42
+    with pytest.raises(ValueError, match=r'src'):
+        assign_length(row, AssignLengthConfig(target='len', source='src'))
+
+def test_assign_array_collects_values():
+    '''assign-array: 各項目の値を集め、staging に格納すること。
+
+    - 見つかった値は追加される
+    - 見つからない場合は optional=True なら None を要素として追加する
+    - optional=False で見つからない項目はスキップされる
+    - 何も収集できなかった場合は None が格納される
+    '''
+    from tabpro.core.actions import assign_array
+    from tabpro.core.actions.types import (
+        AssignArrayConfig,
+        AssignArrayElementConfig,
+    )
+
+    row = Row()
+    row['a'] = 1
+    row['c'] = 3
+    config = AssignArrayConfig(target='arr', items=[
+        AssignArrayElementConfig(source='a', optional=True),
+        AssignArrayElementConfig(source='b', optional=True),
+        AssignArrayElementConfig(source='c', optional=False),
+    ])
+    assign_array(row, config)
+    assert row.staging['arr'] == [1, None, 3]
+
+    row = Row()
+    row['unrelated'] = 0
+    config = AssignArrayConfig(target='arr', items=[
+        AssignArrayElementConfig(source='b', optional=True),
+    ])
+    assign_array(row, config)
+    assert row.staging['arr'] == [None]
+
+    row = Row()
+    row['unrelated'] = 0
+    config = AssignArrayConfig(target='arr', items=[
+        AssignArrayElementConfig(source='b', optional=False),
+    ])
+    assign_array(row, config)
+    assert row.staging['arr'] is None
+
+def test_assign_array_setup_from_yaml(tmp_path: Path):
+    '''assign-array は YAML 設定から組み立てられること (CLI では指定不可)。'''
+    from tabpro.core.config import setup_config
+
+    config_path = write_file(
+        tmp_path / 'config.yaml',
+        'process:\n'
+        '  assign_array:\n'
+        '    arr:\n'
+        '      - field: a\n'
+        '      - field: b\n'
+        '        optional: false\n'
+        '      - c\n',
+    )
+    config = setup_config(config_path=str(config_path))
+    assert len(config.actions) == 1
+    items = config.actions[0].items
+    # NOTE:
+    #   optional の既定はソースに依存して非対称である (現行挙動)。
+    #   dict 項目は optional 無指定で False、文字列項目は True。
+    assert [(item.source, item.optional) for item in items] == [
+        ('a', False), ('b', False), ('c', True),
+    ]
+
+def test_join_field_joins_list_values():
+    '''join: リスト値を区切り文字で連結し、staging に格納すること。'''
+    from tabpro.core.actions.join_field import join_field
+    from tabpro.core.actions.types import JoinConfig
+
+    row = Row()
+    row['tags'] = ['a', 'b', 'c']
+    join_field(row, JoinConfig(target='joined', source='tags'))
+    assert row.staging['joined'] == 'a;b;c'
+
+    row = Row()
+    row['tags'] = ['a', 'b']
+    join_field(row, JoinConfig(target='joined', source='tags', delimiter=','))
+    assert row.staging['joined'] == 'a,b'
+
+    # NOTE: '\n' のエスケープ表記は実行時に改行へ置き換わる
+    row = Row()
+    row['lines'] = ['a', 'b']
+    join_field(row, JoinConfig(target='joined', source='lines', delimiter='\\n'))
+    assert row.staging['joined'] == 'a\nb'
+
+def test_join_field_passes_through_non_list():
+    '''join: 非リスト値はそのまま staging に写されること。'''
+    from tabpro.core.actions.join_field import join_field
+    from tabpro.core.actions.types import JoinConfig
+
+    row = Row()
+    row['src'] = 'plain'
+    join_field(row, JoinConfig(target='dst', source='src'))
+    assert row.staging['dst'] == 'plain'
+
+    # NOTE: 未検出フィールドは何もしない
+    row = Row()
+    join_field(row, JoinConfig(target='dst', source='missing'))
+    assert '__staging__.dst' not in row
+
+def test_split_field_splits_and_cleans():
+    '''split: 文字列を分割し、各要素の空白除去と空要素の除外を行うこと。'''
+    from tabpro.core.actions.split_field import split_field
+    from tabpro.core.actions.types import SplitConfig
+
+    row = Row()
+    row['src'] = 'a, b ,, c'
+    split_field(row, SplitConfig(target='dst', source='src', delimiter=','))
+    assert row.staging['dst'] == ['a', 'b', 'c']
+
+    # NOTE: 未検出フィールドは何もしない
+    row = Row()
+    split_field(row, SplitConfig(target='dst', source='missing', delimiter=','))
+    assert '__staging__.dst' not in row
+
+def test_split_field_setup_converts_newline_escape():
+    '''split の CLI 設定: delimiter=\n のエスケープ表記が改行に変換されること。'''
+    from tabpro.core.actions import setup_actions_with_args
+    from tabpro.core.config import Config
+
+    config = Config()
+    setup_actions_with_args(config, ['split:dst,src:delimiter=\\n'])
+    assert config.actions[0].delimiter == '\n'
+
+def test_split_field_passes_through_non_str():
+    '''split: 非文字列値はそのまま staging に写されること。'''
+    from tabpro.core.actions.split_field import split_field
+    from tabpro.core.actions.types import SplitConfig
+
+    row = Row()
+    row['src'] = 5
+    split_field(row, SplitConfig(target='dst', source='src', delimiter=','))
+    assert row.staging['dst'] == 5
+
+def test_replace_string_replaces_values():
+    '''replace: 文字列値の置換を staging に格納すること。'''
+    from tabpro.core.actions.replace_string import replace_string
+    from tabpro.core.actions.types import ReplaceConfig
+
+    row = Row()
+    row['src'] = 'a-b-c'
+    replace_string(row, ReplaceConfig(
+        target='dst', source='src', old='-', new='_',
+    ))
+    assert row.staging['dst'] == 'a_b_c'
+
+    # NOTE: count で置換回数を制限できる
+    row = Row()
+    row['src'] = 'a-b-c'
+    replace_string(row, ReplaceConfig(
+        target='dst', source='src', old='-', new='_', count=1,
+    ))
+    assert row.staging['dst'] == 'a_b-c'
+
+    # NOTE: recursive=True でリスト内の文字列も置換する
+    row = Row()
+    row['src'] = ['a-b', 'c', 'd-e']
+    replace_string(row, ReplaceConfig(
+        target='dst', source='src', old='-', new='_', recursive=True,
+    ))
+    assert row.staging['dst'] == ['a_b', 'c', 'd_e']
+
+    # NOTE: 非文字列 (数値等) は変更されない
+    row = Row()
+    row['src'] = 5
+    replace_string(row, ReplaceConfig(
+        target='dst', source='src', old='-', new='_',
+    ))
+    assert row.staging['dst'] == 5
+
+    # NOTE: 未検出フィールドは何もしない
+    row = Row()
+    replace_string(row, ReplaceConfig(
+        target='dst', source='missing', old='-', new='_',
+    ))
+    assert '__staging__.dst' not in row
+
+def test_setup_replace_action_requires_old_and_new():
+    '''replace の CLI 設定: old / new が無ければ設定時にエラーになること。'''
+    from tabpro.core.actions import setup_actions_with_args
+    from tabpro.core.config import Config
+
+    with pytest.raises(ValueError, match=r'old'):
+        setup_actions_with_args(Config(), ['replace:dst,src:new=_'])
+    with pytest.raises(ValueError, match=r'new'):
+        setup_actions_with_args(Config(), ['replace:dst,src:old=-'])
+
 def test_excel_writer_writes_empty_output(csv_file: Path, tmp_path: Path):
     '''
     回帰テスト: 全行フィルタされても、空のブックが .xlsx で出力されること。
