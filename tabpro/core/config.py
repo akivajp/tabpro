@@ -34,6 +34,23 @@ class Config:
     actions: list[BaseActionConfig] = dataclasses.field(default_factory=list)
     pick: list[PickConfig] = dataclasses.field(default_factory=list)
 
+class ConfigLoader(yaml.Loader):
+    '''設定ファイル読み込み専用の Loader。
+
+    NOTE:
+        yaml.add_constructor を既定の yaml.Loader に対して呼ぶと
+        プロセス全体の Loader が書き換わるため、専用サブクラスに閉じ込める。
+    '''
+
+# NOTE:
+#   マッピングのキー順を保持するため、OrderedDict で読み込む。
+#   登録は専用 Loader に対してモジュール読み込み時に1回だけ行う。
+yaml.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    lambda loader, node: OrderedDict(loader.construct_pairs(node)),
+    Loader=ConfigLoader,
+)
+
 def setup_config(
     config_path: str | None = None,
 ):
@@ -41,13 +58,18 @@ def setup_config(
     if config_path:
         # NOTE: validate コマンドと同様に .yaml / .yml の両方を受け付ける
         if config_path.endswith(('.yaml', '.yml')):
-            yaml.add_constructor(
-                yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-                lambda loader, node: OrderedDict(loader.construct_pairs(node)),
-            )
             # NOTE: ロケールに依存しないよう、エンコーディングを明示する
             with open(config_path, 'r', encoding='utf-8') as f:
-                loaded = yaml.load(f, yaml.Loader)
+                loaded = yaml.load(f, ConfigLoader)
+            # NOTE:
+            #   空ファイル (None) やリスト・文字列など Mapping 以外の
+            #   内容は、後続の .get() での TypeError の代わりに
+            #   ここで分かりやすいエラーにする。
+            if not isinstance(loaded, Mapping):
+                raise ValueError(
+                    f'config file must contain a mapping, got '
+                    f'{type(loaded).__name__}: {config_path}'
+                )
         else:
             raise ValueError(
                 'Only YAML configuration files are supported.'
