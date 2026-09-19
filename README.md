@@ -229,6 +229,12 @@ overwrites the corresponding field of the matching base row.
 | `--allow-duplicate-modification-keys` | Permit duplicate keys in the correction files |
 | `--merge-staging`, `--use-staging` | Carry the staging area across the merge |
 
+> **`--merge-staging` replaces the whole staging area.** The staging
+> subtree of a correction row overwrites the base row's staging as a
+> whole, so after the merge `__staging__.__file__` points to the
+> correction file rather than the base file. This is the documented
+> behavior for now; revisiting how origins are carried may change it.
+
 `--output-remaining-data-file` is what tells you which rows are still
 waiting for someone to look at them.
 
@@ -551,6 +557,11 @@ process:
       value: done
 
   # Append to an array, optionally only when another field is truthy
+  # NOTE:
+  #   If the source field is missing, `null` is appended to the array
+  #   on purpose (a placeholder for a variable-length entry that Excel
+  #   cannot represent). Pushing onto a non-list target raises
+  #   AttributeError. Both may be tightened in the future.
   push:
     - target: notes
       source: comment
