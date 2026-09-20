@@ -139,7 +139,16 @@ def load_json(
     with open(input_file, 'r', encoding=encoding) as f:
         data = loads_json(f.read())
     if not isinstance(data, list):
-        raise ValueError(f'invalid json array data: {input_file}')
+        # NOTE:
+        #   単一オブジェクトは1行データとして受理しない
+        #   (ユーザーの判断: エラー扱いを維持)。
+        #   配列であることを期待していることが伝わるように、
+        #   実際の型も表示する。
+        raise ValueError(
+            f'expected a JSON array of objects, got {type(data).__name__}: '
+            f'{input_file}. Wrap the object in a JSON array [...] '
+            f'or use JSON Lines.'
+        )
     for row in data:
         yield Row.from_dict(row)
 

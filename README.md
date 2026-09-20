@@ -203,7 +203,7 @@ tabpro convert [options] <input_file>... --output <output_file>
 | `--output-debug` | Keep the staging area in the output |
 | `--limit` | Load only the first N rows of each input file |
 | `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
-| `--no-warnings`, `--no-warn` | Suppress warnings (unknown or wrongly-typed config keys, `--ignore` entries that matched no row) |
+| `--no-warnings`, `--no-warn` | Suppress warnings (config file issues, `--ignore` entries that matched no row, `--pick` columns that matched no row) |
 
 
 Multiple input files are concatenated. `--output-file-filtered-out` is the

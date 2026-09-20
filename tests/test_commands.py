@@ -461,6 +461,19 @@ def test_convert_no_warnings_option_silences_duplicate_key_warning(
     # NOTE: 上のテストと同様、テスト名由来のパスに 'warning' が混入するため
     assert 'warning:' not in (captured.out + captured.err)
 
+def test_json_non_array_input_error_message(tmp_path: Path):
+    """
+    配列でない .json はエラーになる (単一オブジェクトは受理しない)。
+
+    メッセージは期待する形 (配列) と実際の型の両方を伝える。
+    """
+    source = tmp_path / 'one.json'
+    source.write_text('{"id": 1, "name": "alice"}')
+    loader = Loader(str(source))
+    with pytest.raises(ValueError, match='expected a JSON array of objects'):
+        list(loader)
+
+
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
     source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)
