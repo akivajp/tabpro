@@ -153,6 +153,16 @@ def test_convert_limit(tmp_path: Path):
         {'id': '2', 'name': 'bob'},
     ]
 
+def test_convert_encoding(tmp_path: Path):
+    """encoding を指定すると Shift-JIS の CSV も変換できる。"""
+    source = tmp_path / 'sjis.csv'
+    source.write_bytes('id,name\n1,テスト\n'.encode('cp932'))
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output), encoding='cp932')
+    assert read_jsonl(output) == [
+        {'id': '1', 'name': 'テスト'},
+    ]
+
 def test_convert_tsv_output(csv_file: Path, tmp_path: Path):
     """TSV を出力先として書き出せる。"""
     output = tmp_path / 'out.tsv'
@@ -1307,6 +1317,7 @@ def make_validate_args(
         sheet=None,
         all_sheets=False,
         limit=None,
+        encoding=None,
     )
 
 def test_validate_run_exit_codes(
@@ -2004,6 +2015,24 @@ def test_loader_limit_exceeding_row_count_reads_all(csv_file: Path):
     loader = Loader(str(csv_file), limit=10)
     assert [row['id'] for row in loader] == ['1', '2', '3']
 
+def test_loader_reads_shift_jis_csv(tmp_path: Path):
+    """
+    encoding を指定して Shift-JIS の CSV を読める。
+
+    既定は utf-8-sig なので、Shift-JIS 由来のバイト列は
+    UnicodeDecodeError になる。encoding を下位のローダーまで
+    届けてはじめて読めるようになる。
+    """
+    source = tmp_path / 'sjis.csv'
+    source.write_bytes('id,name\n1,テスト\n'.encode('cp932'))
+    loader = Loader(str(source), encoding='cp932')
+    assert [row['name'] for row in loader] == ['テスト']
+
+def test_loader_encoding_default_stays_utf8_sig(csv_file: Path):
+    """encoding を指定しない場合は既定 (utf-8-sig) のままである。"""
+    loader = Loader(str(csv_file))
+    assert [row['id'] for row in loader] == ['1', '2', '3']
+
 def test_streaming_writer_does_not_hold_rows(tmp_path: Path):
     """
     回帰テスト: ストリーミング書き込みで行を保持しないこと。
@@ -2653,6 +2682,10 @@ def test_limit_option_wiring():
         ['in.csv', '--limit', '5'],
     )
     assert args.limit == 5
+    args = make_parser(setup_sort_parser).parse_args(
+        ['in.csv', '-K', 'id', '--encoding', 'cp932'],
+    )
+    assert args.encoding == 'cp932'
 
 def test_convert_parser_wiring():
     '''convert コマンドのオプションの別名と累積を検証する。'''
@@ -2837,3 +2870,25 @@ def test_cli_error_keeps_traceback_when_debug_env(monkeypatch):
     monkeypatch.setenv('DEBUG', '1')
     with pytest.raises(ValueError, match='boom'):
         cli.parse_and_run(parser)
+
+def test_cli_unknown_encoding_exits_2(monkeypatch, capsys):
+    '''
+    誤った --encoding 指定 (LookupError) も共通ハンドラで伝わる。
+
+    LookupError は KeyError の親クラスなので、存在しない列を参照した
+    KeyError もこの経路で扱われる。
+    '''
+    import sys
+    from tabpro import cli
+
+    def failing_handler(args):
+        raise LookupError('unknown encoding: no-such-codec')
+
+    parser = make_error_args_parser(failing_handler)
+    monkeypatch.setattr(sys, 'argv', ['tabpro', 'in.csv'])
+    monkeypatch.delenv('DEBUG', raising=False)
+    with pytest.raises(SystemExit) as exc_info:
+        cli.parse_and_run(parser)
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert 'error: unknown encoding: no-such-codec' in captured.err

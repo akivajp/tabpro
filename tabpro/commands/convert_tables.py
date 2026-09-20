@@ -22,6 +22,7 @@ def run(
         sheet = args.sheet,
         all_sheets = args.all_sheets,
         limit = args.limit,
+        encoding = args.encoding,
     )
 
 def setup_parser(
@@ -115,5 +116,11 @@ def setup_parser(
         type=int,
         default=None,
         help='Load only the first N rows of each input file',
+    )
+    parser.add_argument(
+        '--encoding',
+        type=str,
+        default=None,
+        help='Text encoding for CSV/TSV input (e.g. cp932 for Shift-JIS)',
     )
     parser.set_defaults(handler=run)

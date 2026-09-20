@@ -68,6 +68,7 @@ def sort(
     reverse: bool = False,
     numeric: bool = False,
     limit: int | None = None,
+    encoding: str | None = None,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -86,6 +87,7 @@ def sort(
             input_file,
             progress=progress,
             limit=limit,
+            encoding=encoding,
         )
         for index, row in enumerate(loader):
             primary_key = get_primary_key(row, sort_keys)

@@ -37,8 +37,10 @@ def parse_and_run(
             sys.exit(1)
     except (
         FileNotFoundError,
+        # NOTE: LookupError は KeyError (存在しない列など) と
+        #   unknown encoding (誤った --encoding 指定) の両方を含む
+        LookupError,
         ValueError,
-        KeyError,
         UnicodeDecodeError,
     ) as e:
         if verbose or os.environ.get('DEBUG', '').lower() in ['1', 'true', 'yes', 'on']:

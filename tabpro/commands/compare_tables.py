@@ -14,6 +14,7 @@ def run(
         query_keys=args.query_keys,
         compare_keys=args.compare_keys,
         limit=args.limit,
+        encoding=args.encoding,
     )
 
 def setup_parser(
@@ -67,5 +68,11 @@ def setup_parser(
             'Load only the first N rows of each input file '
             '(applies to both files)'
         ),
+    )
+    parser.add_argument(
+        '--encoding',
+        type=str,
+        default=None,
+        help='Text encoding for CSV/TSV input (e.g. cp932 for Shift-JIS)',
     )
     parser.set_defaults(handler=run)

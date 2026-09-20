@@ -475,6 +475,7 @@ def validate(
     sheet: str | None = None,
     all_sheets: bool = False,
     limit: int | None = None,
+    encoding: str | None = None,
 ) -> ValidationResult:
     '''
     入力ファイルがスキーマを満たしているかを検査する。
@@ -524,6 +525,7 @@ def validate(
                 sheet=sheet,
                 all_sheets=all_sheets,
                 limit=limit,
+                encoding=encoding,
             )
             for index, row in enumerate(loader):
                 result.num_rows += 1

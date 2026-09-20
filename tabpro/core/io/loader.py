@@ -22,6 +22,7 @@ class Loader:
         progress: Progress | None = None,
         sheet: str | None = None,
         all_sheets: bool = False,
+        encoding: str | None = None,
         keep_rows: bool = False,
     ):
         self.source = source
@@ -31,6 +32,10 @@ class Loader:
         # NOTE: Excel 以外のローダーは **kwargs でこれらを読み捨てる
         self.sheet = sheet
         self.all_sheets = all_sheets
+        # NOTE:
+        #   テキスト系ローダー (CSV/TSV) 用の文字エンコーディング。
+        #   None の場合は各ローダーの既定 (utf-8-sig) に任せる。
+        self.encoding = encoding
         # NOTE:
         #   既定では読み込んだ行を保持しない。
         #   以前は常に全行を溜めていたため、len() を呼んだ時点で
@@ -81,15 +86,21 @@ class Loader:
         #   受けても読み捨てるため、全形式で同じ挙動にするには
         #   Loader 側で打ち切る必要がある。
         num_loaded = 0
-        for row in self.fn_load(
-            self.source,
+        # NOTE:
+        #   encoding が指定された場合のみ下位のローダーに渡す。
+        #   None をそのまま渡すと、下位の既定値 ('utf-8-sig') が
+        #   None で上書きされてしまう。
+        load_kwargs: dict = dict(
             quiet=self.quiet,
             no_header=self.no_header,
             progress=self.progress,
             limit=self.limit,
             sheet=self.sheet,
             all_sheets=self.all_sheets,
-        ):
+        )
+        if self.encoding is not None:
+            load_kwargs['encoding'] = self.encoding
+        for row in self.fn_load(self.source, **load_kwargs):
             if self.limit is not None and num_loaded >= self.limit:
                 break
             num_loaded += 1
