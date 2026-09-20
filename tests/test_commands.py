@@ -348,6 +348,13 @@ def test_convert_rejects_filtered_out_output_same_as_input(tmp_path: Path):
         )
     assert source.read_text() == 'id,name\n1,alice\n'
 
+def test_convert_rejects_directory_output(tmp_path: Path):
+    """出力先が既存ディレクトリなら原因が伝わるエラーになる。"""
+    outdir = tmp_path / 'outdir'
+    outdir.mkdir()
+    with pytest.raises(ValueError, match='output path is a directory'):
+        convert(input_files=[str(tmp_path / 'whatever.csv')], output_file=str(outdir))
+
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
     source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)

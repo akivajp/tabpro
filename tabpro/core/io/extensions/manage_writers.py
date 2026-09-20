@@ -49,6 +49,13 @@ def get_writer(
     output_file: str,
     progress: Progress | None = None,
 ) -> BaseWriter:
+    # NOTE:
+    #   ディレクトリを指定すると拡張子判定に到達して
+    #   "Unsupported file type: " (空の拡張子) となり、
+    #   真の原因 (パスがディレクトリであること) が伝わらないため、
+    #   先に弾いて分かりやすいエラーにする。
+    if os.path.isdir(output_file):
+        raise ValueError(f'output path is a directory: {output_file}')
     writer_class = check_writer(output_file)
     return writer_class(
         output_file,
