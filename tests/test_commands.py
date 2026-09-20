@@ -118,6 +118,39 @@ def test_convert_jsonl_to_csv_flattens_nested(jsonl_file: Path, tmp_path: Path):
     rows = read_csv(output)
     assert rows[0]['nested.k'] == 'v'
 
+def test_convert_jsonl_skips_blank_lines_and_warns(tmp_path: Path, capsys):
+    """
+    空行 (空白のみの行を含む) はスキップされ、警告が出る。
+
+    以前は空行があると json のパースエラーで変換全体が止まっていた。
+    空行はデータを運ばないためスキップして続行するが、異常データの
+    検知が目的なので、スキップした行数と行番号を報告する。
+    """
+    source = tmp_path / 'blank.jsonl'
+    source.write_text('{"name": "alice"}\n\n{"name": "bob"}\n   \n')
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output) == [{'name': 'alice'}, {'name': 'bob'}]
+    captured = capsys.readouterr()
+    merged = captured.out + captured.err
+    assert 'blank line(s) were skipped' in merged
+    assert 'blank.jsonl' in merged
+    assert '(line 2, 4)' in merged
+
+def test_convert_jsonl_many_blank_lines_warn_count_only(tmp_path: Path, capsys):
+    """空行が多い場合は行番号を並べず件数だけを報告する。"""
+    source = tmp_path / 'many.jsonl'
+    source.write_text(
+        '{"name": "alice"}\n' + '\n' * 12 + '{"name": "bob"}\n'
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output))
+    assert read_jsonl(output) == [{'name': 'alice'}, {'name': 'bob'}]
+    captured = capsys.readouterr()
+    merged = captured.out + captured.err
+    assert '12 blank line(s) were skipped' in merged
+    assert '(line ' not in merged
+
 def test_convert_pick_columns(csv_file: Path, tmp_path: Path):
     '''--pick で指定したカラムのみが出力される。'''
     output = tmp_path / 'out.jsonl'

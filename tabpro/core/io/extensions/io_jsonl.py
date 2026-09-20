@@ -63,9 +63,17 @@ def load_jsonl(
             disable = quiet,
         )
     with fn_open(input_file, 'r', encoding=encoding) as f:
+        # NOTE:
+        #   空行 (空白のみの行を含む) はデータを運ばないため、
+        #   以前は json のパースエラーで変換全体が止まっていた。
+        #   スキップして続行し、行番号を記録して読み込み完了後に警告する。
+        list_skipped_blank_line_indices: list[int] = []
         for i, line in enumerate(f):
             if limit and i >= limit:
                 break
+            if not line.strip():
+                list_skipped_blank_line_indices.append(i + 1)
+                continue
             row = loads_json(line)
             if not quiet:
                 progress.update(count_task_id, advance=1)
@@ -75,6 +83,21 @@ def load_jsonl(
             progress.stop_task(open_task_id)
         if not quiet:
             progress.stop_task(count_task_id)
+        if list_skipped_blank_line_indices:
+            # NOTE:
+            #   異常データの検知が目的のため、黙って捨てずに
+            #   何行スキップしたかを報告する。行数が少なければ
+            #   行番号も併記する (1始まり)。
+            detail = ''
+            if len(list_skipped_blank_line_indices) <= 10:
+                shown = ', '.join(
+                    str(index) for index in list_skipped_blank_line_indices
+                )
+                detail = f' (line {shown})'
+            progress.console.log(
+                f'[yellow]warning: {len(list_skipped_blank_line_indices)} '
+                f'blank line(s) were skipped in {input_file}{detail}[/yellow]'
+            )
     if orig_progress is None:
         progress.stop()
 
