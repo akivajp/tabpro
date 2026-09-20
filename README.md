@@ -274,6 +274,7 @@ hold something unexpected.
 | `--compare-columns`, `--compare` | Compare the column sets of the input files against each other |
 | `--limit` | Load only the first N rows of each input file |
 | `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
+| `--no-warnings`, `--no-warn` | Suppress warnings (`--keys-to-*` columns that matched no input column) |
 
 
 `--compare-columns` answers a different question: not what is in the data,
@@ -331,6 +332,7 @@ has to report that the data did not meet the spec.
 | `--report` | The list of violations, one row each |
 | `--limit` | Load only the first N rows of each input file |
 | `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
+| `--no-warnings`, `--no-warn` | Suppress warnings (unknown keys in the schema file) |
 
 
 ```yaml
