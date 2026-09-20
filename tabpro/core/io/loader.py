@@ -4,12 +4,20 @@ Loader class is responsible for loading the data from the source.
 
 import os.path
 
+from rich.console import Console
+
 from . extensions.manage_loaders import get_loader
 from ..classes.row import Row
 
 from .. progress import (
     Progress,
 )
+
+# NOTE:
+#   --sheet / --all-sheets は Excel 専用のオプション。
+#   非 Excel 入力に対して指定された場合の警告を、CLI 実行全体で
+#   1回だけにするためのフラグ (複数ファイル連結時の重複を避ける)。
+_warned_sheet_option_ignored = False
 
 
 class Loader:
@@ -54,6 +62,25 @@ class Loader:
             self.source,
         )
         self.extension = os.path.splitext(self.source)[1]
+        # NOTE:
+        #   --sheet / --all-sheets は Excel 専用オプション。
+        #   非 Excel 入力に対しては黙って読み捨てられていたため、
+        #   タイポや指定間違いに気づけるように警告する。
+        if (sheet or all_sheets) and self.extension.lower() not in ('.xls', '.xlsx'):
+            self._warn_sheet_option_ignored()
+
+    def _warn_sheet_option_ignored(self):
+        '''非 Excel 入力に対する --sheet / --all-sheets の無視を警告する。'''
+        global _warned_sheet_option_ignored
+        if _warned_sheet_option_ignored or self.quiet:
+            return
+        _warned_sheet_option_ignored = True
+        console = self.progress.console if self.progress else Console()
+        option = '--all-sheets' if self.all_sheets else '--sheet'
+        console.log(
+            f'[yellow]warning: {option} applies to Excel files only '
+            f'and was ignored for {self.source}[/yellow]'
+        )
 
     def __iter__(self):
         return self._yield_data()

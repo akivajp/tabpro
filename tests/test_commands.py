@@ -505,6 +505,39 @@ def test_convert_no_warnings_option_silences_non_mapping_process_warning(
     # NOTE: 上のテストと同様、テスト名由来のパスに 'warning' が混入するため
     assert 'warning:' not in (captured.out + captured.err)
 
+def test_sheet_option_on_non_excel_input_warns(
+    monkeypatch, csv_file: Path, tmp_path: Path, capsys,
+):
+    """
+    非 Excel 入力に --sheet を指定すると警告される。
+
+    以前は黙って読み捨てられ、Excel 用オプションの指定間違いに
+    気づけなかった。
+    """
+    import tabpro.core.io.loader as loader_module
+
+    # NOTE: プロセス全体で1回だけ警告するフラグをテストごとに戻す
+    monkeypatch.setattr(loader_module, '_warned_sheet_option_ignored', False)
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(csv_file)], output_file=str(output), sheet='no-such')
+    captured = capsys.readouterr()
+    assert 'applies to Excel files only' in (captured.out + captured.err)
+
+def test_sheet_option_warning_fires_once_for_multiple_files(
+    monkeypatch, csv_file: Path, tmp_path: Path, capsys,
+):
+    """複数の非 Excel 入力でも警告は1回だけ出る。"""
+    import tabpro.core.io.loader as loader_module
+
+    monkeypatch.setattr(loader_module, '_warned_sheet_option_ignored', False)
+    other = tmp_path / 'other.csv'
+    other.write_text('id,extra\n4,z\n')
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(csv_file), str(other)], output_file=str(output), sheet='x')
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert text.count('applies to Excel files only') == 1
+
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
     source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)
