@@ -637,6 +637,19 @@ process:
   Shift-JIS (`cp932`) and EUC-JP. A file that decodes as none of them fails
   with an error that asks for an explicit `--encoding`. When `--encoding` is
   given, it is used strictly: no fallback, a wrong value stays an error.
+- **Duplicate column names in a CSV/TSV/Excel header resolve last-wins.**
+  If the same name appears twice, the later column's values shadow the
+  earlier ones and the earlier values are silently unavailable. To address
+  columns positionally in such an input, use `--no-header` on CSV/TSV (the
+  columns become `0`, `1`, …) and reference them by index.
+- **Output paths must not coincide.** An output file that is the same path
+  as one of the input files, or as another output file (e.g. `--output` and
+  `--output-file-filtered-out` in `convert`, or `--output-valid` and
+  `--output-invalid` in `validate`, or two of `merge`'s three output
+  options), fails with a clear error instead of truncating the other file.
+  Only `convert`, `validate` and `merge` are checked; `sort`, `aggregate`
+  and `compare` write after reading everything, so reusing an input path as
+  their single output is allowed.
 
 ## License
 
