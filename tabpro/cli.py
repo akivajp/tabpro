@@ -14,17 +14,37 @@ from . import __version__
 def parse_and_run(
     parser: argparse.ArgumentParser,
 ):
-    if os.environ.get('DEBUG', '').lower() in ['1', 'true', 'yes', 'on']:
-        logger.setLevel('DEBUG')
-    args = parser.parse_args()
-    if args.verbose:
-        logger.setLevel('DEBUG')
-    logger.debug('args: %s', args)
-    if args.handler:
-        args.handler(args)
-    else:
-        parser.print_help()
-        sys.exit(1)
+    # NOTE:
+    #   validate コマンドが持つ終了コード契約 (成功=0 / 違反=1 /
+    #   実行不能=2) の「実行不能=2」を、他のコマンドにも適用する。
+    #   存在しないファイルや壊れた入力など、よくある実行時エラーを
+    #   生トレースバックの代わりに1行のメッセージで伝える。
+    #   --verbose または DEBUG 環境変数がある場合は、調査のために
+    #   トレースバックをそのまま表示する (挙動は無変更)。
+    verbose = False
+    try:
+        if os.environ.get('DEBUG', '').lower() in ['1', 'true', 'yes', 'on']:
+            logger.setLevel('DEBUG')
+        args = parser.parse_args()
+        if args.verbose:
+            logger.setLevel('DEBUG')
+            verbose = True
+        logger.debug('args: %s', args)
+        if args.handler:
+            args.handler(args)
+        else:
+            parser.print_help()
+            sys.exit(1)
+    except (
+        FileNotFoundError,
+        ValueError,
+        KeyError,
+        UnicodeDecodeError,
+    ) as e:
+        if verbose or os.environ.get('DEBUG', '').lower() in ['1', 'true', 'yes', 'on']:
+            raise
+        print(f'error: {e}', file=sys.stderr)
+        sys.exit(2)
 
 def setup_command(
     subparsers: argparse._SubParsersAction | None,

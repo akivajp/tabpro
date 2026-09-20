@@ -2778,3 +2778,62 @@ def test_main_version_flag_prints_version_and_exits(monkeypatch, capsys):
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
     assert captured.out.startswith('tabpro v')
+
+def make_error_args_parser(handler):
+    '''parse_and_run の検証用に、失敗する handler を持つパーサを組み立てる。'''
+    parser = argparse.ArgumentParser()
+    parser.add_argument('inputs', nargs='*')
+    parser.add_argument('--verbose', action='store_true')
+    parser.set_defaults(handler=handler)
+    return parser
+
+def test_cli_common_error_prints_clean_message_and_exits_2(monkeypatch, capsys):
+    '''
+    実行時エラーは1行のメッセージと終了コード2で伝わる。
+
+    validate コマンドが持つ終了コード契約 (実行不能=2) を、
+    他のコマンドにも適用する。生トレースバックと終了コード1のままでは、
+    シェルや CI から扱いにくい。
+    '''
+    import sys
+    from tabpro import cli
+
+    def failing_handler(args):
+        raise FileNotFoundError('File not found: missing.csv')
+
+    parser = make_error_args_parser(failing_handler)
+    monkeypatch.setattr(sys, 'argv', ['tabpro', 'in.csv'])
+    monkeypatch.delenv('DEBUG', raising=False)
+    with pytest.raises(SystemExit) as exc_info:
+        cli.parse_and_run(parser)
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert 'error: File not found: missing.csv' in captured.err
+
+def test_cli_error_keeps_traceback_when_verbose(monkeypatch):
+    '''--verbose では調査のためにトレースバックをそのまま表示する。'''
+    import sys
+    from tabpro import cli
+
+    def failing_handler(args):
+        raise ValueError('boom')
+
+    parser = make_error_args_parser(failing_handler)
+    monkeypatch.setattr(sys, 'argv', ['tabpro', 'in.csv', '--verbose'])
+    monkeypatch.delenv('DEBUG', raising=False)
+    with pytest.raises(ValueError, match='boom'):
+        cli.parse_and_run(parser)
+
+def test_cli_error_keeps_traceback_when_debug_env(monkeypatch):
+    '''DEBUG 環境変数でもトレースバックをそのまま表示する。'''
+    import sys
+    from tabpro import cli
+
+    def failing_handler(args):
+        raise ValueError('boom')
+
+    parser = make_error_args_parser(failing_handler)
+    monkeypatch.setattr(sys, 'argv', ['tabpro', 'in.csv'])
+    monkeypatch.setenv('DEBUG', '1')
+    with pytest.raises(ValueError, match='boom'):
+        cli.parse_and_run(parser)
