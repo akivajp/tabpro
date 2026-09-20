@@ -202,7 +202,7 @@ tabpro convert [options] <input_file>... --output <output_file>
 | `--all-sheets` | Read every visible sheet of an Excel workbook |
 | `--output-debug` | Keep the staging area in the output |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
 | `--no-warnings`, `--no-warn` | Suppress warnings (unknown config keys, `--ignore` entries that matched no row) |
 
 
@@ -233,7 +233,7 @@ overwrites the corresponding field of the matching base row.
 | `--allow-duplicate-modification-keys` | Permit duplicate keys in the correction files |
 | `--merge-staging`, `--use-staging` | Carry the staging area across the merge |
 | `--limit` | Load only the first N rows of each input file (applies to both sides) |
-| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
 
 > **`--merge-staging` replaces the whole staging area.** The staging
 > subtree of a correction row overwrites the base row's staging as a
@@ -273,7 +273,7 @@ hold something unexpected.
 | `--show-count-max-length`, `-L` | Truncate displayed values to this length (default 100) |
 | `--compare-columns`, `--compare` | Compare the column sets of the input files against each other |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
 
 
 `--compare-columns` answers a different question: not what is in the data,
@@ -330,7 +330,7 @@ has to report that the data did not meet the spec.
 | `--output-invalid`, `--invalid` | Rows that do not, each annotated with why |
 | `--report` | The list of violations, one row each |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
 
 
 ```yaml
@@ -441,7 +441,7 @@ tabpro sort [options] <input_file>... --sort-keys <key>... --output <output_file
 | `--reverse`, `-R` | Descending order |
 | `--numeric`, `-N` | Sort numeric values in numeric order |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
 
 
 Values are compared as they are read, so numeric columns coming from CSV
@@ -467,7 +467,7 @@ with `+`.
 | `--compare-keys`, `--compare`, `-C` | Columns to compare (default: all) |
 | `--output-path`, `--output`, `-O` | Output file path |
 | `--limit` | Load only the first N rows of each input file (applies to both files) |
-| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: auto-detected among UTF-8 (BOM tolerated), Shift-JIS and EUC-JP; an explicit value is used strictly) |
 
 ## Actions
 
@@ -633,6 +633,10 @@ process:
   written as their text representation (`['a', 'b']`) and read back as that
   one string, not as an array again. Use the `join` action to flatten an
   array into a string before exporting, or keep arrays in JSON/JSON Lines.
+- **Text encoding is auto-detected**, but only among UTF-8 (BOM tolerated),
+  Shift-JIS (`cp932`) and EUC-JP. A file that decodes as none of them fails
+  with an error that asks for an explicit `--encoding`. When `--encoding` is
+  given, it is used strictly: no fallback, a wrong value stays an error.
 
 ## License
 

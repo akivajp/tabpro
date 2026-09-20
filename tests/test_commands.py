@@ -2152,9 +2152,8 @@ def test_loader_reads_shift_jis_csv(tmp_path: Path):
     """
     encoding を指定して Shift-JIS の CSV を読める。
 
-    既定は utf-8-sig なので、Shift-JIS 由来のバイト列は
-    UnicodeDecodeError になる。encoding を下位のローダーまで
-    届けてはじめて読めるようになる。
+    encoding を明示指定した場合は自動判定を行わず厳格に扱う
+    (候補へのフォールバックもしない)。
     """
     source = tmp_path / 'sjis.csv'
     source.write_bytes('id,name\n1,テスト\n'.encode('cp932'))
@@ -2196,6 +2195,67 @@ def test_loader_encoding_default_stays_utf8_sig(csv_file: Path):
     """encoding を指定しない場合は既定 (utf-8-sig) のままである。"""
     loader = Loader(str(csv_file))
     assert [row['id'] for row in loader] == ['1', '2', '3']
+
+def test_loader_auto_detects_shift_jis_csv(tmp_path: Path, capsys):
+    """
+    encoding を指定しなくても Shift-JIS の CSV を自動で読める。
+
+    以前は既定の utf-8-sig で UnicodeDecodeError になり、ユーザーが
+    --encoding cp932 を自分で調べて指定する必要があった。
+    フォールバック時は警告を出す。
+    """
+    source = tmp_path / 'sjis.csv'
+    source.write_bytes('id,name\n1,テスト\n'.encode('cp932'))
+    loader = Loader(str(source))
+    assert [row['name'] for row in loader] == ['テスト']
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'cp932' in (captured.out + captured.err)
+
+def test_loader_auto_detects_shift_jis_jsonl(tmp_path: Path):
+    """encoding を指定しなくても Shift-JIS の JSONL を自動で読める。"""
+    source = tmp_path / 'sjis.jsonl'
+    source.write_bytes('{"id": 1, "name": "テスト"}\n'.encode('cp932'))
+    loader = Loader(str(source))
+    assert [row['name'] for row in loader] == ['テスト']
+
+def test_loader_auto_detects_shift_jis_json(tmp_path: Path):
+    """encoding を指定しなくても Shift-JIS の単一 .json を自動で読める。"""
+    import json
+    source = tmp_path / 'sjis.json'
+    source.write_bytes(
+        json.dumps([{'id': 1, 'name': 'テスト'}]).encode('cp932'),
+    )
+    loader = Loader(str(source))
+    assert [row['name'] for row in loader] == ['テスト']
+
+def test_loader_explicit_encoding_stays_strict(tmp_path: Path):
+    """
+    encoding を明示指定した場合はフォールバックせず UnicodeDecodeError。
+
+    ユーザーが意図して指定したエンコーディングを別の候補で
+    黙って置き換えると、気づかないうちに文字化けした納品物が
+    できてしまうため、明示指定時は厳格に扱う。
+    """
+    source = tmp_path / 'sjis.csv'
+    source.write_bytes('id,name\n1,テスト\n'.encode('cp932'))
+    loader = Loader(str(source), encoding='utf-8')
+    with pytest.raises(UnicodeDecodeError):
+        list(loader)
+
+def test_loader_undecodable_file_raises_value_error_with_hint(tmp_path: Path):
+    """
+    どの候補でもデコードできない場合は --encoding を促すエラーになる。
+
+    以前は UnicodeDecodeError の生のメッセージだけで、
+    解決方法が画面に表示されなかった。
+    """
+    source = tmp_path / 'binary.csv'
+    # NOTE: cp932 / euc-jp / utf-8 のいずれでも不正なバイト列
+    source.write_bytes(b'id,name\n\x81\x00\n')
+    loader = Loader(str(source))
+    with pytest.raises(ValueError, match='--encoding'):
+        list(loader)
 
 def test_streaming_writer_does_not_hold_rows(tmp_path: Path):
     """

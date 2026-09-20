@@ -1,8 +1,11 @@
 import json
 
+from rich.console import Console
+
 from . manage_loaders import (
     Row,
     register_loader,
+    detect_text_encoding,
 )
 from . manage_writers import (
     BaseWriter,
@@ -25,10 +28,15 @@ def load_jsonl(
     orig_progress = progress
     quiet = kwargs.get('quiet', False)
     # NOTE:
-    #   既定の utf-8 を明示する。encoding を指定しない open() は
-    #   ロケール依存となり、CI コンテナなど最小限のロケールしか
-    #   無い環境で UTF-8 の入力すら読めなくなる。
-    encoding = kwargs.get('encoding', 'utf-8')
+    #   encoding の明示指定が無い場合は CSV/TSV と同じ自動判定に任せる
+    #   (utf-8-sig は BOM 無しの UTF-8 も読める)。明示指定時は厳格に扱う。
+    encoding = kwargs.get('encoding')
+    if encoding is None:
+        encoding = detect_text_encoding(
+            input_file,
+            console=progress.console if progress else Console(),
+            quiet=quiet,
+        )
     if progress is None:
         progress = Progress()
         progress.start()

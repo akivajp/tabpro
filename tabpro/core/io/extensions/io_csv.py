@@ -11,6 +11,7 @@ from rich.console import Console
 from . manage_loaders import (
     Row,
     register_loader,
+    detect_text_encoding,
 )
 from . manage_writers import (
     BaseWriter,
@@ -43,12 +44,18 @@ def _load_delimited(
     '''
     no_header = kwargs.get('no_header', False)
     quiet = kwargs.get('quiet', False)
-    # NOTE: BOM 付き UTF-8 を透過的に扱う
-    encoding = kwargs.get('encoding', 'utf-8-sig')
     if progress is None:
         console = Console()
     else:
         console = progress.console
+    # NOTE:
+    #   encoding の明示指定が無い場合は utf-8-sig / cp932 / euc-jp を
+    #   実際にデコードして試す自動判定に任せる (Shift-JIS の CSV を
+    #   オプション無しで読めるようにするため)。
+    #   明示指定時は候補をそれ1つに絞ることで厳格に扱う。
+    encoding = kwargs.get('encoding')
+    if encoding is None:
+        encoding = detect_text_encoding(input_file, console=console, quiet=quiet)
     if not quiet:
         console.log(f'Loading {label} data from: ', input_file)
     def get_iter(reader):

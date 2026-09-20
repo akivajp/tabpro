@@ -7,6 +7,7 @@ from rich.console import Console
 from . manage_loaders import (
     Row,
     register_loader,
+    detect_text_encoding,
 )
 from . manage_writers import (
     BaseWriter,
@@ -122,17 +123,20 @@ def load_json(
     **kwargs,
 ):
     quiet = kwargs.get('quiet', False)
+    if progress is not None:
+        console = progress.console
+    else:
+        console = Console()
     if not quiet:
-        if progress is not None:
-            console = progress.console
-        else:
-            console = Console()
         console.log('loading json data from: ', input_file)
     # NOTE:
-    #   既定の utf-8 を明示する (io_jsonl と共通の理由)。
-    #   encoding kwarg を受け付けることで、CSV/TSV と同じく
-    #   --encoding による指定が可能になる。
-    with open(input_file, 'r', encoding=kwargs.get('encoding', 'utf-8')) as f:
+    #   encoding の明示指定が無い場合は CSV/TSV と同じ自動判定に任せる
+    #   (utf-8-sig は BOM 無しの UTF-8 も読める)。
+    #   明示指定時は厳格に扱う。
+    encoding = kwargs.get('encoding')
+    if encoding is None:
+        encoding = detect_text_encoding(input_file, console=console, quiet=quiet)
+    with open(input_file, 'r', encoding=encoding) as f:
         data = loads_json(f.read())
     if not isinstance(data, list):
         raise ValueError(f'invalid json array data: {input_file}')
