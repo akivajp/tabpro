@@ -20,6 +20,7 @@ def run(
         all_sheets=args.all_sheets,
         limit=args.limit,
         encoding=args.encoding,
+        no_warnings=args.no_warnings,
     )
 
 def setup_parser(
@@ -116,5 +117,10 @@ def setup_parser(
         type=str,
         default=None,
         help='Text encoding of CSV/TSV/JSON/JSONL input (e.g. cp932 for Shift-JIS)',
+    )
+    parser.add_argument(
+        '--no-warnings', '--no-warn',
+        action='store_true',
+        help='Suppress warnings (--keys-to-* columns that matched no input column)',
     )
     parser.set_defaults(handler=run)

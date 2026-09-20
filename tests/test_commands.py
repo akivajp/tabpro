@@ -687,6 +687,75 @@ def test_sheet_option_warning_fires_once_for_multiple_files(
     text = captured.out + captured.err
     assert text.count('applies to Excel files only') == 1
 
+def test_aggregate_warns_on_unknown_keys_to_option(csv_file: Path, tmp_path: Path, capsys):
+    """
+    --keys-to-* に存在しない列を指定すると警告される。
+
+    以前はタイポした列名が黙って無視され、集計結果に痕跡が残らなかった。
+    """
+    output = tmp_path / 'aggregated.json'
+    aggregate(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_keys_to_show_duplicates=['no-such-col'],
+        list_keys_to_show_all_count=['also-missing'],
+        list_keys_to_expand=['id'],
+    )
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert '--keys-to-show-duplicates' in text
+    assert "'no-such-col'" in text
+    assert "'also-missing'" in text
+
+def test_aggregate_no_warnings_option_silences_unknown_keys_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定すると --keys-to-* の未知列警告も抑制される。"""
+    output = tmp_path / 'aggregated.json'
+    aggregate(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_keys_to_show_duplicates=['no-such-col'],
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    assert 'not found in any input file' not in (captured.out + captured.err)
+
+def test_validate_warns_on_unknown_schema_top_level_keys(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """
+    スキーマの未知のトップレベルキーが警告される。
+
+    以前は unknown_colums のようなタイポが黙って無視され、意図した
+    検査モードが効いていなくても気づけなかった。
+    """
+    schema = tmp_path / 'unknown_key.yaml'
+    schema.write_text(
+        "columns:\n  id:\n    type: int\nunknown_colums: warn\n"
+    )
+    validate(input_files=[str(csv_file)], schema_path=str(schema))
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert 'unknown key(s) "unknown_colums"' in text
+    assert 'were ignored' in text
+
+def test_validate_no_warnings_option_silences_schema_key_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定するとスキーマ未知キーの警告も抑制される。"""
+    schema = tmp_path / 'unknown_key.yaml'
+    schema.write_text(
+        "columns:\n  id:\n    type: int\nunknown_colums: warn\n"
+    )
+    validate(
+        input_files=[str(csv_file)],
+        schema_path=str(schema),
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    assert 'unknown key(s)' not in (captured.out + captured.err)
+
 def test_ragged_jsonl_csv_error_mentions_row_origin(tmp_path: Path):
     """
     列が揃っていない JSONL を CSV に書き出すと行の出自が表示される。
@@ -1848,6 +1917,7 @@ def make_validate_args(
         all_sheets=False,
         limit=None,
         encoding=None,
+        no_warnings=False,
     )
 
 def test_validate_run_exit_codes(

@@ -320,6 +320,7 @@ def aggregate(
     all_sheets: bool = False,
     limit: int | None = None,
     encoding: str | None = None,
+    no_warnings: bool = False,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -374,6 +375,25 @@ def aggregate(
                     if key not in columns:
                         columns.append(key)
             num_input_rows += 1
+    # NOTE:
+    #   --keys-to-* に実在しない列を指定しても以前は黙って無視され、
+    #   タイポに気づけないまま集計が終わっていた。実在した列との
+    #   差分を警告する (ネストした由来キー tags[].x も「実在」に含める)。
+    set_actual_columns = set(aggregated.keys())
+    for option_name, list_keys in [
+        ('--keys-to-show-duplicates', list_keys_to_show_duplicates),
+        ('--keys-to-show-all-count', list_keys_to_show_all_count),
+        ('--keys-to-expand', list_keys_to_expand),
+    ]:
+        set_unmatched = [
+            key for key in list_keys if key not in set_actual_columns
+        ]
+        if set_unmatched and not no_warnings:
+            console.log(
+                f'[yellow]warning: {option_name} column(s) '
+                f'{sorted(set_unmatched)} were not found in any input '
+                f'file and were ignored.[/yellow]'
+            )
     for key, aggregation in aggregated.items():
         counter = dict_counters[key]
         if len(counter) > 0:
