@@ -203,6 +203,7 @@ tabpro convert [options] <input_file>... --output <output_file>
 | `--output-debug` | Keep the staging area in the output |
 | `--limit` | Load only the first N rows of each input file |
 | `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
+| `--no-warnings`, `--no-warn` | Suppress warnings (unknown config keys, `--ignore` entries that matched no row) |
 
 
 Multiple input files are concatenated. `--output-file-filtered-out` is the
@@ -628,6 +629,10 @@ process:
 - **Action options cannot contain a comma**, because options are themselves
   comma-separated. `split:t=s:delimiter=,` does not work.
 - **`sort` compares values as they are read**, so CSV columns sort as text.
+- **Array values do not survive a trip through CSV/TSV/Excel.** They are
+  written as their text representation (`['a', 'b']`) and read back as that
+  one string, not as an array again. Use the `join` action to flatten an
+  array into a string before exporting, or keep arrays in JSON/JSON Lines.
 
 ## License
 

@@ -51,8 +51,27 @@ yaml.add_constructor(
     Loader=ConfigLoader,
 )
 
+# NOTE:
+#   設定ファイルでサポートされるトップレベルキーと process 配下のキー。
+#   ここに無いキーは以前は黙って無視されており、process: を proces: と
+#   書き間違えても何の表示も無く設定が適用されないままになっていた。
+KNOWN_CONFIG_KEYS = ['pick', 'process']
+
+KNOWN_PROCESS_KEYS = [
+    'assign_length',
+    'assign_constants',
+    'assign_formats',
+    'assign_ids',
+    'assign_array',
+    'filter',
+    'push',
+    'split',
+]
+
 def setup_config(
     config_path: str | None = None,
+    console: Console | None = None,
+    no_warnings: bool = False,
 ):
     config = Config()
     if config_path:
@@ -70,6 +89,13 @@ def setup_config(
                     f'config file must contain a mapping, got '
                     f'{type(loaded).__name__}: {config_path}'
                 )
+            warn_unknown_config_keys(
+                loaded,
+                KNOWN_CONFIG_KEYS,
+                f'config file {config_path}',
+                console=console,
+                no_warnings=no_warnings,
+            )
         else:
             raise ValueError(
                 'Only YAML configuration files are supported.'
@@ -95,15 +121,52 @@ def setup_config(
                         target = item,
                         source = item,
                     ))
-        setup_process_config(config, loaded)
+        setup_process_config(config, loaded, console=console, no_warnings=no_warnings)
     return config
+
+def warn_unknown_config_keys(
+    mapping: Mapping,
+    known_keys: list[str],
+    where: str,
+    console: Console | None = None,
+    no_warnings: bool = False,
+):
+    '''
+    Mapping に含まれる未知のキーを警告する。
+
+    Args:
+        mapping: 検査対象の Mapping (設定ファイルの読み込み結果)。
+        known_keys: サポートされるキーの一覧。
+        where: 警告メッセージに用いる対象の説明 (ファイルパスなど)。
+        console: 警告の出力先。
+        no_warnings: 警告を抑止するかどうか (--no-warnings 対応)。
+    '''
+    unknown = [str(key) for key in mapping.keys() if str(key) not in known_keys]
+    if not unknown:
+        return
+    if console is None or no_warnings:
+        return
+    console.log(
+        f'[yellow]warning: {where} contains unknown key(s) '
+        f'{unknown}, which will be ignored. '
+        f'Known keys: {known_keys}[/yellow]'
+    )
 
 def setup_process_config(
     config: Config,
     loaded: Mapping,
+    console: Console | None = None,
+    no_warnings: bool = False,
 ):
     dict_process = loaded.get('process')
     if isinstance(dict_process, Mapping):
+        warn_unknown_config_keys(
+            dict_process,
+            KNOWN_PROCESS_KEYS,
+            'process of the config file',
+            console=console,
+            no_warnings=no_warnings,
+        )
         # NOTE:
         #   以前は存在しない config.process に代入しており AttributeError になっていた。
         #   他の process 項目と同様、actions として登録する。

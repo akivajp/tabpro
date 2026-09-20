@@ -163,6 +163,106 @@ def test_convert_encoding(tmp_path: Path):
         {'id': '1', 'name': 'テスト'},
     ]
 
+def write_config(tmp_path: Path, text: str) -> str:
+    """設定ファイルのテスト用ヘルパー。"""
+    path = tmp_path / 'config.yaml'
+    path.write_text(text)
+    return str(path)
+
+def test_convert_warns_on_unknown_config_top_level_key(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """
+    設定ファイルの未知のトップレベルキーが警告される。
+
+    以前は process: を proces: と書き間違えても黙って無視され、
+    設定が適用されたように見えて何も変わらない納品物ができていた。
+    """
+    config_path = write_config(tmp_path, 'proces:\n  assign_constants:\n    x: 1\n')
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(csv_file)], output_file=str(output), config_path=config_path)
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'proces' in (captured.out + captured.err)
+
+def test_convert_warns_on_unknown_process_key(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """process 配下の未知のキーも警告される。"""
+    config_path = write_config(
+        tmp_path, 'process:\n  assign_constans:\n    x: 1\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(csv_file)], output_file=str(output), config_path=config_path)
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'assign_constans' in (captured.out + captured.err)
+
+def test_convert_no_warning_for_valid_config(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """既知のキーのみの設定ファイルでは警告を出さない。"""
+    config_path = write_config(
+        tmp_path, 'process:\n  assign_constants:\n    x: 1\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(csv_file)], output_file=str(output), config_path=config_path)
+    captured = capsys.readouterr()
+    # NOTE: 'warning:' で検査する (テスト名由来のパスに 'warning' が混入するため)
+    assert 'warning:' not in (captured.out + captured.err)
+
+def test_convert_no_warnings_option_silences_config_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定すると設定ファイルの未知キー警告が抑制される。"""
+    config_path = write_config(tmp_path, 'proces:\n  assign_constants:\n    x: 1\n')
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=config_path,
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    # NOTE:
+    #   'warning:' で検査する。テスト名 (no_warnings) が一時ディレクトリ名に
+    #   含まれ、出力中のパスに 'warning' という部分文字列が現れるため。
+    assert 'warning:' not in (captured.out + captured.err)
+
+def test_convert_warns_on_unmatched_ignore_entries(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """
+    一致しない --ignore 指定が警告される。
+
+    以前はファイル名や行番号のタイポが黙って無視され、除外したつもりの
+    行が納品物に残っていた。
+    """
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        ignore_file_rows=['people.cvs:1'],
+    )
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'people.cvs:1' in (captured.out + captured.err)
+
+def test_convert_no_warnings_option_silences_ignore_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定すると --ignore 未一致の警告も抑制される。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        ignore_file_rows=['people.cvs:1'],
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    # NOTE: 上のテストと同様、テスト名由来のパスに 'warning' が混入するため
+    assert 'warning:' not in (captured.out + captured.err)
+
 def test_convert_tsv_output(csv_file: Path, tmp_path: Path):
     """TSV を出力先として書き出せる。"""
     output = tmp_path / 'out.tsv'

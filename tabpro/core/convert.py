@@ -58,6 +58,7 @@ def convert(
     all_sheets: bool = False,
     limit: int | None = None,
     encoding: str | None = None,
+    no_warnings: bool = False,
 ):
     #console = Console()
     progress = Progress(
@@ -69,8 +70,17 @@ def convert(
     logger.info('input_files: %s', input_files)
     row_list_filtered_out = []
     set_ignore_file_rows = set()
+    # NOTE:
+    #   実際にどの行の除外に使われたかを記録する。
+    #   --ignore の指定にタイポがあると1行も一致せず、除外したつもりの
+    #   行が黙って納品物に残るため、未一致のエントリを最後に警告する。
+    set_matched_ignore_file_rows = set()
     global_status = GlobalStatus()
-    config = setup_config(config_path)
+    config = setup_config(
+        config_path,
+        console=console,
+        no_warnings=no_warnings,
+    )
     #console.log('config: ', config)
     if ignore_file_rows:
         set_ignore_file_rows = set(ignore_file_rows)
@@ -105,9 +115,11 @@ def convert(
         for index, row in enumerate(loader):
             file_row_index = f'{input_file}:{index}'
             if file_row_index in set_ignore_file_rows:
+                set_matched_ignore_file_rows.add(file_row_index)
                 continue
             short_file_row_index = f'{base_name}:{index}'
             if short_file_row_index in set_ignore_file_rows:
+                set_matched_ignore_file_rows.add(short_file_row_index)
                 continue
             # NOTE:
             #   入力値の記録には、ローダーが付与した由来情報 (__sheet__ など) を
@@ -170,6 +182,16 @@ def convert(
                 pass
             num_stacked_rows += 1
     console.log('total processed input rows: ', num_stacked_rows)
+    set_unmatched_ignore_file_rows = set_ignore_file_rows - set_matched_ignore_file_rows
+    if set_unmatched_ignore_file_rows and not no_warnings:
+        # NOTE:
+        #   以前は一致しない --ignore 指定 (ファイル名や行番号のタイポ) が
+        #   黙って無視され、除外したつもりの行が納品物に残っていた。
+        console.log(
+            f'[yellow]warning: {len(set_unmatched_ignore_file_rows)} '
+            f'--ignore entries matched no row and were not applied: '
+            f'{sorted(set_unmatched_ignore_file_rows)}[/yellow]'
+        )
     if writer:
         writer.close()
     if output_file_filtered_out:
