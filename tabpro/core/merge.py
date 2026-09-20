@@ -37,7 +37,7 @@ from . progress import (
     Progress,
 )
 
-from .functions.get_primary_key import get_primary_key
+from .functions.get_primary_key import get_primary_key, make_match_key
 
 def set_staging_values(
     row: Row,
@@ -113,13 +113,18 @@ def merge(
                 index,
             )
             primary_key = get_primary_key(row, keys)
+            # NOTE:
+            #   照合には型を正準化したキーを用いる。入力形式によっては
+            #   SQLite 由来の int と Excel 由来の str のように型が混ざる。
+            #   '01' と '1' は文字列として別の値なので区別は保たれる。
+            match_key = make_match_key(primary_key)
             if not allow_duplicate_conventional_keys:
-                if primary_key in dict_key_to_row:
+                if match_key in dict_key_to_row:
                     raise ValueError(
                         f'duplicate key: {primary_key} '
                         f'at row {index} of {previous_file}'
                     )
-            dict_key_to_row[primary_key] = row
+            dict_key_to_row[match_key] = row
             all_base_rows.append(row)
     for modification_file in modification_files:
         if not os.path.exists(modification_file):
@@ -138,15 +143,16 @@ def merge(
                 index,
             )
             primary_key = get_primary_key(row, keys)
-            if primary_key not in dict_key_to_row:
+            match_key = make_match_key(primary_key)
+            if match_key not in dict_key_to_row:
                 if ignore_not_found:
                     logger.debug('primary_key not found in previous files: %s', primary_key)
                     list_ignored_keys.append(primary_key)
                     continue
                 logger.error('index: %s', index)
                 raise ValueError(f'key not found: {primary_key}')
-            target_row = dict_key_to_row[primary_key]
-            if primary_key in set_modified_keys:
+            target_row = dict_key_to_row[match_key]
+            if match_key in set_modified_keys:
                 if not allow_duplicate_modification_keys:
                     logger.error('index: %s', index)
                     raise ValueError(f'duplicate key: {primary_key}')
@@ -176,7 +182,7 @@ def merge(
                 #logger.debug('value: %s', value)
                 if found:
                     target_row[field] = value
-            set_modified_keys.add(primary_key)
+            set_modified_keys.add(match_key)
             num_modified += 1
     console.log('# modifications: ', num_modified)
     console.log('# modified rows: ', len(all_modified_rows))

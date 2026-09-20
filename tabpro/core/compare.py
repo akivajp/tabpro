@@ -30,7 +30,7 @@ from .progress import (
     Progress,
 )
 
-from .functions.get_primary_key import get_primary_key
+from .functions.get_primary_key import get_primary_key, make_match_key
 
 def set_diff(
     row: Row,
@@ -71,6 +71,10 @@ def compare(
     console.log('query keys: ', query_keys)
     console.log('compare keys: ', compare_keys)
     list_dict_key_to_row: list[dict[Any, Row]] = [{},{}]
+    # NOTE:
+    #   照合には型を正準化したキーを用いる (merge と共通の規則)。
+    #   差分出力には元のキーを表示するため、正準化前の値も覚えておく。
+    dict_match_key_to_original: dict[Any, tuple] = {}
     set_query_values = set()
     if output_path:
         check_writer(output_path)
@@ -80,26 +84,23 @@ def compare(
         dict_key_to_row = list_dict_key_to_row[loader_index] = {}
         for row_index, row in enumerate(loader):
             query_value = get_primary_key(row, query_keys)
-            if query_value in dict_key_to_row:
+            match_value = make_match_key(query_value)
+            if match_value in dict_key_to_row:
                 raise ValueError(
                     f'Key {query_value} already exists in file: {path1 if loader_index == 0 else path2}'
                 )
-            dict_key_to_row[query_value] = row
-            set_query_values.add(query_value)
+            dict_key_to_row[match_value] = row
+            dict_match_key_to_original[match_value] = query_value
+            set_query_values.add(match_value)
     diff_rows: list[Row] = []
-    try:
-        ordered_query_values = sorted(set_query_values)
-    except TypeError:
-        # NOTE:
-        #   JSON 由来のデータではキーに数値と文字列が混ざりうるため、
-        #   混在時に TypeError で停止する代わりに文字列に揃えて並べる。
-        ordered_query_values = sorted(
-            set_query_values,
-            key=lambda value: tuple(str(item) for item in value),
-        )
-    for query_value in ordered_query_values:
-        row1 = list_dict_key_to_row[0].get(query_value)
-        row2 = list_dict_key_to_row[1].get(query_value)
+    # NOTE:
+    #   キーは正準化により全て文字列の組になっているため、
+    #   混在型フォールバックは不要になった。
+    ordered_query_values = sorted(set_query_values)
+    for match_value in ordered_query_values:
+        query_value = dict_match_key_to_original[match_value]
+        row1 = list_dict_key_to_row[0].get(match_value)
+        row2 = list_dict_key_to_row[1].get(match_value)
         diff_row = Row()
         list_compare_keys = []
         if compare_keys is not None:

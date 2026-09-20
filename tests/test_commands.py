@@ -896,6 +896,57 @@ def test_aggregate(csv_file: Path, tmp_path: Path):
     assert result['num_rows'] == 3
     assert result['aggregated']['name']['num_variations'] == 3
 
+def test_merge_matches_keys_across_types(tmp_path: Path):
+    '''キーが数値 (JSON) と文字列 (CSV) でも照合できる。
+
+    回帰テスト: 以前は照合キーを生値で比較していたため、
+    SQLite 由来の int キーと Excel 由来の str キーが一致せず、
+    README の dbq 例のような形式混在パイプラインが
+    key not found で停止していた。
+    '''
+    source = write_file(
+        tmp_path / 'base.jsonl',
+        '{"id": 1, "score": "10"}\n{"id": 2, "score": "20"}\n',
+    )
+    modified = write_file(tmp_path / 'mod.csv', 'id,score\n1,15\n')
+    output = tmp_path / 'merged.jsonl'
+    merge(
+        previous_files=[str(source)],
+        modification_files=[str(modified)],
+        keys=['id'],
+        output_modified_data_file=str(output),
+    )
+    rows = read_jsonl(output)
+    assert len(rows) == 1
+    assert rows[0]['score'] == '15'
+
+def test_merge_keeps_zero_padded_keys_distinct(tmp_path: Path):
+    '''文字列キー同士は従来どおり厳密に照合される ('01' と '1' は別)。'''
+    source = write_file(tmp_path / 'base.jsonl', '{"id": "01", "score": "1"}\n')
+    modified = write_file(tmp_path / 'mod.csv', 'id,score\n1,15\n')
+    with pytest.raises(ValueError, match='key not found'):
+        merge(
+            previous_files=[str(source)],
+            modification_files=[str(modified)],
+            keys=['id'],
+        )
+
+def test_compare_matches_keys_across_types(tmp_path: Path):
+    '''compare でも数値キーと文字列キーが照合できる。'''
+    source = write_file(tmp_path / 'old.jsonl', '{"id": 1, "score": "10"}\n')
+    modified = write_file(tmp_path / 'new.csv', 'id,score\n1,20\n')
+    output = tmp_path / 'diff.json'
+    compare(
+        path1=str(source),
+        path2=str(modified),
+        output_path=str(output),
+        query_keys=['id'],
+        compare_keys=['score'],
+    )
+    diff = json.loads(output.read_text(encoding='utf-8'))
+    assert len(diff) == 1
+    assert diff[0]['diff'] == {'-score': '10', '+score': '20'}
+
 # --- aggregate: カウント表示のしきい値 -------------------------------------
 
 def test_aggregate_count_threshold_is_respected(csv_file: Path, tmp_path: Path):
