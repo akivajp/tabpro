@@ -1930,8 +1930,20 @@ def test_loader_len_requires_keeping_rows(csv_file: Path):
     黙って全件読み込むと、メモリ消費の原因が見えなくなる。
     """
     loader = Loader(str(csv_file))
-    with pytest.raises(RuntimeError, match='keep_rows'):
+    with pytest.raises(TypeError, match='keep_rows'):
         len(loader)
+
+def test_loader_list_materializes_rows_without_keep_rows(csv_file: Path):
+    """
+    回帰テスト: list(loader) で全行を取得できる。
+
+    list() は内部で length_hint を調べ、__len__ にフォールバックする。
+    以前は __len__ が RuntimeError を送出していたため、反復自体に問題が
+    ないにもかかわらず全行の実体化が必ず失敗していた。TypeError なら
+    length_hint は「ヒント無し」として扱い、通常の反復で実体化される。
+    """
+    loader = Loader(str(csv_file))
+    assert [row['id'] for row in list(loader)] == ['1', '2', '3']
 
 def test_loader_keeps_rows_when_asked(csv_file: Path):
     """keep_rows=True では件数を取得でき、二度目の走査もできる。"""

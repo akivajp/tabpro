@@ -52,7 +52,12 @@ class Loader:
             # NOTE:
             #   件数を数えるには全件を読む必要があり、
             #   黙って行うとメモリ消費の原因が見えなくなる。
-            raise RuntimeError(
+            #   TypeError にしておくのが重要: list(loader) など
+            #   Python 内部の length_hint は __len__ にフォールバックし、
+            #   そこから送出された例外は TypeError の場合のみ
+            #   「ヒント無し」として無視されるため、全行の
+            #   実体化 (list への変換) が正常に行えるようになる。
+            raise TypeError(
                 'len() requires holding every row in memory. '
                 'Construct the loader with keep_rows=True if that is intended, '
                 'or count the rows while iterating instead.'
