@@ -2132,9 +2132,16 @@ def test_loader_limit_stops_at_limit(csv_file: Path):
     assert [row['id'] for row in loader] == ['1', '2']
 
 def test_loader_limit_zero_yields_no_rows(csv_file: Path):
-    """limit=0 では1行も読まない。"""
-    loader = Loader(str(csv_file), limit=0)
-    assert list(loader) == []
+    """
+    limit=0 は明示的なエラーになる。
+
+    以前は 0 行だけ読んで黙って空の出力になっていたため、
+    誤指定がそのまま空の納品物につながっていた。
+    """
+    with pytest.raises(ValueError, match='limit must be 1 or greater'):
+        Loader(str(csv_file), limit=0)
+    with pytest.raises(ValueError, match='limit must be 1 or greater'):
+        Loader(str(csv_file), limit=-1)
 
 def test_loader_limit_exceeding_row_count_reads_all(csv_file: Path):
     """limit が行数より大きい場合は全行を読む。"""

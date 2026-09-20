@@ -28,6 +28,12 @@ class Loader:
         self.source = source
         self.quiet = quiet
         self.no_header = no_header
+        # NOTE:
+        #   limit に 0 以下が指定されると全行を黙って読み飛ばし、
+        #   空の出力ができてしまう (データ消失に見える) ため、
+        #   ここで明示的なエラーにする。
+        if limit is not None and limit < 1:
+            raise ValueError(f'limit must be 1 or greater, got {limit}')
         self.limit = limit
         # NOTE: Excel 以外のローダーは **kwargs でこれらを読み捨てる
         self.sheet = sheet
