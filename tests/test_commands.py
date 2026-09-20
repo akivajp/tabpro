@@ -272,6 +272,32 @@ def test_convert_tsv_output(csv_file: Path, tmp_path: Path):
     # NOTE: カンマを含む値がタブ区切りではそのまま保持される
     assert rows[0]['note'] == 'hello, world'
 
+def test_convert_rejects_output_same_as_input(tmp_path: Path):
+    """
+    入力と出力が同じパスならエラーになる。
+
+    以前は convert のストリーミング書き込みが入力の読み込みと競合し、
+    exit 0 で入力ファイルが空に化けていた (データ消失)。
+    """
+    source = tmp_path / 'same.csv'
+    source.write_text('id,name\n1,alice\n')
+    with pytest.raises(ValueError, match='would destroy the input'):
+        convert(input_files=[str(source)], output_file=str(source))
+    # NOTE: 入力ファイルの内容が壊れていないこと
+    assert source.read_text() == 'id,name\n1,alice\n'
+
+def test_convert_rejects_filtered_out_output_same_as_input(tmp_path: Path):
+    """除外行の出力先も入力と同じパスならエラーになる。"""
+    source = tmp_path / 'same.csv'
+    source.write_text('id,name\n1,alice\n')
+    with pytest.raises(ValueError, match='would destroy the input'):
+        convert(
+            input_files=[str(source)],
+            output_file=str(tmp_path / 'out.jsonl'),
+            output_file_filtered_out=str(source),
+        )
+    assert source.read_text() == 'id,name\n1,alice\n'
+
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
     source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)
