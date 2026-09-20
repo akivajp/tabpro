@@ -20,6 +20,7 @@ def run(
         merge_fields=args.merge_fields,
         merge_staging=args.merge_staging,
         use_staging=args.use_staging,
+        limit=args.limit,
     )
 
 def setup_parser(
@@ -108,5 +109,14 @@ def setup_parser(
         '--use-staging', '--staging',
         action='store_true',
         help='Use staging fields files',
+    )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        default=None,
+        help=(
+            'Load only the first N rows of each input file '
+            '(applies to both previous and modification files)'
+        ),
     )
     parser.set_defaults(handler=run)

@@ -13,6 +13,7 @@ def run(
         output_path=args.output_path,
         query_keys=args.query_keys,
         compare_keys=args.compare_keys,
+        limit=args.limit,
     )
 
 def setup_parser(
@@ -57,5 +58,14 @@ def setup_parser(
         action="extend",
         nargs="+",
         help="keys for comparison",
+    )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        default=None,
+        help=(
+            'Load only the first N rows of each input file '
+            '(applies to both files)'
+        ),
     )
     parser.set_defaults(handler=run)

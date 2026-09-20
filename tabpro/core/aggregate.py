@@ -318,6 +318,7 @@ def aggregate(
     compare_columns: bool = False,
     sheet: str | None = None,
     all_sheets: bool = False,
+    limit: int | None = None,
 ):
     progress = Progress(
         redirect_stdout = False,
@@ -348,6 +349,7 @@ def aggregate(
             progress=progress,
             sheet=sheet,
             all_sheets=all_sheets,
+            limit=limit,
         )
         if compare_columns:
             # NOTE: 行が1件も無いファイルも比較対象に含める

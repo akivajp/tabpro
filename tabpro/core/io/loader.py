@@ -75,6 +75,12 @@ class Loader:
             yield from self.rows
             return
         rows: list[Row] | None = [] if self.keep_rows else None
+        # NOTE:
+        #   limit はここでも判定する。JSONL や dbq のローダーは
+        #   limit を受けて自前で止まるが、他の形式のローダーは
+        #   受けても読み捨てるため、全形式で同じ挙動にするには
+        #   Loader 側で打ち切る必要がある。
+        num_loaded = 0
         for row in self.fn_load(
             self.source,
             quiet=self.quiet,
@@ -84,6 +90,9 @@ class Loader:
             sheet=self.sheet,
             all_sheets=self.all_sheets,
         ):
+            if self.limit is not None and num_loaded >= self.limit:
+                break
+            num_loaded += 1
             if rows is not None:
                 rows.append(row)
             yield row

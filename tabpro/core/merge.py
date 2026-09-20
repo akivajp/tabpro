@@ -66,6 +66,7 @@ def merge(
     merge_fields: list[str] | None = None,
     merge_staging: bool = False,
     use_staging: bool = False,
+    limit: int | None = None,
 ):
     progress = Progress(
         #redirect_stdout = False,
@@ -97,6 +98,7 @@ def merge(
         loader = get_loader(
             previous_file,
             progress=progress,
+            limit=limit,
         )
         #for index, row in enumerate(tqdm(
         #    loader,
@@ -132,6 +134,7 @@ def merge(
         loader = get_loader(
             modification_file,
             progress=progress,
+            limit=limit,
         )
         for index, row in enumerate(progress.track(
             loader,

@@ -26,6 +26,7 @@ def run(
             verbose=args.verbose,
             sheet=args.sheet,
             all_sheets=args.all_sheets,
+            limit=args.limit,
         )
     except (SchemaError, FileNotFoundError, ValueError) as e:
         # NOTE:
@@ -76,5 +77,11 @@ def setup_parser(
         '--all-sheets',
         action='store_true',
         help='Read every visible sheet of an Excel workbook',
+    )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        default=None,
+        help='Load only the first N rows of each input file',
     )
     parser.set_defaults(handler=run)

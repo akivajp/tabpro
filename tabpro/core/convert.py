@@ -56,6 +56,7 @@ def convert(
     no_header: bool = False,
     sheet: str | None = None,
     all_sheets: bool = False,
+    limit: int | None = None,
 ):
     #console = Console()
     progress = Progress(
@@ -97,6 +98,7 @@ def convert(
             progress=progress,
             sheet=sheet,
             all_sheets=all_sheets,
+            limit=limit,
         )
         for index, row in enumerate(loader):
             file_row_index = f'{input_file}:{index}'

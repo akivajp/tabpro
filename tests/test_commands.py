@@ -140,6 +140,19 @@ def test_convert_tsv_input(tmp_path: Path):
         {'id': '2', 'name': 'bob'},
     ]
 
+def test_convert_limit(tmp_path: Path):
+    """limit を指定すると先頭 N 行だけを変換する。"""
+    source = write_file(
+        tmp_path / 'input.csv',
+        'id,name\n1,alice\n2,bob\n3,carol\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(source)], output_file=str(output), limit=2)
+    assert read_jsonl(output) == [
+        {'id': '1', 'name': 'alice'},
+        {'id': '2', 'name': 'bob'},
+    ]
+
 def test_convert_tsv_output(csv_file: Path, tmp_path: Path):
     """TSV を出力先として書き出せる。"""
     output = tmp_path / 'out.tsv'
@@ -793,6 +806,23 @@ def test_sort_numeric_option(tmp_path: Path):
     )
     assert [row['score'] for row in read_csv(output)] == ['5', '10', '20']
 
+def test_sort_limit(tmp_path: Path):
+    '''limit を指定すると先頭 N 行だけを並べ替えの対象にする。'''
+    source = write_file(
+        tmp_path / 'input.csv',
+        'id,score\n1,10\n2,20\n3,30\n',
+    )
+    output = tmp_path / 'out.csv'
+    sort(
+        sort_keys=['score'],
+        input_files=[str(source)],
+        output_file=str(output),
+        reverse=True,
+        limit=2,
+    )
+    # 3行目は読み込まれないので、並べ替え対象は最初の2行だけ
+    assert [row['score'] for row in read_csv(output)] == ['20', '10']
+
 def test_sort_numeric_keeps_non_numeric_values_last(tmp_path: Path):
     '''数値として解釈できない値は、数値の後ろに文字列順で並ぶ。
 
@@ -1276,6 +1306,7 @@ def make_validate_args(
         verbose=False,
         sheet=None,
         all_sheets=False,
+        limit=None,
     )
 
 def test_validate_run_exit_codes(
@@ -1952,6 +1983,27 @@ def test_loader_keeps_rows_when_asked(csv_file: Path):
     assert [row['id'] for row in loader] == ['1', '2', '3']
     assert [row['id'] for row in loader] == ['1', '2', '3']
 
+def test_loader_limit_stops_at_limit(csv_file: Path):
+    """
+    limit を指定すると先頭 N 行だけを読む。
+
+    CSV のローダーは limit を読み捨てるため、Loader 側で打ち切らないと
+    全行読み込まれてしまう。limit は Loader 側でも判定して全形式で
+    同じ挙動にする。
+    """
+    loader = Loader(str(csv_file), limit=2)
+    assert [row['id'] for row in loader] == ['1', '2']
+
+def test_loader_limit_zero_yields_no_rows(csv_file: Path):
+    """limit=0 では1行も読まない。"""
+    loader = Loader(str(csv_file), limit=0)
+    assert list(loader) == []
+
+def test_loader_limit_exceeding_row_count_reads_all(csv_file: Path):
+    """limit が行数より大きい場合は全行を読む。"""
+    loader = Loader(str(csv_file), limit=10)
+    assert [row['id'] for row in loader] == ['1', '2', '3']
+
 def test_streaming_writer_does_not_hold_rows(tmp_path: Path):
     """
     回帰テスト: ストリーミング書き込みで行を保持しないこと。
@@ -2588,6 +2640,19 @@ def test_sort_parser_wiring():
     # NOTE: 必須オプションの欠落はパース時にエラーになる
     with pytest.raises(SystemExit):
         make_parser(setup_parser).parse_args(['in1.csv'])
+
+def test_limit_option_wiring():
+    '''--limit が入力読み込み系のコマンドに公開されていることを検証する。'''
+    args = make_parser(setup_sort_parser).parse_args(
+        ['in.csv', '-K', 'id', '--limit', '5'],
+    )
+    assert args.limit == 5
+    args = make_parser(setup_sort_parser).parse_args(['in.csv', '-K', 'id'])
+    assert args.limit is None
+    args = make_parser(setup_convert_parser).parse_args(
+        ['in.csv', '--limit', '5'],
+    )
+    assert args.limit == 5
 
 def test_convert_parser_wiring():
     '''convert コマンドのオプションの別名と累積を検証する。'''

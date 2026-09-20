@@ -57,6 +57,7 @@ def compare(
     output_path: str,
     query_keys: list[str],
     compare_keys: list[str] | None = None,
+    limit: int | None = None,
 ):
     progress = Progress(
         #redirect_stdout = False,
@@ -78,7 +79,7 @@ def compare(
     set_query_values = set()
     if output_path:
         check_writer(output_path)
-    loaders = [get_loader(path) for path in [path1, path2]]
+    loaders = [get_loader(path, limit=limit) for path in [path1, path2]]
     for loader_index, loader in enumerate(loaders):
         console.log('loading file: ', [path1, path2][loader_index])
         dict_key_to_row = list_dict_key_to_row[loader_index] = {}

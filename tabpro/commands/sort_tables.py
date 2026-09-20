@@ -13,6 +13,7 @@ def run(
         sort_keys=args.sort_keys,
         reverse=args.reverse,
         numeric=args.numeric,
+        limit=args.limit,
     )
 
 def setup_parser(
@@ -53,5 +54,11 @@ def setup_parser(
             'Sort numeric values in numeric order instead of '
             'the default lexicographic order'
         ),
+    )
+    parser.add_argument(
+        '--limit',
+        type=int,
+        default=None,
+        help='Load only the first N rows of each input file',
     )
     parser.set_defaults(handler=run)
