@@ -21,6 +21,7 @@ from typing import (
 
 import yaml
 
+from rich.console import Console
 from rich.table import Table
 
 from . classes.row import Row
@@ -182,14 +183,21 @@ class Schema:
     # スキーマに無い列が現れたときの扱い
     unknown_columns: str = 'warn'
 
+# スキーマのトップレベルに書ける既知のキー
+KNOWN_SCHEMA_KEYS = ('columns', 'unknown_columns')
+
 def load_schema(
     schema_path: str,
+    console: Console | None = None,
+    no_warnings: bool = False,
 ) -> Schema:
     '''
     YAML で記述されたスキーマを読み込む。
 
     Args:
         schema_path: スキーマファイルのパス。
+        console: 警告の出力先 (None なら警告を抑制する)。
+        no_warnings: 警告を抑制するかどうか。
 
     Returns:
         読み込まれた Schema。
@@ -207,6 +215,21 @@ def load_schema(
         loaded = yaml.safe_load(f)
     if not isinstance(loaded, Mapping):
         raise SchemaError('Schema must be a mapping.')
+    # NOTE:
+    #   以前は未知のトップレベルキー (unknown_colums のようなタイポ) が
+    #   黙って無視され、意図した検査モードが効かないまま検査が進んでいた。
+    #   実在したキーとの差分を警告する。
+    if console is not None and not no_warnings:
+        list_unknown_keys = [
+            key for key in loaded.keys() if key not in KNOWN_SCHEMA_KEYS
+        ]
+        if list_unknown_keys:
+            shown = ', '.join(f'"{key}"' for key in sorted(list_unknown_keys))
+            console.log(
+                f'[yellow]warning: unknown key(s) {shown} in the schema '
+                f'file {schema_path} were ignored '
+                f"(known keys: 'columns', 'unknown_columns').[/yellow]"
+            )
     dict_columns = loaded.get('columns')
     if not isinstance(dict_columns, Mapping):
         raise SchemaError("Schema must have a 'columns' mapping.")
@@ -477,6 +500,7 @@ def validate(
     all_sheets: bool = False,
     limit: int | None = None,
     encoding: str | None = None,
+    no_warnings: bool = False,
 ) -> ValidationResult:
     '''
     入力ファイルがスキーマを満たしているかを検査する。
@@ -488,6 +512,7 @@ def validate(
         output_invalid: 違反した行の書き出し先 (違反理由が付与される)。
         report_file: 違反一覧の書き出し先。
         verbose: 詳細ログを出すかどうか。
+        no_warnings: 警告を抑制するかどうか。
 
     Returns:
         検査結果。
@@ -496,7 +521,11 @@ def validate(
         SchemaError: スキーマの記述に誤りがある場合。
         FileNotFoundError: 入力ファイルが存在しない場合。
     '''
-    schema = load_schema(schema_path)
+    schema = load_schema(
+        schema_path,
+        console=Console(),
+        no_warnings=no_warnings,
+    )
     # NOTE: 長い検査の後で書き出せないと分かるのを避けるため、先に拡張子を検査する
     for output_path in [output_valid, output_invalid, report_file]:
         if output_path:
