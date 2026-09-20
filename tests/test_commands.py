@@ -3116,3 +3116,51 @@ def test_cli_unknown_encoding_exits_2(monkeypatch, capsys):
     assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert 'error: unknown encoding: no-such-codec' in captured.err
+
+def test_cli_yaml_syntax_error_exits_2(monkeypatch, capsys):
+    '''
+    設定ファイルの YAML 構文エラーも共通ハンドラで伝わる。
+
+    以前は yaml.YAMLError が共通ハンドラの対象外で、
+    生トレースバックがそのまま表示されていた。
+    '''
+    import sys
+
+    import yaml as yaml_module
+
+    from tabpro import cli
+
+    def failing_handler(args):
+        raise yaml_module.YAMLError('while parsing a flow node')
+
+    parser = make_error_args_parser(failing_handler)
+    monkeypatch.setattr(sys, 'argv', ['tabpro', 'in.csv'])
+    monkeypatch.delenv('DEBUG', raising=False)
+    with pytest.raises(SystemExit) as exc_info:
+        cli.parse_and_run(parser)
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert 'error: while parsing a flow node' in captured.err
+
+def test_cli_unicode_decode_error_shows_encoding_hint(monkeypatch, capsys):
+    """
+    デコードエラーには --encoding のヒントが付く。
+
+    どの候補でも読めない、または明示指定したエンコーディングが
+    違う場合に、解決方法が画面に表示されるようにする。
+    """
+    import sys
+
+    from tabpro import cli
+
+    def failing_handler(args):
+        raise UnicodeDecodeError('utf-8', b'\x83', 0, 1, 'invalid start byte')
+
+    parser = make_error_args_parser(failing_handler)
+    monkeypatch.setattr(sys, 'argv', ['tabpro', 'in.csv'])
+    monkeypatch.delenv('DEBUG', raising=False)
+    with pytest.raises(SystemExit) as exc_info:
+        cli.parse_and_run(parser)
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert '--encoding' in captured.err

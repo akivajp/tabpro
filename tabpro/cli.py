@@ -7,6 +7,8 @@ import sys
 
 from typing import Callable
 
+import yaml
+
 from . logging import logger
 
 from . import __version__
@@ -42,10 +44,22 @@ def parse_and_run(
         LookupError,
         ValueError,
         UnicodeDecodeError,
+        # NOTE: 設定ファイルの YAML 構文エラー (ValueError の継承外)
+        yaml.YAMLError,
     ) as e:
         if verbose or os.environ.get('DEBUG', '').lower() in ['1', 'true', 'yes', 'on']:
             raise
-        print(f'error: {e}', file=sys.stderr)
+        message = str(e)
+        if isinstance(e, UnicodeDecodeError):
+            # NOTE:
+            #   自動判定 (utf-8-sig / cp932 / euc-jp) でも読めない、
+            #   または明示指定したエンコーディングが違う場合に、
+            #   解決方法を伝える。
+            message += (
+                ' (the input file may not be UTF-8; '
+                'try --encoding with the correct encoding, e.g. cp932)'
+            )
+        print(f'error: {message}', file=sys.stderr)
         sys.exit(2)
 
 def setup_command(
