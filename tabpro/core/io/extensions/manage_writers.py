@@ -41,7 +41,15 @@ def check_writer(
                 f'{ext} files can be read but not written. '
                 f'Supported output types: {sorted(dict_writers)}'
             )
-        raise ValueError(f'Unsupported file type: {ext}')
+        # NOTE:
+        #   以前は拡張子だけを表示しており、拡張子の無いパスを指定すると
+        #   "Unsupported file type: " と空欄になり、どのファイルで
+        #   問題が起きたか分からなかった。パスを先に示す。
+        raise ValueError(
+            f'Unsupported output file type: {output_file} '
+            f'(extension: {ext or "none"}). '
+            f'Supported output types: {sorted(dict_writers)}'
+        )
     writer_class = dict_writers[ext]
     return writer_class
 

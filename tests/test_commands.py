@@ -36,6 +36,7 @@ from tabpro.core.sort import sort
 from tabpro.core.classes.row import Row
 from tabpro.core.io.loader import Loader
 from tabpro.core.io.extensions.io_json import escape_json
+from tabpro.core.io.extensions.manage_writers import check_writer
 from tabpro.core.validate import (
     SchemaError,
     load_schema,
@@ -464,6 +465,11 @@ def test_merge_failed_run_does_not_truncate_existing_outputs(tmp_path: Path):
             output_base_data_file=str(existing),
         )
     assert existing.read_text() == 'precious,content\nkeep,me\n'
+
+def test_writer_error_mentions_path_for_extensionless_output(tmp_path: Path):
+    """拡張子の無い出力先でも、どのパスが問題かがメッセージに含まれる。"""
+    with pytest.raises(ValueError, match='noext'):
+        check_writer(str(tmp_path / 'noext'))
 
 def test_convert_warns_on_missing_pick_column(csv_file: Path, tmp_path: Path, capsys):
     """
