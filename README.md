@@ -635,6 +635,11 @@ process:
   written as their text representation (`['a', 'b']`) and read back as that
   one string, not as an array again. Use the `join` action to flatten an
   array into a string before exporting, or keep arrays in JSON/JSON Lines.
+- **Excel date-only cells come back with a time of day.** A cell holding
+  `2020-01-02` as a date reads as the text `2020-01-02 00:00:00`, because
+  the loader stringifies Excel's parsed datetime. A genuine midnight
+  timestamp is therefore indistinguishable from a date-only cell; no
+  conversion is attempted, so the value is delivered exactly as read.
 - **Text encoding is auto-detected**, but only among UTF-8 (BOM tolerated),
   Shift-JIS (`cp932`) and EUC-JP. A file that decodes as none of them fails
   with an error that asks for an explicit `--encoding`. When `--encoding` is
