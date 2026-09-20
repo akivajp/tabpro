@@ -229,6 +229,56 @@ def test_convert_no_warnings_option_silences_config_warning(
     #   含まれ、出力中のパスに 'warning' という部分文字列が現れるため。
     assert 'warning:' not in (captured.out + captured.err)
 
+def test_convert_warns_on_wrong_typed_process_value(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """
+    キー名が正しくても値の型が違えば警告される。
+
+    例: assign_constants はマッピング (key: value の集まり) なのに
+    文字列を書くと、以前は黙ってスキップされ、代入したつもりの
+    定数が反映されないまま納品物ができていた。
+    """
+    config_path = write_config(
+        tmp_path, 'process:\n  assign_constants: x = 1\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(csv_file)], output_file=str(output), config_path=config_path)
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'assign_constants' in (captured.out + captured.err)
+    assert 'Mapping' in (captured.out + captured.err)
+
+def test_convert_no_warnings_option_silences_typed_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定すると型違いの警告も抑制される。"""
+    config_path = write_config(
+        tmp_path, 'process:\n  assign_constants: x = 1\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=config_path,
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    # NOTE: 上のテストと同様、テスト名由来のパスに 'warning' が混入するため
+    assert 'warning:' not in (captured.out + captured.err)
+
+def test_filter_wrong_type_still_raises(csv_file: Path, tmp_path: Path):
+    """
+    filter の型違いは既存どおり ValueError のまま (警告で置き換えない)。
+
+    filter / push / assign_array は既存の実装がエラーを出すため、
+    新規の警告対象には含めない (挙動不変)。
+    """
+    config_path = write_config(tmp_path, 'process:\n  filter: field=a\n')
+    output = tmp_path / 'out.jsonl'
+    with pytest.raises(ValueError, match='Filter must be a list'):
+        convert(input_files=[str(csv_file)], output_file=str(output), config_path=config_path)
+
 def test_convert_warns_on_unmatched_ignore_entries(
     csv_file: Path, tmp_path: Path, capsys,
 ):

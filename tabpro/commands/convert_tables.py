@@ -128,8 +128,8 @@ def setup_parser(
         '--no-warnings', '--no-warn',
         action='store_true',
         help=(
-            'Suppress warnings (unknown keys in the config file, '
-            '--ignore entries that matched no row)'
+            'Suppress warnings (unknown or wrongly-typed keys in the '
+            'config file, --ignore entries that matched no row)'
         ),
     )
     parser.set_defaults(handler=run)

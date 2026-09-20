@@ -68,6 +68,50 @@ KNOWN_PROCESS_KEYS = [
     'split',
 ]
 
+# NOTE:
+#   キー名は正しいのに値の型が違う場合 (例: assign_constants に
+#   文字列を書く) は、以前は isinstance チェックを黙って通過して
+#   スキップされ、設定したつもりの処理が反映されないまま納品物が
+#   できていた。ここに挙げたキーは想定型と違うと警告する。
+#   filter / push / assign_array は既存の実装が ValueError を出す
+#   ため、この表には含めない (エラーのまま、挙動不変)。
+EXPECTED_PROCESS_VALUE_TYPES = {
+    'assign_length': Mapping,
+    'assign_constants': Mapping,
+    'assign_formats': Mapping,
+    'assign_ids': Mapping,
+    'split': Mapping,
+}
+
+def warn_wrong_typed_process_keys(
+    dict_process: Mapping,
+    console: Console | None = None,
+    no_warnings: bool = False,
+):
+    '''
+    process 配下で値の型が想定と違うキーを警告する。
+
+    NOTE:
+        エラーにはしない (既存の挙動はスキップのまま不変)。
+        未知キー警告と同じく --no-warnings で抑制できる。
+
+    Args:
+        dict_process: 設定ファイルの process 配下の Mapping。
+        console: 警告の出力先。
+        no_warnings: 警告を抑止するかどうか (--no-warnings 対応)。
+    '''
+    if console is None or no_warnings:
+        return
+    for key, value in dict_process.items():
+        expected = EXPECTED_PROCESS_VALUE_TYPES.get(str(key))
+        if expected is None or isinstance(value, expected):
+            continue
+        console.log(
+            f'[yellow]warning: process.{key} of the config file should be '
+            f'a {expected.__name__}, got {type(value).__name__} '
+            f'({value!r}), and it was ignored.[/yellow]'
+        )
+
 def setup_config(
     config_path: str | None = None,
     console: Console | None = None,
@@ -164,6 +208,11 @@ def setup_process_config(
             dict_process,
             KNOWN_PROCESS_KEYS,
             'process of the config file',
+            console=console,
+            no_warnings=no_warnings,
+        )
+        warn_wrong_typed_process_keys(
+            dict_process,
             console=console,
             no_warnings=no_warnings,
         )
