@@ -42,12 +42,40 @@ class ConfigLoader(yaml.Loader):
         プロセス全体の Loader が書き換わるため、専用サブクラスに閉じ込める。
     '''
 
+def construct_mapping_detecting_duplicates(
+    loader: ConfigLoader,
+    node,
+):
+    '''
+    マッピングを OrderedDict で読み込みつつ、重複したキーを記録する。
+
+    NOTE:
+        YAML 標準では重複キーは「後勝ち」で黙って前者が捨てられる。
+        コピペミスやマージミスで「書いたはずの設定が消える」事故の
+        温床になるため、重複したキーを loader に記録し、後で
+        warn_duplicate_config_keys が警告に使う。値の解釈 (後勝ち)
+        自体は YAML 標準どおり変更しない。
+    '''
+    seen: set = set()
+    pairs = []
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=True)
+        if key in seen:
+            recorded = getattr(loader, 'duplicate_keys', None)
+            if recorded is None:
+                recorded = loader.duplicate_keys = []
+            recorded.append(key)
+        seen.add(key)
+        value = loader.construct_object(value_node, deep=True)
+        pairs.append((key, value))
+    return OrderedDict(pairs)
+
 # NOTE:
 #   マッピングのキー順を保持するため、OrderedDict で読み込む。
 #   登録は専用 Loader に対してモジュール読み込み時に1回だけ行う。
 yaml.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-    lambda loader, node: OrderedDict(loader.construct_pairs(node)),
+    construct_mapping_detecting_duplicates,
     Loader=ConfigLoader,
 )
 
@@ -112,6 +140,29 @@ def warn_wrong_typed_process_keys(
             f'({value!r}), and it was ignored.[/yellow]'
         )
 
+def warn_duplicate_config_keys(
+    duplicate_keys: list,
+    where: str,
+    console: Console | None = None,
+    no_warnings: bool = False,
+):
+    '''
+    YAML の重複キーを警告する (値の解釈は YAML 標準どおり後勝ち)。
+
+    Args:
+        duplicate_keys: 検出された重複キーの一覧。
+        where: 警告メッセージに用いる対象の説明 (ファイルパスなど)。
+        console: 警告の出力先。
+        no_warnings: 警告を抑止するかどうか (--no-warnings 対応)。
+    '''
+    if not duplicate_keys or console is None or no_warnings:
+        return
+    console.log(
+        f'[yellow]warning: {where} contains duplicate key(s) '
+        f'{[str(key) for key in duplicate_keys]}; '
+        f'the last value wins.[/yellow]'
+    )
+
 def setup_config(
     config_path: str | None = None,
     console: Console | None = None,
@@ -123,7 +174,12 @@ def setup_config(
         if config_path.endswith(('.yaml', '.yml')):
             # NOTE: ロケールに依存しないよう、エンコーディングを明示する
             with open(config_path, 'r', encoding='utf-8') as f:
-                loaded = yaml.load(f, ConfigLoader)
+                # NOTE:
+                #   重複キーの検出結果を loader から受け取るため、
+                #   yaml.load() の内部で隠されるのではなく、
+                #   loader を明示的に組み立てる。
+                loader = ConfigLoader(f)
+                loaded = loader.get_single_data()
             # NOTE:
             #   空ファイル (None) やリスト・文字列など Mapping 以外の
             #   内容は、後続の .get() での TypeError の代わりに
@@ -133,6 +189,12 @@ def setup_config(
                     f'config file must contain a mapping, got '
                     f'{type(loaded).__name__}: {config_path}'
                 )
+            warn_duplicate_config_keys(
+                getattr(loader, 'duplicate_keys', []),
+                f'config file {config_path}',
+                console=console,
+                no_warnings=no_warnings,
+            )
             warn_unknown_config_keys(
                 loaded,
                 KNOWN_CONFIG_KEYS,

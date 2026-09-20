@@ -415,6 +415,52 @@ def test_convert_multi_file_pick_warns_only_for_lacking_file(
     assert rows[0] == {'id': '1', 'name': 'alice'}
     assert rows[-1] == {'id': '4'}
 
+def test_config_duplicate_keys_warned(csv_file: Path, tmp_path: Path, capsys):
+    """
+    設定ファイルの重複キーが警告される。
+
+    YAML 標準どおり後勝ち (後の値が有効) は変わらないが、
+    コピペミスで「書いたはずの設定が消える」事故に気づけるようにする。
+    """
+    config_path = write_config(
+        tmp_path,
+        'process:\n  assign_constants:\n    x: AAA\n  assign_constants:\n    x: BBB\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=config_path,
+        list_pick_columns=['x'],
+    )
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'duplicate key' in (captured.out + captured.err)
+    # NOTE: 重複しているのは assign_constants キーの方
+    assert "'assign_constants'" in (captured.out + captured.err)
+    # NOTE: 後勝ちで後の値 (BBB) が使われる
+    rows = [json.loads(line) for line in output.read_text().splitlines()]
+    assert rows == [{'x': 'BBB'}, {'x': 'BBB'}, {'x': 'BBB'}]
+
+def test_convert_no_warnings_option_silences_duplicate_key_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定すると重複キーの警告も抑制される。"""
+    config_path = write_config(
+        tmp_path,
+        'process:\n  assign_constants:\n    x: AAA\n  assign_constants:\n    x: BBB\n',
+    )
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=config_path,
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    # NOTE: 上のテストと同様、テスト名由来のパスに 'warning' が混入するため
+    assert 'warning:' not in (captured.out + captured.err)
+
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
     source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)
