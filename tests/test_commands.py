@@ -538,6 +538,21 @@ def test_sheet_option_warning_fires_once_for_multiple_files(
     text = captured.out + captured.err
     assert text.count('applies to Excel files only') == 1
 
+def test_ragged_jsonl_csv_error_mentions_row_origin(tmp_path: Path):
+    """
+    列が揃っていない JSONL を CSV に書き出すと行の出自が表示される。
+
+    以前は csv.DictWriter の素のメッセージ
+    ("dict contains fields not in fieldnames: ...") だけで、
+    どのファイルの何行目かが分からなかった。
+    """
+    source = tmp_path / 'ragged.jsonl'
+    source.write_text('{"id": 1, "name": "alice"}\n{"id": 2, "mail": "x"}\n')
+    output = tmp_path / 'out.csv'
+    with pytest.raises(ValueError, match='while writing input row 2 of .*ragged.jsonl'):
+        convert(input_files=[str(source)], output_file=str(output))
+
+
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
     source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)

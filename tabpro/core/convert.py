@@ -253,7 +253,21 @@ def convert(
             if not output_debug:
                 row.pop_staging()
             if writer:
-                writer.push_row(row)
+                try:
+                    writer.push_row(row)
+                except ValueError as e:
+                    # NOTE:
+                    #   csv.DictWriter の素のメッセージ
+                    #   ("dict contains fields not in fieldnames: ...")
+                    #   には行の出自が無いため、異常データの特定に
+                    #   一手間必要だった。ここでなら入力ファイルと
+                    #   行番号が分かるので、メッセージに付け足す。
+                    #   (JSON のような全行溜め込み型の writer は
+                    #   close 時に書き出すため対象外)
+                    raise ValueError(
+                        f'{e} (while writing input row {index + 1} '
+                        f'of {input_file})'
+                    ) from e
             else:
                 pass
             num_stacked_rows += 1
