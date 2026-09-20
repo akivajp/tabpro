@@ -258,6 +258,34 @@ def warn_unknown_config_keys(
         f'Known keys: {known_keys}[/yellow]'
     )
 
+def warn_wrong_typed_process(
+    loaded: Mapping,
+    console: Console | None = None,
+    no_warnings: bool = False,
+):
+    '''
+    トップレベルの process キーの値が Mapping でない場合に警告する。
+
+    NOTE:
+        例: process: hello のように文字列を書くと、process 配下の
+        設定全体が黙って無視されていた。値の解釈 (スキップ) は
+        既存どおり不変で、警告のみ追加する。
+
+    Args:
+        loaded: 設定ファイルの読み込み結果。
+        console: 警告の出力先。
+        no_warnings: 警告を抑止するかどうか (--no-warnings 対応)。
+    '''
+    if console is None or no_warnings:
+        return
+    dict_process = loaded.get('process')
+    if 'process' in loaded and not isinstance(dict_process, Mapping):
+        console.log(
+            f'[yellow]warning: process of the config file should be a '
+            f'mapping, got {type(dict_process).__name__} '
+            f'({dict_process!r}), and it was ignored.[/yellow]'
+        )
+
 def setup_process_config(
     config: Config,
     loaded: Mapping,
@@ -265,6 +293,7 @@ def setup_process_config(
     no_warnings: bool = False,
 ):
     dict_process = loaded.get('process')
+    warn_wrong_typed_process(loaded, console=console, no_warnings=no_warnings)
     if isinstance(dict_process, Mapping):
         warn_unknown_config_keys(
             dict_process,

@@ -473,6 +473,37 @@ def test_json_non_array_input_error_message(tmp_path: Path):
     with pytest.raises(ValueError, match='expected a JSON array of objects'):
         list(loader)
 
+def test_config_warns_on_non_mapping_process(csv_file: Path, tmp_path: Path, capsys):
+    """
+    トップレベルの process に Mapping 以外の値を書くと警告される。
+
+    例: process: hello (文字列) の場合、process 配下の設定全体が
+    以前は黙って無視されていた。
+    """
+    config_path = write_config(tmp_path, 'process: hello\n')
+    output = tmp_path / 'out.jsonl'
+    convert(input_files=[str(csv_file)], output_file=str(output), config_path=config_path)
+    captured = capsys.readouterr()
+    # NOTE: rich の折り返しで文が分断されるため、途切れない部分で検査する
+    assert 'warning' in (captured.out + captured.err)
+    assert 'mapping, got str' in (captured.out + captured.err)
+    assert "'hello'" in (captured.out + captured.err)
+
+def test_convert_no_warnings_option_silences_non_mapping_process_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定すると process の型違い警告も抑制される。"""
+    config_path = write_config(tmp_path, 'process: hello\n')
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        config_path=config_path,
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    # NOTE: 上のテストと同様、テスト名由来のパスに 'warning' が混入するため
+    assert 'warning:' not in (captured.out + captured.err)
 
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
