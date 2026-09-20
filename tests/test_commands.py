@@ -355,6 +355,66 @@ def test_convert_rejects_directory_output(tmp_path: Path):
     with pytest.raises(ValueError, match='output path is a directory'):
         convert(input_files=[str(tmp_path / 'whatever.csv')], output_file=str(outdir))
 
+def test_convert_warns_on_missing_pick_column(csv_file: Path, tmp_path: Path, capsys):
+    """
+    --pick に存在しない列を指定すると警告される。
+
+    以前はタイポした列名が黙って無視され、出力の列が静かに欠けていた。
+    """
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_pick_columns=['id', 'no-such-col'],
+    )
+    captured = capsys.readouterr()
+    assert 'warning' in (captured.out + captured.err)
+    assert 'no-such-col' in (captured.out + captured.err)
+
+def test_convert_no_warnings_option_silences_missing_pick_warning(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """no_warnings を指定すると --pick 列欠落の警告も抑制される。"""
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file)],
+        output_file=str(output),
+        list_pick_columns=['id', 'no-such-col'],
+        no_warnings=True,
+    )
+    captured = capsys.readouterr()
+    # NOTE: 上のテストと同様、テスト名由来のパスに 'warning' が混入するため
+    assert 'warning:' not in (captured.out + captured.err)
+
+def test_convert_multi_file_pick_warns_only_for_lacking_file(
+    csv_file: Path, tmp_path: Path, capsys,
+):
+    """
+    複数ファイル連結では、その列を欠くファイルだけが警告される。
+
+    「一部のファイルにしか無い列」を寛容に扱う意図を保つため、
+    警告は行ごとではなくファイル単位で1回だけ出る。
+    """
+    other = tmp_path / 'other.csv'
+    other.write_text('id,extra\n4,z\n')
+    output = tmp_path / 'out.jsonl'
+    convert(
+        input_files=[str(csv_file), str(other)],
+        output_file=str(output),
+        list_pick_columns=['id', 'name'],
+    )
+    captured = capsys.readouterr()
+    # NOTE:
+    #   name 列が無いのは other のみ。警告は全体で1回だけ出る。
+    #   rich の折り返しで文が分断されるため、途切れない部分で数える。
+    text = captured.out + captured.err
+    assert text.count('--pick column(s)') == 1
+    assert 'other.csv' in text
+    # NOTE: 出力自体は従来どおり (name 列が無い行は黙って列欠け)
+    rows = [json.loads(line) for line in output.read_text().splitlines()]
+    assert rows[0] == {'id': '1', 'name': 'alice'}
+    assert rows[-1] == {'id': '4'}
+
 def test_convert_tsv_round_trip(tmp_path: Path):
     """CSV -> TSV -> CSV で内容が保たれる。"""
     source = write_file(tmp_path / 'input.csv', CSV_SAMPLE)

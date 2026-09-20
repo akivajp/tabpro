@@ -153,6 +153,16 @@ def convert(
             progress=progress,
         )
     num_stacked_rows = 0
+    # NOTE:
+    #   --pick に存在しない列を指定すると、以前は黙って出力が欠けていた
+    #   (タイポに気づかないまま納品物ができる)。ただし複数ファイル連結時は
+    #   「一部のファイルにしか無い列」を寛容に扱う意図もあるため、行ごとに
+    #   ではなく、1つのファイル内で1行も出現しなかった列をファイル単位で
+    #   1回だけ警告する。
+    list_picked_sources = [
+        pick_config.source for pick_config in config.pick
+    ]
+    dict_unpicked: dict[str, set[str]] = {}
     for input_file in input_files:
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')
@@ -166,6 +176,9 @@ def convert(
             limit=limit,
             encoding=encoding,
         )
+        # NOTE: ファイルごとに「1行も出現しなかった picked 列」を集める
+        set_unfound_picked_sources = set(list_picked_sources)
+        num_rows_in_file = 0
         for index, row in enumerate(loader):
             file_row_index = f'{input_file}:{index}'
             if file_row_index in set_ignore_file_rows:
@@ -218,6 +231,15 @@ def convert(
                         logger.error('error in row index: ', index)
                     raise e
             if config.pick:
+                # NOTE:
+                #   remap と同じ row.search() で列の存否を調べる
+                #   (staging 側にしか無い列も拾える)。
+                #   全て見つかった後は set が空になるため、走査は止まる。
+                if set_unfound_picked_sources:
+                    for picked_source in list(set_unfound_picked_sources):
+                        _, found = row.search(picked_source)
+                        if found:
+                            set_unfound_picked_sources.discard(picked_source)
                 row = remap_columns(row, config.pick)
             if writer is None:
                 if sys.stdout.isatty():
@@ -235,7 +257,24 @@ def convert(
             else:
                 pass
             num_stacked_rows += 1
+            num_rows_in_file += 1
+        # NOTE:
+        #   このファイルで1行も出現しなかった picked 列を記録する。
+        #   空入力 (行が1件も無い) の場合は全ての picked 列がここに残るが、
+        #   出力も空なので警告しない。
+        if config.pick and num_rows_in_file > 0 and set_unfound_picked_sources:
+            dict_unpicked[input_file] = set_unfound_picked_sources
     console.log('total processed input rows: ', num_stacked_rows)
+    if dict_unpicked and not no_warnings:
+        for unpicked_input_file, unfound in dict_unpicked.items():
+            # NOTE:
+            #   以前は存在しない picked 列 (タイポ) が黙って無視され、
+            #   出力の列が静かに欠けていた。
+            console.log(
+                f'[yellow]warning: --pick column(s) {sorted(unfound)} '
+                f'were not found in any row of {unpicked_input_file} '
+                f'and were omitted from the output.[/yellow]'
+            )
     set_unmatched_ignore_file_rows = set_ignore_file_rows - set_matched_ignore_file_rows
     if set_unmatched_ignore_file_rows and not no_warnings:
         # NOTE:
