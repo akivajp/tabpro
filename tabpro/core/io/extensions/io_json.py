@@ -128,8 +128,11 @@ def load_json(
         else:
             console = Console()
         console.log('loading json data from: ', input_file)
-    # NOTE: ロケールに依存しないよう、エンコーディングを明示する
-    with open(input_file, 'r', encoding='utf-8') as f:
+    # NOTE:
+    #   既定の utf-8 を明示する (io_jsonl と共通の理由)。
+    #   encoding kwarg を受け付けることで、CSV/TSV と同じく
+    #   --encoding による指定が可能になる。
+    with open(input_file, 'r', encoding=kwargs.get('encoding', 'utf-8')) as f:
         data = loads_json(f.read())
     if not isinstance(data, list):
         raise ValueError(f'invalid json array data: {input_file}')

@@ -89,6 +89,6 @@ def setup_parser(
         '--encoding',
         type=str,
         default=None,
-        help='Text encoding for CSV/TSV input (e.g. cp932 for Shift-JIS)',
+        help='Text encoding of CSV/TSV/JSON/JSONL input (e.g. cp932 for Shift-JIS)',
     )
     parser.set_defaults(handler=run)

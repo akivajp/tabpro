@@ -202,7 +202,7 @@ tabpro convert [options] <input_file>... --output <output_file>
 | `--all-sheets` | Read every visible sheet of an Excel workbook |
 | `--output-debug` | Keep the staging area in the output |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
 
 
 Multiple input files are concatenated. `--output-file-filtered-out` is the
@@ -232,7 +232,7 @@ overwrites the corresponding field of the matching base row.
 | `--allow-duplicate-modification-keys` | Permit duplicate keys in the correction files |
 | `--merge-staging`, `--use-staging` | Carry the staging area across the merge |
 | `--limit` | Load only the first N rows of each input file (applies to both sides) |
-| `--encoding` | Text encoding of CSV/TSV input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
 
 > **`--merge-staging` replaces the whole staging area.** The staging
 > subtree of a correction row overwrites the base row's staging as a
@@ -272,7 +272,7 @@ hold something unexpected.
 | `--show-count-max-length`, `-L` | Truncate displayed values to this length (default 100) |
 | `--compare-columns`, `--compare` | Compare the column sets of the input files against each other |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
 
 
 `--compare-columns` answers a different question: not what is in the data,
@@ -329,7 +329,7 @@ has to report that the data did not meet the spec.
 | `--output-invalid`, `--invalid` | Rows that do not, each annotated with why |
 | `--report` | The list of violations, one row each |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
 
 
 ```yaml
@@ -440,7 +440,7 @@ tabpro sort [options] <input_file>... --sort-keys <key>... --output <output_file
 | `--reverse`, `-R` | Descending order |
 | `--numeric`, `-N` | Sort numeric values in numeric order |
 | `--limit` | Load only the first N rows of each input file |
-| `--encoding` | Text encoding of CSV/TSV input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
 
 
 Values are compared as they are read, so numeric columns coming from CSV
@@ -466,7 +466,7 @@ with `+`.
 | `--compare-keys`, `--compare`, `-C` | Columns to compare (default: all) |
 | `--output-path`, `--output`, `-O` | Output file path |
 | `--limit` | Load only the first N rows of each input file (applies to both files) |
-| `--encoding` | Text encoding of CSV/TSV input (default: UTF-8, BOM tolerated) |
+| `--encoding` | Text encoding of CSV/TSV/JSON/JSONL input (default: UTF-8, BOM tolerated) |
 
 ## Actions
 

@@ -2028,6 +2028,37 @@ def test_loader_reads_shift_jis_csv(tmp_path: Path):
     loader = Loader(str(source), encoding='cp932')
     assert [row['name'] for row in loader] == ['テスト']
 
+def test_loader_reads_shift_jis_jsonl(tmp_path: Path):
+    """
+    encoding を指定して Shift-JIS の JSONL を読める。
+
+    回帰テスト: 以前は JSONL のローダーだけが encoding を指定しない
+    open() を用いており、既定がロケール依存だった。ロケールが
+    UTF-8 でない環境では UTF-8 の入力すら読めないうえ、
+    encoding kwarg も受け付けなかった。
+    """
+    source = tmp_path / 'sjis.jsonl'
+    source.write_bytes('{"id": 1, "name": "テスト"}\n'.encode('cp932'))
+    loader = Loader(str(source), encoding='cp932')
+    assert [row['name'] for row in loader] == ['テスト']
+
+def test_loader_jsonl_reads_utf8_by_default(tmp_path: Path):
+    """JSONL の既定は UTF-8 に固定される (ロケール非依存)。"""
+    source = tmp_path / 'utf8.jsonl'
+    source.write_bytes('{"id": 1, "name": "テスト"}\n'.encode('utf-8'))
+    loader = Loader(str(source))
+    assert [row['name'] for row in loader] == ['テスト']
+
+def test_loader_reads_shift_jis_json(tmp_path: Path):
+    """encoding を指定して Shift-JIS の単一 .json も読める。"""
+    import json
+    source = tmp_path / 'sjis.json'
+    source.write_bytes(
+        json.dumps([{'id': 1, 'name': 'テスト'}]).encode('cp932'),
+    )
+    loader = Loader(str(source), encoding='cp932')
+    assert [row['name'] for row in loader] == ['テスト']
+
 def test_loader_encoding_default_stays_utf8_sig(csv_file: Path):
     """encoding を指定しない場合は既定 (utf-8-sig) のままである。"""
     loader = Loader(str(csv_file))

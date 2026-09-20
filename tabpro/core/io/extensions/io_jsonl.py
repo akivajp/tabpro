@@ -24,6 +24,11 @@ def load_jsonl(
 ):
     orig_progress = progress
     quiet = kwargs.get('quiet', False)
+    # NOTE:
+    #   既定の utf-8 を明示する。encoding を指定しない open() は
+    #   ロケール依存となり、CI コンテナなど最小限のロケールしか
+    #   無い環境で UTF-8 の入力すら読めなくなる。
+    encoding = kwargs.get('encoding', 'utf-8')
     if progress is None:
         progress = Progress()
         progress.start()
@@ -49,7 +54,7 @@ def load_jsonl(
             total = limit,
             disable = quiet,
         )
-    with fn_open(input_file, 'r') as f:
+    with fn_open(input_file, 'r', encoding=encoding) as f:
         for i, line in enumerate(f):
             if limit and i >= limit:
                 break
