@@ -25,8 +25,9 @@ from . constants import (
 from . functions.search_column_value import search_column_value
 
 from . io import (
+    check_writer,
     get_loader,
-    get_writer,
+    raise_error_if_output_overlaps,
     save,
 )
 
@@ -86,13 +87,30 @@ def merge(
     num_modified = 0
     if use_staging:
         merge_staging = True
+    # NOTE:
+    #   以前はここで get_writer() を呼んでいたが、streaming writer は
+    #   構築時 (open('w')) に対象ファイルを truncate するため、後段の
+    #   処理でエラーになると既存の出力先ファイルが空に化けていた。
+    #   ここでは拡張子の検査だけを行う。
     for output_path in [
         output_base_data_file,
         output_modified_data_file,
         output_remaining_data_file,
     ]:
         if output_path:
-            get_writer(output_path)
+            check_writer(output_path)
+    # NOTE:
+    #   実際の書き出しは全行を読み込んだ後に行うため入力は破壊されないが、
+    #   出力先が入力や他の出力先と同じパスだと、書き出し時の truncate で
+    #   既存のファイルが破壊される。読み込みの前に検出しておく。
+    raise_error_if_output_overlaps(
+        outputs=[
+            (output_base_data_file, 'base output file'),
+            (output_modified_data_file, 'modified output file'),
+            (output_remaining_data_file, 'remaining output file'),
+        ],
+        input_files=previous_files + modification_files,
+    )
     for previous_file in previous_files:
         if not os.path.exists(previous_file):
             raise FileNotFoundError(f'File not found: {previous_file}')

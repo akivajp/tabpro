@@ -355,6 +355,116 @@ def test_convert_rejects_directory_output(tmp_path: Path):
     with pytest.raises(ValueError, match='output path is a directory'):
         convert(input_files=[str(tmp_path / 'whatever.csv')], output_file=str(outdir))
 
+def test_convert_rejects_output_paths_overlapping_each_other(tmp_path: Path):
+    """
+    本出力と除外行出力が同じパスならエラーになる。
+
+    以前は filtered-out 側の writer が後から同じパスを truncate し、
+    本出力を破壊していた (先に書かれた行が消える)。
+    """
+    source = tmp_path / 'in.csv'
+    source.write_text('id,name\n1,alice\n2,bob\n')
+    same = tmp_path / 'same.csv'
+    with pytest.raises(ValueError, match='are the same path'):
+        convert(
+            input_files=[str(source)],
+            output_file=str(same),
+            output_file_filtered_out=str(same),
+        )
+
+def test_validate_rejects_output_same_as_input(tmp_path: Path):
+    """
+    validate の出力先が入力と同じパスならエラーになる。
+
+    以前は validate にもガードが無く、writer の構築時 truncate により
+    入力ファイルが空に化けていた (convert と同じデータ消失)。
+    """
+    source = tmp_path / 'in.csv'
+    source.write_text('id,name\n1,alice\n')
+    schema = tmp_path / 'schema.yaml'
+    schema.write_text('columns:\n  id:\n    type: int\n')
+    with pytest.raises(ValueError, match='would destroy the input'):
+        validate(
+            input_files=[str(source)],
+            schema_path=str(schema),
+            output_valid=str(source),
+        )
+    assert source.read_text() == 'id,name\n1,alice\n'
+
+def test_validate_rejects_output_paths_overlapping_each_other(tmp_path: Path):
+    """valid / invalid の書き出し先が同じパスならエラーになる。"""
+    source = tmp_path / 'in.csv'
+    source.write_text('id,name\n1,alice\n')
+    schema = tmp_path / 'schema.yaml'
+    schema.write_text('columns:\n  id:\n    type: int\n')
+    same = tmp_path / 'same.csv'
+    with pytest.raises(ValueError, match='are the same path'):
+        validate(
+            input_files=[str(source)],
+            schema_path=str(schema),
+            output_valid=str(same),
+            output_invalid=str(same),
+        )
+
+def test_merge_rejects_output_same_as_input(tmp_path: Path):
+    """
+    merge の出力先が入力と同じパスならエラーになる。
+
+    以前は冒頭で get_writer() を呼ぶため構築時 truncate により、
+    後続の処理がエラーでも入力ファイルが空に化けていた。
+    """
+    base = tmp_path / 'base.csv'
+    base.write_text('id,name\n1,alice\n')
+    mods = tmp_path / 'mods.csv'
+    mods.write_text('id,mail\n1,a@example.com\n')
+    with pytest.raises(ValueError, match='would destroy the input'):
+        merge(
+            previous_files=[str(base)],
+            modification_files=[str(mods)],
+            keys=['id'],
+            output_base_data_file=str(base),
+        )
+    assert base.read_text() == 'id,name\n1,alice\n'
+
+def test_merge_rejects_output_paths_overlapping_each_other(tmp_path: Path):
+    """3つの書き出し先のうち2つが同じパスならエラーになる。"""
+    base = tmp_path / 'base.csv'
+    base.write_text('id,name\n1,alice\n')
+    mods = tmp_path / 'mods.csv'
+    mods.write_text('id,mail\n1,a@example.com\n')
+    same = tmp_path / 'same.csv'
+    with pytest.raises(ValueError, match='are the same path'):
+        merge(
+            previous_files=[str(base)],
+            modification_files=[str(mods)],
+            keys=['id'],
+            output_modified_data_file=str(same),
+            output_remaining_data_file=str(same),
+        )
+
+def test_merge_failed_run_does_not_truncate_existing_outputs(tmp_path: Path):
+    """
+    merge が途中で失敗しても、既存の出力先ファイルは truncate されない。
+
+    以前は読み込みの前に get_writer() を呼ぶため、出力先ファイルが
+    構築時 truncate され、エラー終了時に空のファイルが残っていた。
+    """
+    base = tmp_path / 'base.csv'
+    base.write_text('id,name\n1,alice\n')
+    # NOTE: id の型が一致しないキーは見つからずエラーになる
+    mods = tmp_path / 'mods.csv'
+    mods.write_text("id,mail\n'1',a@example.com\n")
+    existing = tmp_path / 'existing.csv'
+    existing.write_text('precious,content\nkeep,me\n')
+    with pytest.raises(Exception):
+        merge(
+            previous_files=[str(base)],
+            modification_files=[str(mods)],
+            keys=['id'],
+            output_base_data_file=str(existing),
+        )
+    assert existing.read_text() == 'precious,content\nkeep,me\n'
+
 def test_convert_warns_on_missing_pick_column(csv_file: Path, tmp_path: Path, capsys):
     """
     --pick に存在しない列を指定すると警告される。

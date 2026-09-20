@@ -30,6 +30,7 @@ from . io import (
     check_writer,
     get_loader,
     get_writer,
+    raise_error_if_output_overlaps,
 )
 
 from . progress import Progress
@@ -500,6 +501,19 @@ def validate(
     for output_path in [output_valid, output_invalid, report_file]:
         if output_path:
             check_writer(output_path)
+    # NOTE:
+    #   streaming writer は構築時 (open('w')) に対象ファイルを truncate する。
+    #   出力先が入力や他の出力先と同じパスだと既存のファイルが破壊される
+    #   (valid / invalid の書き出し先が同一パスだと、先に開かれた側の
+    #   出力が後から開かれた側に上書きされて消える)。読み込みの前に検出する。
+    raise_error_if_output_overlaps(
+        outputs=[
+            (output_valid, 'valid output file'),
+            (output_invalid, 'invalid output file'),
+            (report_file, 'report file'),
+        ],
+        input_files=input_files,
+    )
     for input_file in input_files:
         if not os.path.exists(input_file):
             raise FileNotFoundError(f'File not found: {input_file}')

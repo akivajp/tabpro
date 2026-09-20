@@ -36,6 +36,7 @@ from .actions.types import (
 from . io import (
     get_loader,
     get_writer,
+    raise_error_if_output_overlaps,
 )
 
 from . console.views import Panel
@@ -48,45 +49,28 @@ def raise_error_if_output_overlaps_input(
     output_file_filtered_out: str | None,
 ):
     '''
-    出力先が入力ファイルと同じパスであればエラーにする。
+    出力先が入力ファイル、あるいは他の出力先と同じパスであればエラーにする。
 
     NOTE:
         convert は入力をストリーミング処理しながら出力を書くため、
         出力先が入力と同じパスだと出力の truncate が入力の読み込みと
         競合し、入力ファイルが空に化ける (データ消失)。
-        sort / merge など全行を読み込んでから書くコマンドでは
-        起きないため、convert 固有のガードとする。
+        出力先同士が同じパスでも、先に開かれた writer の出力が
+        後から開かれた writer に破壊される。
+        検出処理の実体は io.raise_error_if_output_overlaps にあり、
+        validate / merge でも共用している。
 
     Raises:
-        ValueError: 出力先がいずれかの入力ファイルと同一の場合。
+        ValueError: 出力先がいずれかの入力ファイル、あるいは
+            他の出力先と同一の場合。
     '''
-    outputs = [
-        (output_file, 'output file'),
-        (output_file_filtered_out, 'filtered-out output file'),
-    ]
-    for candidate, label in outputs:
-        if not candidate:
-            continue
-        for input_file in input_files:
-            # NOTE:
-            #   abspath の一致で未作成の出力先も比較し、加えて既存
-            #   ファイル同士は samefile でシンボリックリンクや
-            #   ハードリンク経由の同一性も検出する。
-            is_same = (
-                os.path.abspath(candidate) == os.path.abspath(input_file)
-                or (
-                    os.path.exists(candidate)
-                    and os.path.exists(input_file)
-                    and os.path.samefile(candidate, input_file)
-                )
-            )
-            if is_same:
-                raise ValueError(
-                    f'{label} {candidate} is the same as input file '
-                    f'{input_file}. Writing it would destroy the input '
-                    f'before it is fully read. Specify a different '
-                    f'output path.'
-                )
+    raise_error_if_output_overlaps(
+        outputs=[
+            (output_file, 'output file'),
+            (output_file_filtered_out, 'filtered-out output file'),
+        ],
+        input_files=input_files,
+    )
 
 def convert(
     input_files: list[str],

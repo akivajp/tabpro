@@ -12,6 +12,7 @@ from . extensions.manage_writers import (
     BaseWriter as Writer,
     check_writer,
     get_writer,
+    raise_error_if_output_overlaps,
     save,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     'check_writer',
     'get_loader',
     'get_writer',
+    'raise_error_if_output_overlaps',
     'save',
 ]
